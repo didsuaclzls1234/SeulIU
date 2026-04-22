@@ -60,7 +60,7 @@ public class BoardManager : MonoBehaviour
     }
 
     // 2: 실제로 배열에 데이터 집어넣기
-    public void PlaceStone(int x, int y, int playerType)
+    public GameObject PlaceStone(int x, int y, int playerType)
     {
         if (IsValidMove(x, y, playerType))
         {
@@ -77,8 +77,14 @@ public class BoardManager : MonoBehaviour
             GameObject newStone = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity);  // 생성한 돌을 변수에 담고            
             activeStones.Add(newStone); // 리스트에 추가해서 기억해둠
 
-            Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
+            //Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
+
+            // 성공적으로 돌을 만들었다면 그 돌을 반환(Return)해줌
+            return newStone;
         }
+
+        // 만약 금수 자리거나 룰에 막혀서 돌을 못 놓았다면 빈 값(null) 반환
+        return null;
     }
 
     // 전체 바둑판을 스캔해서 ❌ 마커를 그리는 함수

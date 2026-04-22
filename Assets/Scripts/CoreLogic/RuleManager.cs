@@ -69,7 +69,7 @@ public class RuleManager : MonoBehaviour
     {
         int W = rules.winCondition;
 
-        // 1. 승리(5목) 우선의 법칙: 지금 둬서 목표 달성하면 무조건 합법!
+        // 1. 승리(5목) 우선의 법칙: 지금 둬서 목표 달성 가능하면, 금수 자리였어도 그 자리에 무조건 둘 수 있음
         if (IsWin(x, y, player, grid, size, W, rules.banOverline)) return false;
 
         // * 백트래킹: 바둑판에 가상으로 돌을 놓음
