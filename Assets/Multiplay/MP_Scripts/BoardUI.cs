@@ -96,26 +96,28 @@ public class BoardUI : MonoBehaviour
         _previewStone.SetActive(false);
 
         foreach (Renderer r in _previewStone.GetComponentsInChildren<Renderer>())
-        {
-            foreach (Material mat in r.materials)
-            {
-                mat.SetFloat("_Mode", 3);
-                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                mat.SetInt("_ZWrite", 0);
-                mat.DisableKeyword("_ALPHATEST_ON");
-                mat.EnableKeyword("_ALPHABLEND_ON");
-                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                mat.renderQueue = 3000;
+        {   
+            Material mat = r.material;
+           
+            
+            mat.SetFloat("_Surface", 1f);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
 
-                Color c = mat.color;
-                mat.color = new Color(c.r, c.g, c.b, 0.4f);
-            }
+            Color c = mat.color;
+            mat.color = new Color(c.r, c.g, c.b, 0.4f);
+            
         }
     }
     /// <summary>네트워크 이벤트 수신 후 실제 돌을 표시합니다.</summary>
     public void PlaceStone(int row, int col, StoneColor color)
     {
+        if (_previewStone != null) _previewStone.SetActive(false);
+        
         GameObject prefab = color == StoneColor.Black ? blackStonePrefab : whiteStonePrefab;
         if (prefab == null)
         {
@@ -128,8 +130,8 @@ public class BoardUI : MonoBehaviour
         Instantiate(prefab, spawnPos, Quaternion.identity);
         _cells[row, col].MarkOccupied();
 
-        if (hoverIndicator != null && hoverIndicator.activeSelf)
-            hoverIndicator.SetActive(false);
+        // if (hoverIndicator != null && hoverIndicator.activeSelf)
+        //     hoverIndicator.SetActive(false);
     }
 
     // ── BoardCell에서 호출 ───────────────────────────────────────
@@ -141,10 +143,15 @@ public class BoardUI : MonoBehaviour
 
     public void OnCellHoverEnter(int row, int col)
     {
-        if (hoverIndicator == null) return;
+        if (!_isMyTurn || !_inputEnabled) return;
+        if (_cells[row, col].HasStone) return;
+
+       if (_previewStone != null)
+        {
         Vector3 cellPos = _cells[row, col].transform.position;
-        hoverIndicator.transform.position = new Vector3(cellPos.x, stoneYOffset, cellPos.z);
-        hoverIndicator.SetActive(true);
+        _previewStone.transform.position = new Vector3(cellPos.x, stoneYOffset, cellPos.z);
+        _previewStone.SetActive(true);
+        }
     }
 
     public void OnCellHoverExit()
@@ -153,7 +160,7 @@ public class BoardUI : MonoBehaviour
     }
 
     private void BuildGridLines()
-{
+    {
     int   size      = ActionLog.BoardSize;
     float halfBoard = (size - 1) * cellSpacing * 0.5f;
     float baseX     = transform.position.x - halfBoard;
@@ -174,7 +181,7 @@ public class BoardUI : MonoBehaviour
     }
 }
 
-private void CreateLine(Vector3 start, Vector3 end)
+    private void CreateLine(Vector3 start, Vector3 end)
 {
     GameObject go = new GameObject("GridLine");
     go.transform.SetParent(transform);
@@ -191,5 +198,5 @@ private void CreateLine(Vector3 start, Vector3 end)
     lr.useWorldSpace = true;
 }
 
-
+    public BoardCell GetCell(int row, int col) => _cells[row, col];
 }

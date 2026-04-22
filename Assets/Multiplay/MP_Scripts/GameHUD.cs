@@ -55,7 +55,7 @@ public class GameHUD : MonoBehaviour
         if (resultText == null) return;
 
         resultText.text = winner == StoneColor.None  ? "무승부!"
-                        : winner == myColor          ? "승리! 🎉"
+                        : winner == myColor          ? "승리! "
                                                      : "패배...";
     }
 

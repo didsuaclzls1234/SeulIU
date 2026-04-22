@@ -110,6 +110,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         Debug.Log($"[GameSession] 내 색: {myColor.ToKorean()}");
 
+        boardUI.InitPreviewStone(myColor);
         gameHUD.ShowRoleAssigned(myColor);
         RefreshHUD();
     }

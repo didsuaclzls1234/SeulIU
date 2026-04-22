@@ -21,39 +21,38 @@ public class MP_InputManager : MonoBehaviour
         if (!_groundPlane.Raycast(ray, out float enter)) return;
         Vector3 worldPos = ray.GetPoint(enter);
 
-        // 월드 XZ 좌표에서 위에서 아래로 고정 레이캐스트
-        Vector3 rayOrigin = new Vector3(worldPos.x, 10f, worldPos.z);
+        // 월드 좌표 → 격자 인덱스로 직접 변환
+        float halfBoard = (ActionLog.BoardSize - 1) * boardUI.cellSpacing * 0.5f;
+        int col = Mathf.RoundToInt((worldPos.x + halfBoard) / boardUI.cellSpacing);
+        int row = Mathf.RoundToInt((worldPos.z + halfBoard) / boardUI.cellSpacing);
 
-    PhysicsScene physicsScene = gameObject.scene.GetPhysicsScene();
-
-        if (physicsScene.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 20f))
+        // 보드 범위 안인지 확인
+        if (col < 0 || col >= ActionLog.BoardSize || row < 0 || row >= ActionLog.BoardSize)
         {
-        Debug.DrawRay(rayOrigin, Vector3.down * hit.distance, Color.green);
-
-        BoardCell cell = hit.collider.GetComponent<BoardCell>();
-        if (cell != null && !cell.HasStone)
-            {
-            if (cell != _lastHoveredCell)
+            if (_lastHoveredCell != null)
             {
                 boardUI.OnCellHoverExit();
+                _lastHoveredCell = null;
+            }
+            return;
+        }
+
+        BoardCell cell = boardUI.GetCell(row, col);
+        if (cell != null && !cell.HasStone)
+        {
+            if (cell != _lastHoveredCell)
+            {
                 boardUI.OnCellHoverEnter(cell.Row, cell.Col);
                 _lastHoveredCell = cell;
             }
 
             if (Mouse.current.leftButton.wasPressedThisFrame)
                 gameSession.TrySubmitMove(cell.Row, cell.Col);
-
-            return;
-            }
         }
-
-    Debug.DrawRay(rayOrigin, Vector3.down * 20f, Color.red);
-
-    if (_lastHoveredCell != null)
-    {
-        boardUI.OnCellHoverExit();
-        _lastHoveredCell = null;
-    }
-  
+        else if (_lastHoveredCell != null)
+        {
+            boardUI.OnCellHoverExit();
+            _lastHoveredCell = null;
+        }
     }
 }
