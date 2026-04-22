@@ -70,11 +70,11 @@ public class GameHUD : MonoBehaviour
     private void OnClickRematch()
     {
         // 방을 나가면 GameSession.OnLeftRoom → Lobby 씬 이동
-        PhotonNetwork.LeaveRoom();
+        PhotonNetwork.Disconnect();
     }
 
     private void OnClickExit()
     {
-        PhotonNetwork.LeaveRoom();
+        PhotonNetwork.Disconnect();
     }
 }
