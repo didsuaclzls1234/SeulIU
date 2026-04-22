@@ -8,7 +8,7 @@ public class RuleSettings
     public bool ban44 = false;
     public bool banOverline = false; // 장목 금지 여부
 
-    // * 승리 조건도 플레이어마다 개별로 가짐 (스킬로 내 승리조건만 4목으로 줄일 수도 있음)
+    // 승리 조건도 플레이어마다 개별로 가짐 (스킬 확장성 핵심)
     public int winCondition = 5;
 }
 
@@ -17,7 +17,10 @@ public class RuleManager : MonoBehaviour
     public RuleSettings blackRules = new RuleSettings();
     public RuleSettings whiteRules = new RuleSettings();
 
-    public int currentWinCondition = 5; // ** 평소엔 5목. 나중에 스킬 발동 시 6으로 변경가능하도록 확장성 고려
+    public int currentWinCondition = 5;
+
+    // * 4방향 탐색 캐싱용 벡터 (가로, 세로, 우상향, 우하향)
+    private readonly int[,] dirs = { { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, -1 } };
 
     public void Start()
     {
@@ -46,124 +49,172 @@ public class RuleManager : MonoBehaviour
         whiteRules.ban33 = false; whiteRules.ban44 = false; whiteRules.banOverline = false;
     }
 
-    // 2. 금수 자리인지 검사하는 함수 (BoardManager가 돌을 놓기 전에 확인함)
-    public bool IsForbiddenMove(int x, int y, int playerType, int[,] grid, int boardSize, bool silent = false) // silent는 로그 출력 제어를 위해 추가함.
+    // * 외부(BoardManager)에서 찌르는 진입점
+    public bool IsForbiddenMove(int x, int y, int playerType, int[,] grid, int boardSize, bool silent = false)
     {
         RuleSettings currentRules = (playerType == 1) ? blackRules : whiteRules;
-        int currentWin = currentRules.winCondition;
 
-        string[] lines = GetLines(x, y, playerType, grid, boardSize, currentWin);
+        // 금수 룰이 아예 없으면 즉시 통과
+        if (!currentRules.ban33 && !currentRules.ban44 && !currentRules.banOverline) return false;
 
-        if (currentRules.banOverline && CheckOverline(lines, currentWin))
-        {
-            if (!silent) Debug.Log($"❌ 장목({currentWin + 1}목 이상) 금수 자리입니다!");
-            return true;
-        }
-
-        if (currentRules.ban44 && CheckDynamicRule(lines, currentWin, currentWin - 1, 2))
-        {
-            if (!silent) Debug.Log($"❌ 쌍{currentWin - 1} 금수 자리입니다!");
-            return true;
-        }
-
-        if (currentRules.ban33 && CheckDynamicRule(lines, currentWin, currentWin - 2, 2))
-        {
-            if (!silent) Debug.Log($"❌ 쌍{currentWin - 2} 금수 자리입니다!");
-            return true;
-        }
-
-        return false;
+        // 코어 엔진으로 검사 시작 (최초 호출이므로 depth는 0)
+        return CheckIsForbidden(x, y, playerType, grid, boardSize, currentRules, depth: 0, silent: silent);
     }
 
     // ----------------------------------------------------
-    // 금수 검사 알고리즘
+    // GC-Free 재귀 백트래킹 코어 알고리즘
 
-    // 4방향 탐색 함수
-    private string[] GetLines(int x, int y, int playerType, int[,] grid, int boardSize, int targetWinCondition)
+    // 실제 금수 여부를 딥 다이브해서 판별하는 사령탑
+    private bool CheckIsForbidden(int x, int y, int player, int[,] grid, int size, RuleSettings rules, int depth, bool silent)
     {
-        int[,] dirs = { { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, -1 } }; // 가로, 세로, 우상향, 우하향
-        string[] lines = new string[4];
+        int W = rules.winCondition;
 
-        for (int i = 0; i < 4; i++)
+        // 1. 승리(5목) 우선의 법칙: 지금 둬서 목표 달성하면 무조건 합법!
+        if (IsWin(x, y, player, grid, size, W, rules.banOverline)) return false;
+
+        // * 백트래킹: 바둑판에 가상으로 돌을 놓음
+        grid[x, y] = player;
+        bool isForbidden = false;
+
+        // 2. 장목 (Overline) 검사
+        if (rules.banOverline && IsOverline(x, y, player, grid, size, W))
         {
-            lines[i] = ExtractLine(x, y, dirs[i, 0], dirs[i, 1], playerType, grid, boardSize, targetWinCondition);
+            if (!silent && depth == 0) Debug.Log($"❌ 장목({W + 1}목 이상) 금수 자리입니다!");
+            isForbidden = true;
         }
-        return lines;
+        // 3. 쌍사 (4-4) 검사
+        else if (rules.ban44)
+        {
+            int count4 = 0;
+            for (int d = 0; d < 4; d++)
+            {
+                if (CountWinningSpotsOnAxis(x, y, dirs[d, 0], dirs[d, 1], player, grid, size, W, rules.banOverline) >= 1) count4++;
+            }
+
+            if (count4 >= 2)
+            {
+                if (!silent && depth == 0) Debug.Log($"❌ 쌍{W - 1} 금수 자리입니다!");
+                isForbidden = true;
+            }
+        }
+
+        // 4. 쌍삼 (3-3) 검사 (* 여기서 4-3-3이 정확히 count3 >= 2로 잡힘!)
+        // depth <= 1 조건: 거짓 3 판별을 위해 딱 한 번만 더 파고들게 제어
+        if (!isForbidden && rules.ban33 && depth <= 1)
+        {
+            int count3 = 0;
+            for (int d = 0; d < 4; d++)
+            {
+                if (CheckOpen3OnAxis(x, y, dirs[d, 0], dirs[d, 1], player, grid, size, W, rules, depth)) count3++;
+            }
+
+            if (count3 >= 2)
+            {
+                if (!silent && depth == 0) Debug.Log($"❌ 쌍{W - 2} 금수 자리입니다!");
+                isForbidden = true;
+            }
+        }
+
+        // * 백트래킹: 가상 돌 제거 (원상복구)
+        grid[x, y] = 0;
+        return isForbidden;
     }
 
-    private string ExtractLine(int x, int y, int dx, int dy, int playerType, int[,] grid, int size, int targetWinCondition)
+    private bool IsWin(int x, int y, int player, int[,] grid, int size, int W, bool banOverline)
     {
-        string result = "";
-
-        // 핵심: 시야(range)를 동적으로 확장.
-        // 장목(Overline)이나 양쪽 끝이 비어있는지까지 감지하려면, 목표 개수보다 1칸 더 멀리 봐야 함
-        int range = targetWinCondition + 1;
-
-        for (int i = -range; i <= range; i++)
+        for (int d = 0; d < 4; d++)
         {
-            int nx = x + dx * i;
-            int ny = y + dy * i;
-
-            if (nx < 0 || ny < 0 || nx >= size || ny >= size) result += "2";
-            else if (grid[nx, ny] == 0) result += "0";
-            else if (grid[nx, ny] == playerType) result += "1";
-            else result += "2";
-        }
-
-        // 정중앙 인덱스도 항상 range와 동일해짐 (예: range가 6이면 인덱스 6이 정중앙)
-        char[] chars = result.ToCharArray();
-        chars[range] = '1';
-        return new string(chars);
-    }
-
-    // 장목(Overline) 동적 검사기
-    private bool CheckOverline(string[] lines, int targetWinCondition)
-    {
-        // 5목 룰이면 "111111" (6개) 패턴을 찾음, 6목 룰이면 "1111111" (7개) 패턴을 찾음
-        string overlinePattern = new string('1', targetWinCondition + 1);
-
-        foreach (string line in lines)
-        {
-            if (line.Contains(overlinePattern)) return true;
+            int count = 1 + CountDir(x, y, dirs[d, 0], dirs[d, 1], player, grid, size) + CountDir(x, y, -dirs[d, 0], -dirs[d, 1], player, grid, size);
+            if (count == W) return true;
+            if (!banOverline && count > W) return true;
         }
         return false;
     }
 
-    // (N목, 쌍삼, 쌍사 등을 동적으로 모두 잡아낼 수 있음)
-    private bool CheckDynamicRule(string[] lines, int targetWinCondition, int targetStones, int requiredWindows)
+    private bool IsOverline(int x, int y, int player, int[,] grid, int size, int W)
     {
-        int totalMatches = 0;
-
-        foreach (string line in lines)
+        for (int d = 0; d < 4; d++)
         {
-            // 예: 6목 스킬 발동 중이면, 창문 크기는 6
-            int windowSize = targetWinCondition;
+            int count = 1 + CountDir(x, y, dirs[d, 0], dirs[d, 1], player, grid, size) + CountDir(x, y, -dirs[d, 0], -dirs[d, 1], player, grid, size);
+            if (count > W) return true;
+        }
+        return false;
+    }
 
-            // 3-3 (열린 3) 같은 경우는 양쪽 끝이 비어있어야 하므로 창문 크기를 1칸 더 넓게 봄
-            if (targetStones == targetWinCondition - 2) windowSize += 1;
+    // 특정 축에서 빈칸(0)을 하나 채웠을 때 목표(W)를 달성하는 '승리 스팟'이 몇 개인지 카운트
+    private int CountWinningSpotsOnAxis(int x, int y, int dx, int dy, int player, int[,] grid, int size, int W, bool banOverline)
+    {
+        int winningSpots = 0;
+        for (int i = -W; i <= W; i++)
+        {
+            if (i == 0) continue;
+            int nx = x + i * dx;
+            int ny = y + i * dy;
 
-            // 문자열(line) 위로 창문을 한 칸씩 슬라이딩
-            for (int i = 0; i <= line.Length - windowSize; i++)
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size && grid[nx, ny] == 0)
             {
-                string window = line.Substring(i, windowSize);
+                int rightCount = CountDir(nx, ny, dx, dy, player, grid, size);
+                int leftCount = CountDir(nx, ny, -dx, -dy, player, grid, size);
+                int count = 1 + rightCount + leftCount;
 
-                // 창문 안에 상대 돌(2)이나 벽(2)이 있으면 이 창문은 무효 (막힌 길)
-                if (window.Contains("2")) continue;
-
-                // 창문 안에서 내 돌(1)의 개수를 세기
-                int myStoneCount = window.Split('1').Length - 1; // (1의 개수 카운트)
-
-                // 목표한 돌의 개수(예: 3-3이면 3개, 4-4면 4개)와 일치하는가?
-                if (myStoneCount == targetStones)
+                if ((count == W) || (!banOverline && count > W))
                 {
-                    totalMatches++;
-                    break; // 이 줄(축)에서는 하나 찾았으니 다음 축으로 넘어감
+                    // 그 승리 라인이 우리가 방금 놓은 돌(x, y)과 연결되어 있는가?
+                    if (i > 0 && leftCount >= i) winningSpots++;
+                    else if (i < 0 && rightCount >= -i) winningSpots++;
                 }
             }
         }
-
-        // 찾아낸 패턴의 개수가 요구치(쌍사면 2개) 이상인가?
-        return totalMatches >= requiredWindows;
+        return winningSpots;
     }
 
+    // 재귀를 활용하여 '진짜 열린 3'인지 판별
+    private bool CheckOpen3OnAxis(int x, int y, int dx, int dy, int player, int[,] grid, int size, int W, RuleSettings rules, int depth)
+    {
+        for (int i = -W; i <= W; i++)
+        {
+            if (i == 0) continue;
+            int nx = x + i * dx;
+            int ny = y + i * dy;
+
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size && grid[nx, ny] == 0)
+            {
+                // 1차 필터링: 빈칸(nx, ny)에 돌을 놓았을 때 원래 돌(x, y)과 이어지는가?
+                grid[nx, ny] = player;
+                int right = CountDir(nx, ny, dx, dy, player, grid, size);
+                int left = CountDir(nx, ny, -dx, -dy, player, grid, size);
+                grid[nx, ny] = 0;
+
+                bool isConnected = (i > 0 && left >= i) || (i < 0 && right >= -i);
+                if (!isConnected) continue;
+
+                // * 거짓 3 필터링: 그 빈칸(nx, ny)이 금수 자리라면 3으로 인정하지 않음!
+                if (CheckIsForbidden(nx, ny, player, grid, size, rules, depth + 1, silent: true))
+                    continue;
+
+                // 그 빈칸에 돌을 놨을 때, '열린 4(승리 스팟이 2개 이상)'가 되는가?
+                grid[nx, ny] = player;
+                int winSpots = CountWinningSpotsOnAxis(nx, ny, dx, dy, player, grid, size, W, rules.banOverline);
+                grid[nx, ny] = 0;
+
+                if (winSpots >= 2) return true;
+            }
+        }
+        return false;
+    }
+
+    // 특정 방향으로 연속된 내 돌의 개수를 세는 순수 포인터 함수
+    private int CountDir(int x, int y, int dx, int dy, int player, int[,] grid, int size)
+    {
+        int count = 0;
+        int nx = x + dx;
+        int ny = y + dy;
+        while (nx >= 0 && nx < size && ny >= 0 && ny < size && grid[nx, ny] == player)
+        {
+            count++;
+            nx += dx;
+            ny += dy;
+        }
+        return count;
+    }
 }
