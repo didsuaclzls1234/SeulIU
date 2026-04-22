@@ -184,7 +184,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
     public override void OnLeftRoom()
     {
-        SceneManager.LoadScene("Lobby"); // 로비 씬 이름이 다르면 수정
+        PhotonNetwork.LoadLevel("Lobby");; // 로비 씬 이름이 다르면 수정
     }
 
     // ── 내부 헬퍼 ────────────────────────────────────────────────
