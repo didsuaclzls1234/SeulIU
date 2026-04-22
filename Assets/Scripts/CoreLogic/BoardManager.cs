@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class BoardManager : MonoBehaviour
 {
+    public RuleManager ruleManager;
+
     [Header("Board Settings")]
     public int boardSize = 15;  // 오목은 보통 15x15 격자를 씁니다.
     public float gridSize = 1f; // -> InputManager의 gridSize와 동일해야 함!
@@ -10,6 +12,7 @@ public class BoardManager : MonoBehaviour
     [Header("Prefabs")]         // ** 추후 아트 작업 마무리 시 교체
     public GameObject blackStonePrefab; // 흑돌 프리팹
     public GameObject whiteStonePrefab; // 백돌 프리팹
+    public GameObject forbiddenMarkPrefab; // ❌(못 놓는 자리 표시) 프리팹
 
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
@@ -19,6 +22,7 @@ public class BoardManager : MonoBehaviour
 
     // 생성된 바둑돌들을 기억해둘 리스트 ('다시하기' 기능 시 필요) 
     private List<GameObject> activeStones = new List<GameObject>();
+    private List<GameObject> forbiddenMarks = new List<GameObject>(); // '❌' 마커들을 담아둘 리스트
 
 
     void Start()
@@ -28,41 +32,48 @@ public class BoardManager : MonoBehaviour
         Debug.Log($"[BoardManager] {boardSize}x{boardSize} 오목판 데이터 생성 완료!");
     }
 
-    // ⭐️ 1: 돌을 둘 수 있는 정상적인 위치인지 검사
-    public bool IsValidMove(int x, int y)
+    // 1: 돌을 둘 수 있는 정상적인 위치인지 검사
+    public bool IsValidMove(int x, int y, int playerType)
     {
-        // 1. 바둑판 범위를 벗어났는가? (IndexOutOfRange 에러 방어)
+        // 1-1. 바둑판 범위를 벗어났는가? (IndexOutOfRange 에러 방어)
         if (x < 0 || x >= boardSize || y < 0 || y >= boardSize)
         {
             Debug.LogWarning("[BoardManager] 바둑판 범위를 벗어났습니다!");
             return false;
         }
 
-        // 2. 이미 돌이 놓여져 있는가? (0이어야 빈칸)
+        // 1-2. 이미 돌이 놓여져 있는가? (0이어야 빈칸)
         if (grid[x, y] != 0)
         {
             Debug.LogWarning("[BoardManager] 이미 돌이 있는 자리입니다!");
             return false;
         }
 
+        // 1-3. 현재 오목 규칙 기준으로, 돌을 놔도 되는지 RuleManager에게 검사 요청
+        if (ruleManager != null && ruleManager.IsForbiddenMove(x, y, playerType, grid, boardSize))
+        {
+            Debug.LogWarning("❌ 금수 자리입니다! 돌을 놓을 수 없습니다.");
+            return false;
+        }
+
         return true;
     }
 
-    // ⭐️ 2: 실제로 배열에 데이터 집어넣기
+    // 2: 실제로 배열에 데이터 집어넣기
     public void PlaceStone(int x, int y, int playerType)
     {
-        if (IsValidMove(x, y))
+        if (IsValidMove(x, y, playerType))
         {
-            // 1. 데이터 배열 갱신
+            // 2-1. 데이터 배열 갱신
             grid[x, y] = playerType;
 
-            // 2. 어떤 돌을 생성할지 결정
+            // 2-2. 어떤 돌을 생성할지 결정
             GameObject prefabToSpawn = (playerType == 1) ? blackStonePrefab : whiteStonePrefab;
 
-            // 3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: 0.2f)
+            // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: 0.2f)
             Vector3 spawnPos = new Vector3(x * gridSize, 0.2f, y * gridSize);
 
-            // 4. 실제로 씬에 3D 모델 생성
+            // 2-4. 실제로 씬에 3D 모델 생성
             GameObject newStone = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity);  // 생성한 돌을 변수에 담고            
             activeStones.Add(newStone); // 리스트에 추가해서 기억해둠
 
@@ -70,17 +81,47 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 전체 바둑판을 스캔해서 ❌ 마커를 그리는 함수
+    public void UpdateForbiddenMarks(int currentPlayer)
+    {
+        // 1. 이전 턴에 그려둔 ❌ 마커들 싹 지우기
+        foreach (GameObject mark in forbiddenMarks) Destroy(mark);
+        forbiddenMarks.Clear();
+
+        if (ruleManager == null) return;
+
+        // 2. 바둑판 15x15 전체를 순회
+        for (int x = 0; x < boardSize; x++)
+        {
+            for (int y = 0; y < boardSize; y++)
+            {
+                // 이미 돌이 있는 자리는 패스
+                if (grid[x, y] != 0) continue;
+
+                // (silent 모드: true로 켜서 로그 도배 없이 조용히 검사만 하도록)
+                if (ruleManager.IsForbiddenMove(x, y, currentPlayer, grid, boardSize, true))
+                {
+                    // 금수 자리라면 ❌ 프리팹 생성 (바닥에 안 파묻히게 높이를 0.1f로 띄움)
+                    Vector3 pos = new Vector3(x * gridSize, 0.1f, y * gridSize);
+                    GameObject newMark = Instantiate(forbiddenMarkPrefab, pos, Quaternion.Euler(90, 0, 0));
+                    forbiddenMarks.Add(newMark);
+                }
+            }
+        }
+    }
+
     // 재시작 시 호출할 데이터 정리 함수
     public void ClearBoard()
     {
-        // 1. 씬에 있는 모든 3D 돌 삭제
-        foreach (GameObject stone in activeStones)
-        {
-            Destroy(stone);
-        }
-        activeStones.Clear(); // 리스트 비우기
+        // 씬에 있는 모든 3D 돌 삭제
+        foreach (GameObject stone in activeStones) Destroy(stone);
+        activeStones.Clear();
 
-        // 2. 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
+        // ❌ 마커도 청소
+        foreach (GameObject mark in forbiddenMarks) Destroy(mark);
+        forbiddenMarks.Clear();
+
+        // 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
         System.Array.Clear(grid, 0, grid.Length);
 
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
@@ -133,7 +174,7 @@ public class BoardManager : MonoBehaviour
 
     // --------------------------------------------------------------------
 
-    // ⭐️ 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
+    // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()
     {
         Gizmos.color = Color.black; // 선 색깔

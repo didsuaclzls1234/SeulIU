@@ -22,27 +22,30 @@ public class GameManager : MonoBehaviour
 
         // 시작할 때 텍스트 숨기기
         if (winnerText != null) winnerText.gameObject.SetActive(false);
+
+        // 게임 시작 직후 1턴(흑돌)의 금수 자리 표시 (첫 턴이라 없겠지만 구조상 필요)
+        board.UpdateForbiddenMarks(currentTurn); 
     }
 
-    // * InputManager가 마우스를 클릭하면 이 함수를 호출함
+    // (InputManager가 마우스를 클릭하면 이 함수를 호출함)
     public void TryPlaceStone(int x, int y)
     {
         // 이미 게임이 끝났다면 클릭 무시
         if (currentState == GameState.GameOver) return;
 
         // BoardManager한테 돌을 두어도 되는지 물어봄
-        if (board.IsValidMove(x, y))
+        if (board.IsValidMove(x, y, currentTurn) && !board.ruleManager.IsForbiddenMove(x, y, currentTurn, board.grid, board.boardSize, false))
         {
             // 1. 돌 배치 (배열 데이터 갱신)
             board.PlaceStone(x, y, currentTurn);
 
-            // 2. 승패 판정! (방금 놓은 돌 좌표 기준)
+            // 2. 승패 판정 (방금 놓은 돌 좌표 기준)
             if (board.CheckWin(x, y, currentTurn))
             {
                 string winnerName = (currentTurn == 1) ? "흑돌" : "백돌";
                 Debug.Log($"🎉[GameManager] 게임 종료! {winnerName} 승리!");
                 
-                // 승리 시 텍스트 내용 바꾸고 화면에 켜기!
+                // 승리 시 텍스트 내용 바꾸고 화면에 켜기
                 if (winnerText != null)
                 {
                     winnerText.text = $"{winnerName} 승리!";
@@ -55,6 +58,10 @@ public class GameManager : MonoBehaviour
 
             // 3. 승부가 안 났다면 턴 넘기기
             currentTurn = (currentTurn == 1) ? 2 : 1;
+
+            // 다음 사람의 턴으로 바뀌었으니 ❌ 마커 갱신
+            board.UpdateForbiddenMarks(currentTurn);
+
             string nextTurn = (currentTurn == 1) ? "흑돌" : "백돌";
             Debug.Log($"[GameManager] 턴 종료! 다음 턴: {nextTurn}");
         }

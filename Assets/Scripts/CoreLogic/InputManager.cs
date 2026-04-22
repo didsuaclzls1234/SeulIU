@@ -8,7 +8,7 @@ public class InputManager : MonoBehaviour
     [Header("UI & Visuals")]
     public GameObject hoverIndicator;
 
-    // ⭐️ 핵심: 콜라이더 대신 사용할 '수학적인 무한 평면 (Y=0 바닥)'
+    // 콜라이더 대신 사용할 '수학적인 무한 평면 (Y=0 바닥)'
     private Plane mathPlane = new Plane(Vector3.up, Vector3.zero);
 
     void Start()
