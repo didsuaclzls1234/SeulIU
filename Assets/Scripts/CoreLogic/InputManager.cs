@@ -4,26 +4,41 @@ public class InputManager : MonoBehaviour
 {
     public GameManager gameManager;
     public float gridSize = 1f;
-    public GameObject hoverIndicator;
 
-    // 호버 돌의 색깔을 바꿔주기 위한 렌더러
-    private MeshRenderer hoverRenderer;
+    [Header("Hover Settings")]
+    public GameObject hoverIndicatorPrefab; // 프리팹
+    private GameObject hoverIndicator;       // 코드로 생성한 객체를 담을 변수
+    private MeshRenderer hoverRenderer;   // 호버 돌의 색깔을 바꿔주기 위한 렌더러
     public Material blackAlphaMat; // 반투명 흑돌 재질
     public Material whiteAlphaMat; // 반투명 백돌 재질
 
     // 콜라이더 대신 사용할 '수학적인 무한 평면 (Y=0 바닥)'
     private Plane mathPlane = new Plane(Vector3.up, Vector3.zero);
 
+    // 찰나의 중복 클릭이나 마우스 이동을 막기 위한 잠금 변수
+    private bool isProcessingClick = false;
+
     void Start()
     {
         if (gameManager == null) gameManager = FindFirstObjectByType<GameManager>();
-        if (hoverIndicator != null) hoverRenderer = hoverIndicator.GetComponent<MeshRenderer>();
+
+        // 1. 프리팹이 연결되어 있다면, 코드로 직접 Instantiate 해서 생성합니다.
+        if (hoverIndicatorPrefab != null)
+        {
+            hoverIndicator = Instantiate(hoverIndicatorPrefab);
+            hoverIndicator.name = "HoverIndicator_Dynamic"; // 하이어라키에서 보기 편하게 이름 변경
+            hoverIndicator.SetActive(false); // 처음엔 숨겨둡니다.
+
+            hoverRenderer = hoverIndicator.GetComponent<MeshRenderer>();
+        }
     }
 
     void Update()
     {
-        //  ** 내 턴이 아니거나, 게임오버면 호버 돌을 숨겨버림 (솔로 모드가 아닐 때만 검사)
-        if (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurn != gameManager.localPlayerType)
+        // 내 턴이 아니거나, 게임이 끝났거나, 처리 중이면 완벽하게 차단
+        if (gameManager.currentState == GameState.GameOver ||
+            (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
+            isProcessingClick)
         {
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
             return;
@@ -53,23 +68,31 @@ public class InputManager : MonoBehaviour
                 if (hoverRenderer != null)
                 {
                     // 호버 돌 색상 로직: 솔로 모드면 현재 턴 색상, 멀티면 내 색상 고정
-                    int displayColor = (gameManager.currentMode == PlayMode.Solo) ? gameManager.currentTurn : gameManager.localPlayerType;
+                    int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
                     hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
                 }
             }
 
-            // 클릭 처리
+            // 4. 클릭 처리
             if (Input.GetMouseButtonDown(0))
             {
+                // 클릭하는 순간 락을 걸어서, 프레임이 밀려도 좌표가 바뀌지 않게 고정
+                isProcessingClick = true;
+
+                // 호버 인디케이터 즉시 숨김
+                if (hoverIndicator != null) hoverIndicator.SetActive(false);
+
+                // 돌 놓기 실행
                 gameManager.TryPlaceStone(x, y);
+
+                // 연산이 끝난 후 락 해제
+                isProcessingClick = false;
             }
         }
-        //else
-        //{
-        //    if (hoverIndicator != null && hoverIndicator.activeSelf)
-        //    {
-        //        hoverIndicator.SetActive(false);
-        //    }
-        //}
+        else
+        {
+            // 마우스가 허공(보드 밖)을 가리킬 때 호버 돌 숨기기
+            if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+        }
     }
 }

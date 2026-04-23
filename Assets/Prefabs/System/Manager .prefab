@@ -1,0 +1,116 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4115228335132474100
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1498795243818675194}
+  - component: {fileID: 778389589125318722}
+  - component: {fileID: 9133781494971274617}
+  - component: {fileID: 1642039771649808315}
+  - component: {fileID: 278610637530720441}
+  m_Layer: 0
+  m_Name: 'Manager '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1498795243818675194
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &778389589125318722
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 784c64bcf41b53447aa06ac9475e8635, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoardManager
+  ruleManager: {fileID: 278610637530720441}
+  boardSize: 19
+  gridSize: 1
+  blackStonePrefab: {fileID: 8342665929519426539, guid: 111bdec5bdb36bc4a816ff50fb8394ce, type: 3}
+  whiteStonePrefab: {fileID: 104304899901899556, guid: 63c63fabf36e7c049afba02281a8f0f5, type: 3}
+  forbiddenMarkPrefab: {fileID: 5236384367792362936, guid: 5034d6f67d1e9114daf7e096222a8f70, type: 3}
+  mainCamera: {fileID: 0}
+  cameraPadding: 2
+  winCondition: 5
+--- !u!114 &9133781494971274617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3c2d6cdd0d0af64a9af987f877f95d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  board: {fileID: 778389589125318722}
+  gameHUD: {fileID: 0}
+  currentTurnColor: 1
+  currentState: 0
+  currentMode: 0
+  localPlayerColor: 1
+--- !u!114 &1642039771649808315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 053f6eebeb2bc5545bdd1972a0fd71cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InputManager
+  gameManager: {fileID: 9133781494971274617}
+  gridSize: 1
+  hoverIndicatorPrefab: {fileID: 2609466034151668977, guid: 463edde9b0ba8684686c105bfd5a88ee, type: 3}
+  blackAlphaMat: {fileID: 2100000, guid: d5dad9a8b6e206349a9b28d1944f65b6, type: 2}
+  whiteAlphaMat: {fileID: 2100000, guid: 2b4140a6f38c348409edce31f7f2445e, type: 2}
+--- !u!114 &278610637530720441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc87f2342f8e6d247a1b022da55db11c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RuleManager
+  blackRules:
+    ban33: 0
+    ban44: 0
+    banOverline: 0
+    winCondition: 5
+  whiteRules:
+    ban33: 0
+    ban44: 0
+    banOverline: 0
+    winCondition: 5
+  currentWinCondition: 5

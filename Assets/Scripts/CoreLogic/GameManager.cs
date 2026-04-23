@@ -13,30 +13,51 @@ public struct MoveRecord
 {
     public int x;
     public int y;
-    public int player;
+    public StoneColor playerColor; // <- Enum 적용
     public GameObject stoneObj; // 화면에 생성된 3D 돌
 }
 
 public class GameManager : MonoBehaviour
 {
     /** 네트워크 전용 액션 (포톤 매니저에서 구독할 채널들)**/   // ** 네트워크 개발자 분은 아래 액션들 구독하셔서 사용하시면 됩니다! 
-    public event Action<int, int> OnStonePlacedLocally; // 내 턴에 돌 놨을 때
+    public event Action<int, int, int> OnStonePlacedLocally; // 내 턴에 돌 놨을 때(x, y, seq)
+    public event Action<StoneColor> OnGameOverLocally;
     public event Action OnUndoRequestedLocally;         // 내가 무르기 버튼 눌렀을 때
+    public event Action<bool> OnUndoReplyLocally;       // 내가 상대방의 무르기를 수락/거절했을 때 발송
     public event Action OnRestartRequestedLocally;      // 내가 재시작 버튼 눌렀을 때
     //public event Action<int> OnSkillUsedLocally;      // 스킬 썼을 때 (나중에 확장)
 
     // -----------------------------------------------------------------------------
 
     public BoardManager board;
-    public int currentTurn = 1;                  // 1: 흑돌(선공), 2: 백돌
+    public GameHUD gameHUD;
+
+    private StoneColor _currentTurnColor = StoneColor.Black;    // 1: 흑돌(선공), 2: 백돌
+    public StoneColor currentTurnColor
+    {
+        get { return _currentTurnColor; }
+        set
+        {
+            _currentTurnColor = value;
+            // 턴이 변경될 때마다 단 한 곳에서 UI를 자동 갱신!
+            RefreshHUD();
+        }
+    }
     public GameState currentState = GameState.Playing;
 
     [Header("Game Settings")]
-    public PlayMode currentMode = PlayMode.Solo; // * 인스펙터에서 모드 변경 가능!
-    public int localPlayerType = 1;              // * 내 컴퓨터에 할당된 색상 (1: 흑, 2: 백) -> 나중에 방장이 선택하거나, 서버에서 지정해 값을 던져주면 됨.
-
-    [Header("UI Elements")]
-    public TextMeshProUGUI winnerText;           // 승리 메시지를 띄울 텍스트 UI
+    public PlayMode currentMode = PlayMode.Solo;              // * 인스펙터에서 모드 변경 가능!
+    private StoneColor _localPlayerColor = StoneColor.Black;    // * 내 컴퓨터에 할당된 색상 (1: 흑, 2: 백) -> 나중에 방장이 선택하거나, 서버에서 지정해 값을 던져주면 됨.
+    public StoneColor localPlayerColor
+    {
+        get { return _localPlayerColor; }
+        set
+        {
+            _localPlayerColor = value;
+            // 서버가 내 색깔을 정해주면 알아서 텍스트 갱신
+            RefreshHUD();
+        }
+    }
 
     private Stack<MoveRecord> moveHistory = new Stack<MoveRecord>(); // 기보(히스토리)를 저장할 스택
 
@@ -46,11 +67,11 @@ public class GameManager : MonoBehaviour
         if (board == null) board = FindFirstObjectByType<BoardManager>();
         Debug.Log("[GameManager] 게임 시작! 흑돌 턴입니다.");
 
-        // 시작할 때 텍스트 숨기기
-        if (winnerText != null) winnerText.gameObject.SetActive(false);
-
         // 게임 시작 직후 1턴(흑돌)의 금수 자리 표시 (첫 턴이라 없겠지만 구조상 필요)
-        board.UpdateForbiddenMarks(currentTurn); 
+        board.UpdateForbiddenMarks(currentTurnColor);
+
+        // 시작할 때 "흑 - 내 차례" 글씨 띄우기
+        RefreshHUD();
     }
 
 
@@ -64,68 +85,85 @@ public class GameManager : MonoBehaviour
         if (currentState == GameState.GameOver) return;
 
         // * '솔로 모드'가 아닐 때만 턴 제어 검사 (솔로 모드면 본인이 흑백 다 둠)
-        if (currentMode != PlayMode.Solo && currentTurn != localPlayerType)
+        if (currentMode != PlayMode.Solo && currentTurnColor != localPlayerColor)
         {
             Debug.Log("지금은 상대방의 턴입니다!");
             return;
         }
 
         // BoardManager한테 돌을 두어도 되는지 물어봄
-        if (board.IsValidMove(x, y, currentTurn) && !board.ruleManager.IsForbiddenMove(x, y, currentTurn, board.grid, board.boardSize, false))
+        if (board.IsValidMove(x, y, currentTurnColor) 
+            && !board.ruleManager.IsForbiddenMove(x, y, (int)currentTurnColor, board.grid, board.boardSize, false))
         {
             // 실제 돌 놓는 코어 로직 실행
-            ExecutePlaceStone(x, y, currentTurn);
+            ExecutePlaceStone(x, y, currentTurnColor);
 
             // ** 내 화면에 돌을 성공적으로 놨다면 네트워크로 방송 쏘기
             if (currentMode == PlayMode.Multiplayer)
             {
-                OnStonePlacedLocally?.Invoke(x, y);
+                // seq = 현재까지 놓은 돌의 개수(인덱스)
+                int currentSeq = moveHistory.Count - 1;
+                OnStonePlacedLocally?.Invoke(x, y, currentSeq);
             }
         }
     }
 
-    public void ReceiveNetworkMove(int x, int y)
+    // 네트워크 수신용 함수: 전달받은 Enum과 seq 쓰기
+    public void ReceiveNetworkMove(int x, int y, StoneColor receivedColor, int seq)
     {
-        // 상대방이 놓은 돌이면 바로 코어 로직 실행
-        if (currentTurn != localPlayerType)
+        // 검증: 날아온 패킷 색깔이 현재 차례 색깔이 아니면 무시 (네트워크 꼬임/핵 방지)
+        if (currentTurnColor != receivedColor)
         {
-            ExecutePlaceStone(x, y, currentTurn);
+            Debug.LogWarning("[GameManager] 잘못된 턴의 패킷 수신!");
+            return;
         }
+
+        ExecutePlaceStone(x, y, receivedColor);
     }
 
-    private void ExecutePlaceStone(int x, int y, int playerType)
+    private void ExecutePlaceStone(int x, int y, StoneColor playerColor)
     {
         // 1. 돌 생성 및 데이터 저장
-        GameObject placedStone = board.PlaceStone(x, y, currentTurn);
+        GameObject placedStone = board.PlaceStone(x, y, playerColor);
 
         // 2. 히스토리에 방금 둔 돌 정보 기록 (무르기를 위해)
-        moveHistory.Push(new MoveRecord { x = x, y = y, player = currentTurn, stoneObj = placedStone });
+        moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = playerColor, stoneObj = placedStone });
 
         // 3. 승패 판정 (방금 놓은 돌 좌표 기준)
-        if (board.CheckWin(x, y, currentTurn))
+        if (board.CheckWin(x, y, playerColor))
         {
-            string winnerName = (currentTurn == 1) ? "흑돌" : "백돌";
-            Debug.Log($"🎉[GameManager] 게임 종료! {winnerName} 승리!");
-
-            // 승리 시 텍스트 내용 바꾸고 화면에 켜기
-            if (winnerText != null)
-            {
-                winnerText.text = $"{winnerName} 승리!";
-                winnerText.gameObject.SetActive(true);
-            }
-
-            currentState = GameState.GameOver; // 상태를 게임오버로 변경
+            EndGame(playerColor);
             return; // 더 이상 턴을 넘기지 않고 함수 종료
         }
 
-        // 3. 승부가 안 났다면 턴 넘기기
-        currentTurn = (currentTurn == 1) ? 2 : 1;
+        // 4. 무승부 판정 (바둑판이 꽉 찼는가?): 돌을 둔 횟수가 (가로 x 세로) 칸 수와 같아지면 꽉 찬 것
+        if (moveHistory.Count >= board.boardSize * board.boardSize)
+        {
+            //Debug.Log("바둑판이 꽉 찼습니다! 무승부!");
+            EndGame(StoneColor.None);
+            return;
+        }
+
+        // 5. 승부가 안 났다면 턴 넘기기 
+        currentTurnColor = currentTurnColor.Opponent();
 
         // 다음 사람의 턴으로 바뀌었으니 ❌ 마커 갱신
-        board.UpdateForbiddenMarks(currentTurn);
+        board.UpdateForbiddenMarks(currentTurnColor);
+    }
 
-        //string nextTurn = (currentTurn == 1) ? "흑돌" : "백돌";
-        //Debug.Log($"[GameManager] 턴 종료! 다음 턴: {nextTurn}");
+    // 게임 종료 로직 통합 (승리 or 무승부)
+    private void EndGame(StoneColor winner)
+    {
+        currentState = GameState.GameOver;
+
+        // UI는 무조건 GameHUD가 처리하도록 위임!
+        if (gameHUD != null) gameHUD.ShowGameOver(winner, localPlayerColor);
+
+        // 내가 둬서 끝났을 때만 네트워크로 '게임 끝' 방송
+        if (currentMode == PlayMode.Multiplayer && (winner == localPlayerColor || winner == StoneColor.None))
+        {
+            OnGameOverLocally?.Invoke(winner);
+        }
     }
 
 
@@ -136,48 +174,92 @@ public class GameManager : MonoBehaviour
     // UI 무르기 버튼에 연결할 함수
     public void RequestUndo()
     {
-        if (moveHistory.Count == 0) return; // 무를 수단이 없으면 리턴
+        if (moveHistory.Count == 0 || currentState == GameState.GameOver) return; // 무를 수단이 없으면 리턴
 
-        ExecuteUndo(); // 내 화면 무르기
-
-        // * 네트워크로 "나 물렀어! 너도 물러!" 방송 쏘기
+        // 2. 모드별 분기 처리
         if (currentMode == PlayMode.Multiplayer)
         {
+            // [멀티플레이] 상대방에게 "물러도 될까?" 물어보는 패킷을 GameSession이 쏘도록 이벤트 호출
+            // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
             OnUndoRequestedLocally?.Invoke();
+            Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
+        }
+        else
+        {
+            // [Solo / AI] 기다릴 필요 없이 즉시 내 화면에서 무르기 실행
+            ExecuteUndo();
         }
     }
 
-    // 포톤이 상대방의 무르기 신호를 받았을 때 찌를 함수
-    public void ReceiveNetworkUndo()
+    // ** 상대가 무르기를 요청했을 경우 수신됨
+    public void ReceiveNetworkUndoRequest()
     {
-        ExecuteUndo(); // 이벤트(방송) 발생 없이 화면만 조용히 갱신
+        if (currentState == GameState.GameOver) return;
+        if (gameHUD != null) gameHUD.ShowUndoPopup();
+    }
+
+    // ** 본인이 무르기 요청 후, 수락/거절 응답을 상대방으로부터 수신할 경우
+    public void ReceiveNetworkUndoReply(bool isAccepted)
+    {
+        if (currentState == GameState.GameOver) return;
+
+        if (isAccepted) 
+            ExecuteUndo();
+        else 
+            Debug.Log("상대방이 무르기를 거절했습니다.");
+    }
+
+    // ** HUD에서 수락/거절 버튼을 눌렀을 때 호출되는 함수 (발신)
+    public void ReplyToUndoRequest(bool isAccepted)
+    {
+        // 1. 이미 게임이 끝났다면 무르기 팝업 닫고 무시
+        if (currentState == GameState.GameOver)
+        {
+            if (gameHUD != null) gameHUD.undoPopupPanel.SetActive(false);
+            return;
+        }
+
+        // 2. 수락(true)을 눌렀다면 내 화면에서도 무르기 진행
+        if (isAccepted)
+        {
+            ExecuteUndo();
+        }
+
+        // 3. GameSession 쪽으로 수락/거절 여부(bool) 전달
+        OnUndoReplyLocally?.Invoke(isAccepted);
     }
 
     // 3. 한 수 무르기 (Undo) 기능
     public void ExecuteUndo()
     {
+        if (moveHistory.Count == 0) return;
+
         // 가장 마지막에 둔 돌 정보 꺼내기
         MoveRecord lastMove = moveHistory.Pop();
 
         // 1. 데이터 배열에서 돌 삭제
         board.grid[lastMove.x, lastMove.y] = 0;
 
-        // 2. 화면에서 3D 돌 오브젝트 파괴
-        if (lastMove.stoneObj != null) Destroy(lastMove.stoneObj);
+        // 2. 화면에서 3D 돌 오브젝트 없애기
+        if (lastMove.stoneObj != null) lastMove.stoneObj.SetActive(false);
 
-        // 3. 턴 되돌리기
-        currentTurn = lastMove.player;
+        // 3. 턴 되돌리기 + 화면 글씨 자동 갱신
+        currentTurnColor = lastMove.playerColor;
 
-        // 4. 혹시 게임오버 상태였다면 다시 플레이 상태로 복구
+        // (게임오버 시 무르기 불가이므로 currentState = GameState.Playing 강제 주입은 제거해도 되지만, 만약의 오류 방지용으로 놔둠)
         currentState = GameState.Playing;
-        if (winnerText != null) winnerText.gameObject.SetActive(false);
 
-        // 5. 무른 후의 턴에 맞춰 금수 마커 다시 계산!
-        board.UpdateForbiddenMarks(currentTurn);
+        // 5. 무르기 완료 후 UI(HUD) 턴 글씨 갱신
+        if (gameHUD != null)
+        {
+            gameHUD.resultPanel.SetActive(false);
+        }
 
-        Debug.Log($"[Undo] ({lastMove.x}, {lastMove.y}) 무르기 완료. 현재 턴: {(currentTurn == 1 ? "흑" : "백")}");
+        // 6. 무른 후의 턴에 맞춰 금수 마커 다시 계산!
+        board.UpdateForbiddenMarks(currentTurnColor);
+
+        Debug.Log($"[Undo] ({lastMove.x}, {lastMove.y}) 무르기 완료. 현재 턴: {currentTurnColor.ToKorean()}");
     }
-
 
     // =========================================================
     //  3. 재시작 (Restart) 파트
@@ -208,16 +290,26 @@ public class GameManager : MonoBehaviour
         board.ClearBoard();
         moveHistory.Clear(); // 재시작 시 스택 비우기
 
-        // 2. 게임 상태와 턴을 흑돌(1)로 초기화
-        currentTurn = 1;
+        // 2. 게임 상태와 턴을 흑돌로 초기화
+        currentTurnColor = StoneColor.Black; 
         currentState = GameState.Playing;
 
         // 재시작 시 텍스트 다시 숨기기
-        if (winnerText != null) winnerText.gameObject.SetActive(false);
+        if (gameHUD != null) gameHUD.resultPanel.SetActive(false);
+        board.UpdateForbiddenMarks(currentTurnColor);
 
         Debug.Log("[GameManager] 게임 재시작! 흑돌부터 다시 시작합니다.");
+    }
 
-        board.UpdateForbiddenMarks(currentTurn);
+    // =========================================================
+    // UI (HUD) 턴 텍스트 갱신 헬퍼 함수
+    // =========================================================
+    private void RefreshHUD()
+    {
+        if (gameHUD == null) return;
+
+        bool isMyTurn = (currentTurnColor == localPlayerColor);
+        gameHUD.UpdateTurnDisplay(currentTurnColor, isMyTurn);
     }
 
 }
