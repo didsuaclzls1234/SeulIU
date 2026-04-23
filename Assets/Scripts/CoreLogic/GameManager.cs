@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System; // Stack 사용
 
 
-// 현재 게임 진행 상태 (게임중, 게임끝)
-public enum GameState { Playing, GameOver }
+// 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
+public enum GameState { WaitingForSkillSelect, Playing, GameOver }
 public enum PlayMode { Solo, AI, Multiplayer } // 플레이 모드 
 
 // 방금 둔 돌의 정보를 기억할 구조체
@@ -31,6 +31,7 @@ public class GameManager : MonoBehaviour
 
     public BoardManager board;
     public GameHUD gameHUD;
+    public TimerManager timerManager;
 
     private StoneColor _currentTurnColor = StoneColor.Black;    // 1: 흑돌(선공), 2: 백돌
     public StoneColor currentTurnColor
@@ -43,7 +44,7 @@ public class GameManager : MonoBehaviour
             RefreshHUD();
         }
     }
-    public GameState currentState = GameState.Playing;
+    public GameState currentState = GameState.WaitingForSkillSelect;
 
     [Header("Game Settings")]
     public PlayMode currentMode = PlayMode.Solo;              // * 인스펙터에서 모드 변경 가능!
@@ -58,6 +59,10 @@ public class GameManager : MonoBehaviour
             RefreshHUD();
         }
     }
+
+    // ** 닉네임 저장용 변수 추가
+    public string localPlayerName = "나(Player)";
+    public string remotePlayerName = "상대방(Opponent)";
 
     private Stack<MoveRecord> moveHistory = new Stack<MoveRecord>(); // 기보(히스토리)를 저장할 스택
 
@@ -81,8 +86,12 @@ public class GameManager : MonoBehaviour
     // (InputManager가 마우스를 클릭하면 이 함수를 호출함)
     public void TryPlaceStone(int x, int y)
     {
-        // 이미 게임이 끝났다면 클릭 무시
-        if (currentState == GameState.GameOver) return;
+        if (currentState != GameState.Playing)
+        {
+            // (선택) 로그로 확인하고 싶으시면 켜두세요
+            Debug.Log("현재 돌을 놓을 수 없는 상태입니다. (스킬 선택 중이거나 게임 종료)"); 
+            return;
+        }
 
         // * '솔로 모드'가 아닐 때만 턴 제어 검사 (솔로 모드면 본인이 흑백 다 둠)
         if (currentMode != PlayMode.Solo && currentTurnColor != localPlayerColor)
@@ -310,6 +319,19 @@ public class GameManager : MonoBehaviour
 
         bool isMyTurn = (currentTurnColor == localPlayerColor);
         gameHUD.UpdateTurnDisplay(currentTurnColor, isMyTurn);
+    }
+
+    // ------------------------------------------------------------
+    // 게임 시작 전 모든 준비(닉네임, 스킬 선택 등)를 마치고 최종적으로 호출할 함수
+    public void StartGameAfterSelection()
+    {
+        currentState = GameState.Playing;
+
+        // 타이머 시작 및 첫 턴 금수 표시 등 초기화
+        if (timerManager != null) timerManager.StartTimer();
+        board.UpdateForbiddenMarks(currentTurnColor);
+
+        Debug.Log("모든 준비 완료. 게임을 시작합니다.");
     }
 
 }

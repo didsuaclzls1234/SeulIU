@@ -16,10 +16,9 @@ public class ObjectPooler : MonoBehaviour
     public List<Pool> pools;
     public Dictionary<string, Queue<GameObject>> poolDictionary;
 
-    private void Awake() => Instance = this;
-
-    void Start()
+    void Awake()
     {
+        Instance = this;
         poolDictionary = new Dictionary<string, Queue<GameObject>>();
 
         foreach (Pool pool in pools)

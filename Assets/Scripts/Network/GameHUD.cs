@@ -1,4 +1,5 @@
 using Photon.Pun;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -32,11 +33,37 @@ public class GameHUD : MonoBehaviour
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
 
+    [Header("플레이어 정보 UI (신규)")]
+    public TextMeshProUGUI myNicknameText;   // 내 닉네임 
+    public TextMeshProUGUI oppNicknameText;  // 상대 닉네임 
+
+    [Header("스킬 & 타이머 UI")]
+    public TextMeshProUGUI timerText;       // 시간 표시용
+    //public Slider timerSlider;             // (선택) 시각적으로 줄어드는 바
+    public TextMeshProUGUI mySPText;        // 내 SP 표시
+    public TextMeshProUGUI oppSPText;        // 상대방 SP 표시용 (신규)
+    public GameObject[] skillButtons;      // 스킬 버튼들 (비활성화/쿨타임 표시용)
+    // public GameObject[] skillButtons; ... 등등
+
     [Header("결과 패널")]
     public GameObject resultPanel;
     public TextMeshProUGUI resultText;
     public Button rematchButton;
     public Button exitButton;
+
+    [Header("스킬 선택창 UI (Pre-Game)")]
+    public GameObject skillSelectPanel;      // 스킬 선택 팝업창 전체
+    public Button[] skillSelectButtons;      // 선택 가능한 10개 버튼 (임시)
+    public Button readyButton;               // 선택 완료 버튼
+
+    [Header("인게임 스킬 UI(우측 하단 위치)")]
+    public Button[] activeSkillButtons;      // 게임 중 누를 스킬 버튼 3개
+    public Image[] skillCooldownImages;      // 쿨타임 표시용 Image (Fill Amount 조절용)
+    public TextMeshProUGUI[] skillCostTexts; // SP 소모량 표시 텍스트
+
+    [Header("현재 적용된 스킬(Buff/Debuff) UI")]
+    public Transform buffContainer;          // 버프 아이콘들이 배치될 부모(Layout Group)
+    public GameObject buffIconPrefab;        // 아이콘 하나하나의 프리팹
 
     private void Start()
     {
@@ -50,6 +77,20 @@ public class GameHUD : MonoBehaviour
     }
 
     // ── GameSession에서 호출 ─────────────────────────────────────
+
+    // 닉네임 세팅 함수 (상화님이 방 입장 완료 시 1번 호출할 예정)
+    public void SetPlayerNames(string myName, string oppName)
+    {
+        if (myNicknameText) myNicknameText.text = myName;
+        if (oppNicknameText) oppNicknameText.text = oppName;
+    }
+
+    // SP 갱신 함수 (SkillManager가 매 턴 호출)
+    public void UpdateSPUI(int currentMySP, int currentOppSP)
+    {
+        if (mySPText) mySPText.text = $"SP: {currentMySP}";
+        if (oppSPText) oppSPText.text = $"상대 SP: {currentOppSP}";
+    }
 
     // 멀티플레이 모드일 때 GameSession에서 호출하여 불필요한 버튼 숨기기
     public void SetupForMultiplayer()
@@ -79,6 +120,20 @@ public class GameHUD : MonoBehaviour
             string modeSuffix = (gameManager.currentMode == PlayMode.AI && !isMyTurn) ? " (AI)" : "";
             turnText.text = $"{currentTurn.ToKorean()}돌 차례{modeSuffix}";
         }
+    }
+
+    // 타이머 업데이트 함수
+    public void UpdateTimerUI(float remainingTime)
+    {
+        if (timerText) timerText.text = Mathf.CeilToInt(remainingTime).ToString();
+        //if (timerSlider) timerSlider.value = remainingTime / 30f; // 슬라이더 비율
+    }
+
+    // SP 및 스킬 버튼 상태 갱신 (SkillManager에서 호출)
+    public void UpdateSkillUI(int currentSP, bool[] isSkillReady)
+    {
+        if (mySPText) mySPText.text = $"SP: {currentSP}";
+        // 스킬 버튼들의 활성화 여부 제어 로직 등
     }
 
     public void ShowGameOver(StoneColor winner, StoneColor myColor)
@@ -125,7 +180,7 @@ public class GameHUD : MonoBehaviour
 
     public void HideUndoRequestPopup() => undoPopupPanel.SetActive(false);
 
-    // ── 팝업 버튼 콜백 (🌟 인스펙터 연결 전용 🌟) ──────────────────
+    // ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
 
     // 1. [수락] 버튼
     public void OnAcceptUndoClicked()
@@ -173,4 +228,20 @@ public class GameHUD : MonoBehaviour
             SceneManager.LoadScene("Lobby");
         }
     }
+
+    // ------------------------------------------------------
+
+    // 1. 내가 흑인지 백인지 알려주는 UI 업데이트
+    public void DisplayMyRole(StoneColor myColor)
+    {
+        if (myColorText) myColorText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 고르세요.";
+    }
+
+    // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
+    public void RefreshBuffIcons(List<ActiveEffect> effects)
+    {
+        // TODO: 기존 아이콘 다 지우고 리스트 돌면서 새로 생성
+        // 상화님은 여기서 아이콘 프리팹 생성하는 로직만 짜시면 됨.
+    }
+
 }

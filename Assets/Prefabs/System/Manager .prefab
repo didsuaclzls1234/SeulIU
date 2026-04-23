@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 9133781494971274617}
   - component: {fileID: 1642039771649808315}
   - component: {fileID: 278610637530720441}
+  - component: {fileID: 4124887234340280780}
+  - component: {fileID: 1314095100817575299}
   m_Layer: 0
   m_Name: 'Manager '
   m_TagString: Untagged
@@ -70,10 +72,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   board: {fileID: 778389589125318722}
   gameHUD: {fileID: 0}
-  currentTurnColor: 1
+  timerManager: {fileID: 1314095100817575299}
   currentState: 0
   currentMode: 0
-  localPlayerColor: 1
+  localPlayerName: "\uB098(Player)"
+  remotePlayerName: "\uC0C1\uB300\uBC29(Opponent)"
 --- !u!114 &1642039771649808315
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114,3 +117,39 @@ MonoBehaviour:
     banOverline: 0
     winCondition: 5
   currentWinCondition: 5
+--- !u!114 &4124887234340280780
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33459648f5566fb46b5306440a8edb73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillManager
+  gameManager: {fileID: 9133781494971274617}
+  isLocalPlayerReady: 0
+  isRemotePlayerReady: 0
+  mySP: 0
+  oppSP: 0
+  mySkillsID: 000000000000000000000000
+  oppSkillsID: 000000000000000000000000
+  activeEffects: []
+  isMySkillSealed: 0
+--- !u!114 &1314095100817575299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4115228335132474100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c44d0db3edb3a3642b8f599bffd325fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TimerManager
+  gameManager: {fileID: 9133781494971274617}
+  gameHUD: {fileID: 0}
+  turnLimit: 30

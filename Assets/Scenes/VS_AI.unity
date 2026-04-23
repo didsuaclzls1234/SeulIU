@@ -333,6 +333,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: mainCamera
+      value: 
+      objectReference: {fileID: 961739752}
+    - target: {fileID: 1314095100817575299, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: gameHUD
+      value: 
+      objectReference: {fileID: 2016161290}
     - target: {fileID: 1498795243818675194, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: m_LocalPosition.x
       value: 1239.9474
