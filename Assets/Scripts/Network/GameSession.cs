@@ -110,16 +110,26 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     // 1. 흑/백 배정 결과 수신
     private void HandleAssignRoles(object[] data)
     {
+        // 닉네임 세팅 전에 PlayerList 확인
         int blackActorNumber = (int)data[0];
 
         // 내가 흑인지 백인지 판별 (1: 흑, 2: 백)
         StoneColor myColor = (PhotonNetwork.LocalPlayer.ActorNumber == blackActorNumber)
             ? StoneColor.Black : StoneColor.White;
-
         // GameManager에 세팅
         gameManager.localPlayerColor = myColor;
         gameManager.currentMode = PlayMode.Multiplayer; // 자동으로 멀티 모드 전환
 
+        // 닉네임 세팅
+        foreach (Player player in PhotonNetwork.PlayerList)
+        {
+        if (player.IsLocal)
+            gameManager.localPlayerName = player.NickName;
+        else
+            gameManager.remotePlayerName = player.NickName;
+        }
+        gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
+        
         Debug.Log($"[GameSession] 내 색: {myColor.ToKorean()}");
 
         if (gameHUD)
@@ -159,12 +169,19 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
+         Debug.Log($"[GameSession] {otherPlayer.NickName} 나감 / 현재 상태: {gameManager.currentState}");
         if (gameManager.currentState != GameState.GameOver)
         {
             gameManager.currentState = GameState.GameOver;
             if (gameHUD) gameHUD.ShowOpponentLeft();
         }
     }
+
+    private void OnApplicationQuit()//게임 세션이 종료될 때 네트워크 연결 끊기(유니티 기본 콜백)
+    {
+    if (PhotonNetwork.IsConnected)
+        PhotonNetwork.Disconnect();
+    }   
 
     public override void OnLeftRoom()
     {
