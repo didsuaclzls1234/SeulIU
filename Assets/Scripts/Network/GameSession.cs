@@ -177,6 +177,12 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         }
     }
 
+    private void OnApplicationQuit()//게임 세션이 종료될 때 네트워크 연결 끊기(유니티 기본 콜백)
+    {
+    if (PhotonNetwork.IsConnected)
+        PhotonNetwork.Disconnect();
+    }   
+
     public override void OnLeftRoom()
     {
         PhotonNetwork.LoadLevel("Lobby");; // 로비 씬 이름이 다르면 수정
