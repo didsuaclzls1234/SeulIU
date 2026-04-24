@@ -21,9 +21,6 @@ public class BoardManager : MonoBehaviour
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
 
-    // 승리 조건 변수 (나중에 스킬로 바꿀 수 있게 빼둠)
-    public int winCondition = 5;
-
     // 생성된 바둑돌들을 기억해둘 리스트 ('다시하기' 기능 시 필요) 
     private List<GameObject> activeStones = new List<GameObject>();
     private List<GameObject> forbiddenMarks = new List<GameObject>(); // '❌' 마커들을 담아둘 리스트
@@ -146,12 +143,15 @@ public class BoardManager : MonoBehaviour
     // 1. 전체 방향을 검사하는 메인 함수
     public bool CheckWin(int x, int y, StoneColor playerColor)
     {
+        // 💡 룰 매니저에게 현재 이 색깔 돌의 승리 조건이 뭔지 물어봄!
+        int currentWinCond = ruleManager.GetWinCondition((int)playerColor);
+
         // 4가지 축을 검사합니다. (함수 파라미터는 dirX, dirY)
         // 만약 하나라도 승리 조건(5)을 만족하면 true를 반환
-        if (CountStones(x, y, 1, 0, playerColor) >= winCondition) return true; // 가로 (우, 좌)
-        if (CountStones(x, y, 0, 1, playerColor) >= winCondition) return true; // 세로 (상, 하)
-        if (CountStones(x, y, 1, 1, playerColor) >= winCondition) return true; // 우상향 대각선
-        if (CountStones(x, y, 1, -1, playerColor) >= winCondition) return true; // 우하향 대각선
+        if (CountStones(x, y, 1, 0, playerColor) >= currentWinCond) return true; // 가로 (우, 좌)
+        if (CountStones(x, y, 0, 1, playerColor) >= currentWinCond) return true; // 세로 (상, 하)
+        if (CountStones(x, y, 1, 1, playerColor) >= currentWinCond) return true; // 우상향 대각선
+        if (CountStones(x, y, 1, -1, playerColor) >= currentWinCond) return true; // 우하향 대각선
 
         return false;
     }

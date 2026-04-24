@@ -1,7 +1,8 @@
 ﻿using TMPro;
 using UnityEngine;
 using System.Collections.Generic;
-using System; // Stack 사용
+using System;
+using System.Threading.Tasks; // Stack 사용
 
 
 // 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
@@ -66,11 +67,32 @@ public class GameManager : MonoBehaviour
 
     private Stack<MoveRecord> moveHistory = new Stack<MoveRecord>(); // 기보(히스토리)를 저장할 스택
 
+    // 오목 AI 인스턴스
+    private GomokuAI aiPlayer;
+    private bool isAITurnProcessing = false; // AI가 중복으로 수 연산하는 것을 방지
+
+    [Range(1, 5)]
+    public int aiDifficulty = 3;
+
     void Start()
     {
         // 씬 시작할 때 BoardManager를 자동으로 찾아옴
         if (board == null) board = FindFirstObjectByType<BoardManager>();
-        Debug.Log("[GameManager] 게임 시작! 흑돌 턴입니다.");
+        Debug.Log("[GameManager] 게임 셋업! 스킬 선택 대기 중...");
+
+        //Debug.Log("[GameManager] 게임 시작! 흑돌 턴입니다.");
+
+        // [AI 모드 설정] 내가 흑돌(1)이면 AI는 백돌(2), 내가 백돌(2)이면 AI는 흑돌(1)로 생성
+        if (currentMode == PlayMode.AI)
+        {
+            int aiColorInt = (localPlayerColor == StoneColor.Black) ? 2 : 1;
+
+            // 룰 매니저, 바둑판 사이즈, '난이도'를 넘겨줌
+            aiPlayer = new GomokuAI(aiColorInt, board.ruleManager, board.boardSize, aiDifficulty);
+
+            Debug.Log($"[GameManager] AI 세팅 완료. AI 색상: {(StoneColor)aiColorInt} / 난이도: {aiDifficulty}");
+        }
+
 
         // 게임 시작 직후 1턴(흑돌)의 금수 자리 표시 (첫 턴이라 없겠지만 구조상 필요)
         board.UpdateForbiddenMarks(currentTurnColor);
@@ -96,7 +118,7 @@ public class GameManager : MonoBehaviour
         // * '솔로 모드'가 아닐 때만 턴 제어 검사 (솔로 모드면 본인이 흑백 다 둠)
         if (currentMode != PlayMode.Solo && currentTurnColor != localPlayerColor)
         {
-            Debug.Log("지금은 상대방의 턴입니다!");
+            Debug.Log("지금은 상대방(또는 AI)의 턴입니다!");
             return;
         }
 
@@ -158,6 +180,37 @@ public class GameManager : MonoBehaviour
 
         // 다음 사람의 턴으로 바뀌었으니 ❌ 마커 갱신
         board.UpdateForbiddenMarks(currentTurnColor);
+
+        // 6. 만약 AI 모드이고, 방금 턴을 넘겨받은 게 AI라면 AI 연산 시작
+        if (currentState == GameState.Playing && currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
+        {
+            ExecuteAITurn();
+        }
+    }
+
+    // =========================================================
+    // AI 턴 처리 로직
+    // =========================================================
+    private async void ExecuteAITurn()
+    {
+        if (aiPlayer == null || currentState != GameState.Playing || isAITurnProcessing) return;
+
+        isAITurnProcessing = true;
+        Debug.Log("[GameManager] AI가 수를 고민 중입니다...");
+
+        // AI가 사람처럼 고민하는 딜레이 타임 (0.3초)
+        await Task.Delay(300);
+
+        // 비동기로 AI가 최적의 수를 계산 (화면 멈춤 없음)
+        Vector2Int aiMove = await aiPlayer.CalculateBestMoveAsync(board.grid);
+
+        isAITurnProcessing = false;
+
+        // 게임이 그 사이에 종료되지 않았다면 착수
+        if (currentState == GameState.Playing)
+        {
+            ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor);
+        }
     }
 
     // 게임 종료 로직 통합 (승리 or 무승부)
@@ -197,6 +250,13 @@ public class GameManager : MonoBehaviour
         {
             // [Solo / AI] 기다릴 필요 없이 즉시 내 화면에서 무르기 실행
             ExecuteUndo();
+
+            // ** [AI 모드] 내가 무르기를 하면 턴이 AI로 넘어가서 바로 다시 두어버림. 
+            // 따라서 AI의 직전 수도 같이 무르기(총 2번 Pop) 처리
+            if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor && moveHistory.Count > 0)
+            {
+                ExecuteUndo();
+            }
         }
     }
 
@@ -307,6 +367,11 @@ public class GameManager : MonoBehaviour
         if (gameHUD != null) gameHUD.resultPanel.SetActive(false);
         board.UpdateForbiddenMarks(currentTurnColor);
 
+        // ** [AI 모드] 재시작했는데 AI가 흑(선공)이라면 바로 돌을 두게 만듦
+        if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
+        {
+            ExecuteAITurn();
+        }
         Debug.Log("[GameManager] 게임 재시작! 흑돌부터 다시 시작합니다.");
     }
 
@@ -330,6 +395,12 @@ public class GameManager : MonoBehaviour
         // 타이머 시작 및 첫 턴 금수 표시 등 초기화
         if (timerManager != null) timerManager.StartTimer();
         board.UpdateForbiddenMarks(currentTurnColor);
+
+        // ** [AI 모드] 만약 AI가 선공(흑돌)이라면 스킬 선택 끝나자마자 바로 두어야 함
+        if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
+        {
+            ExecuteAITurn();
+        }
 
         Debug.Log("모든 준비 완료. 게임을 시작합니다.");
     }
