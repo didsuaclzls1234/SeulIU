@@ -10,7 +10,7 @@ public class ObjectPooler : MonoBehaviour
     {
         public string tag; // "BlackStone", "WhiteStone", "ForbiddenMark"
         public GameObject prefab;
-        public int size; // ¿©À¯·Ó°Ô 150°³ Á¤µµ
+        public int size; // ì—¬ìœ ë¡­ê²Œ 150ê°œ ì •ë„
     }
 
     public List<Pool> pools;
@@ -36,7 +36,7 @@ public class ObjectPooler : MonoBehaviour
         }
     }
 
-    // Ç®¿¡¼­ ²¨³»±â
+    // í’€ì—ì„œ êº¼ë‚´ê¸°
     public GameObject SpawnFromPool(string tag, Vector3 position, Quaternion rotation)
     {
         if (!poolDictionary.ContainsKey(tag)) return null;
@@ -46,7 +46,7 @@ public class ObjectPooler : MonoBehaviour
         objectToSpawn.transform.position = position;
         objectToSpawn.transform.rotation = rotation;
 
-        poolDictionary[tag].Enqueue(objectToSpawn); // ´Ù½Ã Å¥ÀÇ ¸Ç µÚ·Î ³Ö¾î¼­ Àç»ç¿ë
+        poolDictionary[tag].Enqueue(objectToSpawn); // ë‹¤ì‹œ íì˜ ë§¨ ë’¤ë¡œ ë„£ì–´ì„œ ì¬ì‚¬ìš©
         return objectToSpawn;
     }
 }

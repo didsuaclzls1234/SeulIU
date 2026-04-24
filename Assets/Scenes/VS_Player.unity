@@ -677,6 +677,18 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 1945295697}
+    - target: {fileID: 433066725870038397, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: d10bdf7f5e001ba44b58ff088318c126, type: 2}
+    - target: {fileID: 433066725870038397, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: -1827681754838267685, guid: d10bdf7f5e001ba44b58ff088318c126, type: 2}
+    - target: {fileID: 433066725870038397, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_hasFontAssetChanged
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3010863711350589627, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
       propertyPath: m_Name
       value: Canvas
@@ -721,10 +733,26 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5553401241272898651, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 456
+      objectReference: {fileID: 0}
     - target: {fileID: 6343291898327649260, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 1945295697}
+    - target: {fileID: 6519205956212826718, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: d10bdf7f5e001ba44b58ff088318c126, type: 2}
+    - target: {fileID: 6519205956212826718, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: -1827681754838267685, guid: d10bdf7f5e001ba44b58ff088318c126, type: 2}
+    - target: {fileID: 6519205956212826718, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
+      propertyPath: m_hasFontAssetChanged
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7835467347732370847, guid: 3b38cf76836834b4a98960e4a28dbe99, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 232
@@ -955,6 +983,10 @@ PrefabInstance:
       propertyPath: gameHUD
       value: 
       objectReference: {fileID: 785655424}
+    - target: {fileID: 9133781494971274617, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: currentMode
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 9133781494971274617, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: timerManager
       value: 
