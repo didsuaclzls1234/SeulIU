@@ -17,8 +17,6 @@ public class RuleManager : MonoBehaviour
     public RuleSettings blackRules = new RuleSettings();
     public RuleSettings whiteRules = new RuleSettings();
 
-    public int currentWinCondition = 5;
-
     // * 4방향 탐색 캐싱용 벡터 (가로, 세로, 우상향, 우하향)
     private readonly int[,] dirs = { { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, -1 } };
 
@@ -27,6 +25,14 @@ public class RuleManager : MonoBehaviour
         // 테스트용: 시작할 때 렌주 룰(표준 룰)로 세팅
         SetPreset_Renju();
     }
+
+    //  외부에서 현재 플레이어의 WinCondition 물어볼 때 대답해주는 헬퍼 함수
+    public int GetWinCondition(int playerType)
+    {
+        return (playerType == 1) ? blackRules.winCondition : whiteRules.winCondition;
+    }
+
+    // ------------------------------------------
 
     // 1. 룰 프리셋 (UI 버튼이나 스킬로 호출하면 됨)
     public void SetPreset_Renju() // (1) 렌주 룰: 흑돌만 3-3, 4-4, 장목 금지
@@ -65,7 +71,7 @@ public class RuleManager : MonoBehaviour
     // GC-Free 재귀 백트래킹 코어 알고리즘
 
     // 실제 금수 여부를 딥 다이브해서 판별하는 사령탑
-    private bool CheckIsForbidden(int x, int y, int player, int[,] grid, int size, RuleSettings rules, int depth, bool silent)
+    public bool CheckIsForbidden(int x, int y, int player, int[,] grid, int size, RuleSettings rules, int depth, bool silent)
     {
         int W = rules.winCondition;
 
@@ -216,5 +222,18 @@ public class RuleManager : MonoBehaviour
             ny += dy;
         }
         return count;
+    }
+
+    // 이 함수를 호출하면 그 순간의 룰 상태를 '복사(Clone)'해서 던져줌!
+    public RuleSettings GetRulesSnapshot(int playerType)
+    {
+        RuleSettings target = (playerType == 1) ? blackRules : whiteRules;
+        return new RuleSettings
+        {
+            ban33 = target.ban33,
+            ban44 = target.ban44,
+            banOverline = target.banOverline,
+            winCondition = target.winCondition
+        };
     }
 }
