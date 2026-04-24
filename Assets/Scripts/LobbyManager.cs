@@ -211,7 +211,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     private void OnClickCancel()
     {
         _isWaiting = false;
-        PhotonNetwork.LeaveRoom();
+        PhotonNetwork.Disconnect();
         ShowModeSelect();
     }
 

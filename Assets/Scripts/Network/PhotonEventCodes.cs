@@ -19,4 +19,10 @@ public static class PhotonEventCodes
     // 3. 스킬 사용 (가장 중요)
     // - 타겟이 여러 개일 수 있으므로(랜덤 스킬 등) 좌표를 배열로 묶어서 보냅니다.
     public const byte UseSkill = 6; // Data: object[] { int 스킬ID, int[] x좌표들, int[] y좌표들 }
+    
+    //무르기 요청,수락||거절
+    public const byte UndoRequest  = 7; // 무르기 요청
+    public const byte UndoReply    = 8; // 무르기 수락/거절 
+
+    public const byte PlayerReady = 9;  // 준비 완료 신호
 }

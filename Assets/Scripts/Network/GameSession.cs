@@ -21,28 +21,34 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
-
-
-    // ── 생명주기 ────────────────────────────────────────────────
-
+    public SkillManager skillManager;
+    public TimerManager timerManager;
+    
+    #region 생명주기
+    
     private void Start()
     {
         PhotonNetwork.AddCallbackTarget(this);
 
         // 1. 내 턴에 돌을 뒀을 때 서버로 쏘는 이벤트 구독
-        if (gameManager != null)
+        if (gameManager)
         {
             // 멀티플레이 모드로 전환 및 이벤트 연결
             gameManager.currentMode = PlayMode.Multiplayer;
             gameManager.OnStonePlacedLocally += SendPlaceStoneEvent;
             gameManager.OnGameOverLocally += SendGameOverEvent; 
+            gameManager.OnUndoRequestedLocally += SendUndoRequestEvent;
+            gameManager.OnUndoReplyLocally += SendUndoReplyEvent;
         }
 
         // * 멀티플레이 세팅: GameHUD에 불필요한 버튼 끄라고 지시
-        if (gameHUD != null)
+        if (gameHUD)
         {
             gameHUD.SetupForMultiplayer();
         }
+     
+        // 스킬 버튼 자동 연결
+        InitSkillButtons();
 
         // 2. 방장(Master Client)이면 흑/백 배정 시작
         if (PhotonNetwork.IsMasterClient)
@@ -54,58 +60,60 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     private void OnDestroy()
     {
         PhotonNetwork.RemoveCallbackTarget(this);
-        if (gameManager != null)
+        if (gameManager)
         {
             gameManager.OnStonePlacedLocally -= SendPlaceStoneEvent;
             gameManager.OnGameOverLocally -= SendGameOverEvent;
+            gameManager.OnUndoRequestedLocally -= SendUndoRequestEvent;
+            gameManager.OnUndoReplyLocally -= SendUndoReplyEvent;
         }
     }
 
-    // ── Photon 이벤트 발신 ───────────────────────────────────────
+    #endregion
 
-    // [발신] 내 착수 데이터 전송 (Color, X, Y, Seq)
-    private void SendPlaceStoneEvent(int x, int y, int seq)
+    #region 스킬 선택
+
+    private int[] _selectedSkillIDs = new int[] { -1, -1, -1 }; // -1 = 비어있음
+
+    private void InitSkillButtons()
     {
-        // 1. 돌 색상, X, Y, 순서(seq) 배열에 담기
-        object[] data = new object[] { (int)gameManager.localPlayerColor, x, y, seq };
-
-        // 2. 이미 내 화면엔 돌이 렌더링 됐으므로 '나 빼고(Others)' 전송
-        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-        PhotonNetwork.RaiseEvent(PhotonEventCodes.PlaceStone, data, opts, SendOptions.SendReliable);
-    }
-
-    // [발신] 내가 이기거나 무승부 났을 때
-    private void SendGameOverEvent(StoneColor winner)
-    {
-        object[] data = new object[] { (int)winner };
-        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-        PhotonNetwork.RaiseEvent(PhotonEventCodes.GameOver, data, opts, SendOptions.SendReliable);
-    }
-
-    // ── Photon 이벤트 수신 ───────────────────────────────────────
-
-    // ==========================================
-    // [수신] 서버에서 이벤트(패킷)가 날아왔을 때
-    // ==========================================
-    public void OnEvent(EventData photonEvent)
-    {
-        switch (photonEvent.Code)
+        for (int i = 0; i < gameHUD.skillSelectButtons.Length; i++)
         {
-            case PhotonEventCodes.AssignRoles:
-                HandleAssignRoles((object[])photonEvent.CustomData);
-                break;
-
-            case PhotonEventCodes.PlaceStone:
-                HandlePlaceStone((object[])photonEvent.CustomData);
-                break;
-
-            case PhotonEventCodes.GameOver:
-                HandleGameOver((object[])photonEvent.CustomData);
-                break;
+            int skillId = i + 1;
+            gameHUD.skillSelectButtons[i].onClick.AddListener(() =>
+                OnSkillButtonClicked(skillId));
         }
     }
 
-    // ── 이벤트 핸들러 ────────────────────────────────────────────
+    private void OnSkillButtonClicked(int skillId)
+    {
+        for (int slot = 0; slot < 3; slot++)
+        {
+            if (_selectedSkillIDs[slot] == skillId)
+            {
+                _selectedSkillIDs[slot] = -1;
+                skillManager.OnSkillSelected(slot, -1);
+                return;
+            }
+        }
+
+        for (int slot = 0; slot < 3; slot++)
+        {
+            if (_selectedSkillIDs[slot] == -1)
+            {
+                _selectedSkillIDs[slot] = skillId;
+                skillManager.OnSkillSelected(slot, skillId);
+                return;
+            }
+        }
+
+        Debug.Log($"[GameSession] 스킬 3개 이미 선택됨 / 현재 선택: [{string.Join(", ", _selectedSkillIDs)}]");
+    }
+   
+
+    #endregion
+
+    #region 이벤트 핸들러
 
     // 1. 흑/백 배정 결과 수신
     private void HandleAssignRoles(object[] data)
@@ -128,13 +136,15 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         else
             gameManager.remotePlayerName = player.NickName;
         }
-        gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
         
         Debug.Log($"[GameSession] 내 색: {myColor.ToKorean()}");
 
         if (gameHUD)
         {
             gameHUD.ShowRoleAssigned(myColor);
+            gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
+            gameHUD.DisplayMyRole(myColor);
+            gameHUD.skillSelectPanel?.SetActive(true);  
         }
     }
 
@@ -165,7 +175,189 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         }
     }
 
-    // ── Photon 콜백 ──────────────────────────────────────────────
+    // 4. 스킬 선택 완료 후 Ready 버튼 클릭 시 호출
+    private void HandleSyncPlayerInfo(object[] data)
+    {
+        string oppNickname  = (string)data[0];
+        int[]  oppSkillIDs  = (int[])data[1];
+
+        // 상대방 닉네임 저장
+        gameManager.remotePlayerName = oppNickname;
+
+        // 상대방 스킬 덱 등록
+        skillManager.InitializeSkillDeck(false, oppSkillIDs);
+
+        // 상대방 정보만 저장, SetPlayerReady는 내가 Ready 버튼 눌렀을 때만
+        skillManager.isRemotePlayerReady = true;
+
+        Debug.Log($"[GameSession] 상대방 정보 수신 / 내 Ready: {skillManager.isLocalPlayerReady}");
+
+        // 내가 이미 Ready 상태면 게임 시작
+        if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
+        {   
+            gameHUD?.skillSelectPanel?.SetActive(false);
+            gameManager.StartGameAfterSelection();
+        }    
+
+        
+    }
+
+    private void HandleUndoRequest()
+    {
+    gameManager.ReceiveNetworkUndoRequest();
+    }
+
+    private void HandleUndoReply(object[] data)
+    {
+    bool isAccepted = (bool)data[0];
+    gameManager.ReceiveNetworkUndoReply(isAccepted);
+    }
+
+    private void HandleSyncTimer(object[] data)
+    {
+        float serverTime     = (float)data[0];
+        float elapsed        = (float)(PhotonNetwork.Time - serverTime);
+        float remainingTime  = timerManager.turnLimit - elapsed;
+
+        timerManager.SyncTimerFromServer(remainingTime);
+    }
+
+    // 스킬 사용 수신
+    private void HandleUseSkill(object[] data)
+    {
+        int   skillId = (int)data[0];
+        int[] xs      = (int[])data[1];
+        int[] ys      = (int[])data[2];
+
+        skillManager.ReceiveOpponentSkill(skillId, xs, ys);
+    }
+    #endregion
+
+    #region Photon이벤트 발신
+    
+    // [발신] 내 착수 데이터 전송 (Color, X, Y, Seq)
+    private void SendPlaceStoneEvent(int x, int y, int seq)
+    {
+        // 1. 돌 색상, X, Y, 순서(seq) 배열에 담기
+        object[] data = new object[] { (int)gameManager.localPlayerColor, x, y, seq };
+
+        // 2. 이미 내 화면엔 돌이 렌더링 됐으므로 '나 빼고(Others)' 전송
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.PlaceStone, data, opts, SendOptions.SendReliable);
+        
+        // 내가 착수했으니 타이머 동기화 (방장만)
+        if (PhotonNetwork.IsMasterClient)
+            SendSyncTimer();
+
+        // 타이머 재시작
+        timerManager?.StartTimer();
+    }
+
+    // [발신] 내가 이기거나 무승부 났을 때
+    private void SendGameOverEvent(StoneColor winner)
+    {
+        object[] data = new object[] { (int)winner };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.GameOver, data, opts, SendOptions.SendReliable);
+    }
+
+    // Ready 버튼 클릭 시 호출
+    public void SendSyncPlayerInfo()
+    {
+        object[] data = new object[]
+        {
+            gameManager.localPlayerName,
+            skillManager.mySkillsID
+        };
+
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.SyncPlayerInfo, data, opts, SendOptions.SendReliable);
+
+        // 내 Ready 처리
+        skillManager.InitializeSkillDeck(true, skillManager.mySkillsID);
+        skillManager.isLocalPlayerReady = true;
+
+        // 상대방이 이미 Ready면 게임 시작
+        if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
+        {
+            gameHUD?.skillSelectPanel?.SetActive(false);
+            gameManager.StartGameAfterSelection();
+        }
+    }
+
+    //무르기 요청 이벤트 발신
+    private void SendUndoRequestEvent()
+    {
+    RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+    PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoRequest, null, opts, SendOptions.SendReliable);
+    }
+
+    //무르기 수락/거절 이벤트 발신
+    private void SendUndoReplyEvent(bool isAccepted)
+    {
+    object[] data = new object[] { isAccepted };
+    RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+    PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoReply, data, opts, SendOptions.SendReliable);
+    }
+
+    // 타이머 동기화 - 방장이 턴 시작 시 호출
+    public void SendSyncTimer()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        object[] data = new object[] { (float)PhotonNetwork.Time };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.SyncTimer, data, opts, SendOptions.SendReliable);
+    }
+
+    // 스킬 사용 - 발신자 측에서 좌표 미리 계산 후 전송
+    public void SendUseSkill(int skillId, int[] xs, int[] ys)
+    {
+        object[] data = new object[] { skillId, xs, ys };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.UseSkill, data, opts, SendOptions.SendReliable);
+    }
+    #endregion
+    
+    #region Photon 이벤트 수신
+    // ==========================================
+    // [수신] 서버에서 이벤트(패킷)가 날아왔을 때
+    // ==========================================
+    public void OnEvent(EventData photonEvent)
+    {
+        switch (photonEvent.Code)
+        {
+            case PhotonEventCodes.AssignRoles:
+                HandleAssignRoles((object[])photonEvent.CustomData);
+                break;
+
+            case PhotonEventCodes.PlaceStone:
+                HandlePlaceStone((object[])photonEvent.CustomData);
+                break;
+
+            case PhotonEventCodes.GameOver:
+                HandleGameOver((object[])photonEvent.CustomData);
+                break;
+            case PhotonEventCodes.SyncPlayerInfo:
+                HandleSyncPlayerInfo((object[])photonEvent.CustomData);
+                break;
+            case PhotonEventCodes.SyncTimer:
+                HandleSyncTimer((object[])photonEvent.CustomData);
+                break;
+            case PhotonEventCodes.UseSkill:
+                HandleUseSkill((object[])photonEvent.CustomData);
+                break;
+            case PhotonEventCodes.UndoRequest:
+                HandleUndoRequest();
+                break;
+            case PhotonEventCodes.UndoReply:
+                HandleUndoReply((object[])photonEvent.CustomData);
+                break;
+        }
+    }
+    #endregion  
+
+    #region Photon 콜백
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
@@ -187,4 +379,6 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         PhotonNetwork.LoadLevel("Lobby");; // 로비 씬 이름이 다르면 수정
     }
+
+    #endregion
 }
