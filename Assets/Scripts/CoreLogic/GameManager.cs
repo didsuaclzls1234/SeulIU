@@ -99,6 +99,13 @@ public class GameManager : MonoBehaviour
 
         // 시작할 때 "흑 - 내 차례" 글씨 띄우기
         RefreshHUD();
+
+        // 타이머 타임아웃 이벤트 구독
+        if (timerManager != null)
+        {
+            timerManager.OnTimeOut += OnTurnTimeOut;
+            timerManager.StartSkillSelectTimer();
+        }
     }
 
 
@@ -402,7 +409,7 @@ public class GameManager : MonoBehaviour
         currentState = GameState.Playing;
 
         // 타이머 시작 및 첫 턴 금수 표시 등 초기화
-        if (timerManager != null) timerManager.StartTimer();
+        if (timerManager != null) timerManager.StartTurnTimer();
         board.UpdateForbiddenMarks(currentTurnColor);
 
         // ** [AI 모드] 만약 AI가 선공(흑돌)이라면 스킬 선택 끝나자마자 바로 두어야 함
@@ -412,6 +419,34 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("모든 준비 완료. 게임을 시작합니다.");
+    }
+
+    // 돌 착수를 제한 시간 내로 안 했을 경우 (TimerManager에서 시간 초과 이벤트가 발생하면 이 함수를 호출하도록 연결!)
+    public void OnTurnTimeOut()
+    {
+        if (currentState != GameState.Playing) return;
+
+        // 방어 코드: 내 턴이 아니면 아무것도 안 함 (상대 클라이언트가 알아서 쏘길 기다림)
+        if (currentMode == PlayMode.Multiplayer && currentTurnColor != localPlayerColor)
+        {
+            return;
+        }
+
+        Debug.Log("[GameManager] 타임아웃! 강제로 랜덤 착수를 진행합니다.");
+
+        // 보드 매니저에게 안전한 랜덤 좌표를 달라고 요청
+        Vector2Int randomMove = board.GetRandomValidMove(currentTurnColor);
+
+        if (randomMove.x != -1)
+        {
+            TryPlaceStone(randomMove.x, randomMove.y);
+        }
+    }
+
+    // 메모리 누수 방지를 위한 구독 해제 (OnDestroy 권장)
+    private void OnDestroy()
+    {
+        if (timerManager != null) timerManager.OnTimeOut -= OnTurnTimeOut;
     }
 
 }
