@@ -236,8 +236,6 @@ public class GameHUD : MonoBehaviour
     public void DisplayMyRole(StoneColor myColor)
     {
         if (skillSelectRoleText) skillSelectRoleText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 고르세요.";
-         Debug.Log($"[GameHUD] DisplayMyRole - skillSelectRoleText 변경: {skillSelectRoleText.gameObject.name}");
-
     }
 
     // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
