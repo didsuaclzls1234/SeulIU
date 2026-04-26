@@ -55,6 +55,7 @@ public class GameHUD : MonoBehaviour
     public GameObject skillSelectPanel;      // 스킬 선택 팝업창 전체
     public Button[] skillSelectButtons;      // 선택 가능한 10개 버튼 (임시)
     public Button readyButton;               // 선택 완료 버튼
+    public TextMeshProUGUI skillSelectRoleText;
 
     [Header("인게임 스킬 UI(우측 하단 위치)")]
     public Button[] activeSkillButtons;      // 게임 중 누를 스킬 버튼 3개
@@ -234,7 +235,9 @@ public class GameHUD : MonoBehaviour
     // 1. 내가 흑인지 백인지 알려주는 UI 업데이트
     public void DisplayMyRole(StoneColor myColor)
     {
-        if (myColorText) myColorText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 고르세요.";
+        if (skillSelectRoleText) skillSelectRoleText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 고르세요.";
+         Debug.Log($"[GameHUD] DisplayMyRole - skillSelectRoleText 변경: {skillSelectRoleText.gameObject.name}");
+
     }
 
     // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
