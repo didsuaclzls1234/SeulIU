@@ -1,5 +1,6 @@
 using Photon.Pun;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,6 +30,8 @@ public class GameHUD : MonoBehaviour
     [Header("무르기(Undo) 요청 팝업")]
     public GameObject undoPopupPanel;
     public TextMeshProUGUI undoRequestText;
+    public Button undoAcceptButton; 
+    public Button undoRefuseButton;
 
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
@@ -74,7 +77,7 @@ public class GameHUD : MonoBehaviour
 
         // 리매치 / 나가기 버튼은 여기서 코드로 연결
         if (rematchButton) rematchButton.onClick.AddListener(OnClickRematch);
-        if (exitButton)    exitButton.onClick.AddListener(OnClickExit);
+        if (exitButton) exitButton.onClick.AddListener(OnClickExit);
     }
 
     // ── GameSession에서 호출 ─────────────────────────────────────
@@ -169,17 +172,48 @@ public class GameHUD : MonoBehaviour
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText)  resultText.text = "상대방이 나갔습니다.";
+        if (resultText) resultText.text = "상대방이 나갔습니다.";
         if (rematchButton) rematchButton.gameObject.SetActive(false); // 나갔는데 리매치는 불가
     }
 
+    // (1) 상대방이 Undo 요청했을 때 (버튼 ON)
     public void ShowUndoPopup()
     {
         undoPopupPanel.SetActive(true);
         undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
+        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
+        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(true);
     }
 
-    public void HideUndoRequestPopup() => undoPopupPanel.SetActive(false);
+    // (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
+    public void ShowUndoWaitingPopup()
+    {
+        undoPopupPanel.SetActive(true);
+        undoRequestText.text = "상대방의 응답을 기다리는 중...";
+        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
+        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
+    }
+
+    // (3) 상대방이 응답했을 때 결과를 잠깐 보여주고 닫기 (버튼 OFF 유지)
+    public async void ShowUndoResultAndClose(bool isAccepted)
+    {
+        if (!undoPopupPanel.activeSelf) undoPopupPanel.SetActive(true);
+
+        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
+        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
+
+        undoRequestText.text = isAccepted ? "상대방이 무르기를 수락했습니다!" : "상대방이 무르기를 거절했습니다.";
+
+        // 1.5초 동안 결과 텍스트 보여주고 팝업 닫기
+        await Task.Delay(1500);
+
+        if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
+    }
+
+    public void HideUndoRequestPopup()
+    {
+        undoPopupPanel.SetActive(false);
+    }
 
     // ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
 
@@ -243,6 +277,14 @@ public class GameHUD : MonoBehaviour
     {
         // TODO: 기존 아이콘 다 지우고 리스트 돌면서 새로 생성
         // 상화님은 여기서 아이콘 프리팹 생성하는 로직만 짜시면 됨.
+    }
+
+    // -------------------------------------------------------
+    // AI가 생각 중일 때 버튼들을 클릭 못 하게(회색으로) 막는 함수
+    public void SetInteractableButtons(bool isInteractable)
+    {
+        if (restartButton != null) restartButton.interactable = isInteractable;
+        if (undoButton != null) undoButton.interactable = isInteractable;
     }
 
 }

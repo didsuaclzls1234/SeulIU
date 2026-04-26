@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class InputManager : MonoBehaviour
 {
@@ -35,10 +36,15 @@ public class InputManager : MonoBehaviour
 
     void Update()
     {
-        // 내 턴이 아니거나, 게임이 끝났거나, 처리 중이면 완벽하게 차단
-        if (gameManager.currentState == GameState.GameOver ||
+        // UI 클릭 방지: 마우스가 UI(팝업창, 버튼, 블로커 등) 위에 있는지 확인
+        // (블로커를 깔아뒀기 때문에 팝업이 뜨면 이게 무조건 true가 됨.)
+        bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+        // 상태 차단: 게임 중(Playing)이 아니거나, 내 턴이 아니거나, UI 위라면 호버 끄고 로직 중단
+        if (gameManager.currentState != GameState.Playing ||
             (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
-            isProcessingClick)
+            isProcessingClick ||
+            isPointerOverUI)
         {
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
             return;
@@ -57,7 +63,15 @@ public class InputManager : MonoBehaviour
             int x = Mathf.RoundToInt(hitPoint.x / gridSize);
             int y = Mathf.RoundToInt(hitPoint.z / gridSize);
 
-            // 호버 표시기 이동
+            // 3. 바둑판 밖으로 마우스가 나갔는지 검사 (19x19 범위 이탈 시 안 보이게)
+            if (gameManager.board != null && (x < 0 || x >= gameManager.board.boardSize || y < 0 || y >= gameManager.board.boardSize))
+            {
+                // 보드 바깥이면 호버 숨기고 리턴
+                if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+                return;
+            }
+
+            // 호버 표시기 이동 (정상 범위 안일 때만)
             if (hoverIndicator != null)
             {
                 if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);

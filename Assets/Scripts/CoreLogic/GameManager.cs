@@ -111,7 +111,7 @@ public class GameManager : MonoBehaviour
         if (currentState != GameState.Playing)
         {
             // (선택) 로그로 확인하고 싶으시면 켜두세요
-            Debug.Log("현재 돌을 놓을 수 없는 상태입니다. (스킬 선택 중이거나 게임 종료)"); 
+            Debug.Log("현재 돌을 놓을 수 없는 상태입니다. (스킬 선택 중이거나 게임 종료)");
             return;
         }
 
@@ -123,7 +123,7 @@ public class GameManager : MonoBehaviour
         }
 
         // BoardManager한테 돌을 두어도 되는지 물어봄
-        if (board.IsValidMove(x, y, currentTurnColor) 
+        if (board.IsValidMove(x, y, currentTurnColor)
             && !board.ruleManager.IsForbiddenMove(x, y, (int)currentTurnColor, board.grid, board.boardSize, false))
         {
             // 실제 돌 놓는 코어 로직 실행
@@ -198,6 +198,9 @@ public class GameManager : MonoBehaviour
         isAITurnProcessing = true;
         Debug.Log("[GameManager] AI가 수를 고민 중입니다...");
 
+        // 1. UI 버튼 비활성화 (버튼이 회색으로 변하고 클릭 안 됨)
+        if (gameHUD != null) gameHUD.SetInteractableButtons(false);
+
         // AI가 사람처럼 고민하는 딜레이 타임 (0.3초)
         await Task.Delay(300);
 
@@ -206,8 +209,11 @@ public class GameManager : MonoBehaviour
 
         isAITurnProcessing = false;
 
+        // 2. 연산이 끝났으니 UI 버튼 다시 활성화
+        if (gameHUD != null) gameHUD.SetInteractableButtons(true);
+
         // 게임이 그 사이에 종료되지 않았다면 착수
-        if (currentState == GameState.Playing)
+        if (currentState == GameState.Playing && currentTurnColor != localPlayerColor)
         {
             ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor);
         }
@@ -245,6 +251,9 @@ public class GameManager : MonoBehaviour
             // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
             OnUndoRequestedLocally?.Invoke();
             Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
+
+            // 요청하자마자 '대기 팝업'을 띄움 (돌 놓기 방지)
+            if (gameHUD != null) gameHUD.ShowUndoWaitingPopup();
         }
         else
         {
@@ -272,10 +281,10 @@ public class GameManager : MonoBehaviour
     {
         if (currentState == GameState.GameOver) return;
 
-        if (isAccepted) 
-            ExecuteUndo();
-        else 
-            Debug.Log("상대방이 무르기를 거절했습니다.");
+        // 상대방의 응답을 받으면 HUD에 결과 텍스트 띄우기 (1.5초 뒤 자동 꺼짐)
+        if (gameHUD != null) gameHUD.ShowUndoResultAndClose(isAccepted);
+
+        if (isAccepted) ExecuteUndo();
     }
 
     // ** HUD에서 수락/거절 버튼을 눌렀을 때 호출되는 함수 (발신)
@@ -360,7 +369,7 @@ public class GameManager : MonoBehaviour
         moveHistory.Clear(); // 재시작 시 스택 비우기
 
         // 2. 게임 상태와 턴을 흑돌로 초기화
-        currentTurnColor = StoneColor.Black; 
+        currentTurnColor = StoneColor.Black;
         currentState = GameState.Playing;
 
         // 재시작 시 텍스트 다시 숨기기
