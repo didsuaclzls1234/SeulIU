@@ -274,23 +274,8 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     }
 
     // Ready 버튼 클릭 시 호출
-    private bool _isReadySent = false;//중복전송차단 플래그
     public void SendSyncPlayerInfo()
-    {   
-         //  슬롯에 -1(선택X)이 하나라도 있으면 전송 차단
-        for (int i = 0; i < _selectedSkillIDs.Length; i++)
-        {
-            if (_selectedSkillIDs[i] == -1)
-            {
-                Debug.Log($"[GameSession] {i + 1}번 슬롯이 비어있습니다. 스킬을 3개 모두 선택해 주세요.");
-                return; // 전송 안 함
-            }
-        }
-
-        //검증 통과했으면 중복 전송 방지 플래그 체크
-        if (_isReadySent) return;
-        _isReadySent = true;
-
+    {
         object[] data = new object[]
         {
             gameManager.localPlayerName,
