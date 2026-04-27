@@ -33,7 +33,7 @@ public static class RoleAssigner
             ? players[0].ActorNumber
             : players[1].ActorNumber;
 
-        object[] data = new object[] { blackActorNumber };
+        object[] data = new object[] { blackActorNumber ,(float)PhotonNetwork.Time};
 
         // AddToRoomCache: 나중에 재연결한 클라이언트도 받을 수 있도록 캐싱
         RaiseEventOptions opts = new RaiseEventOptions

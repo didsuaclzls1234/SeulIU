@@ -120,6 +120,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         // 닉네임 세팅 전에 PlayerList 확인
         int blackActorNumber = (int)data[0];
+        float serverTime     = (float)data[1];
 
         // 내가 흑인지 백인지 판별 (1: 흑, 2: 백)
         StoneColor myColor = (PhotonNetwork.LocalPlayer.ActorNumber == blackActorNumber)
@@ -147,6 +148,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameHUD.skillSelectPanel?.SetActive(true);
             timerManager.StartSkillSelectTimer();
         }
+
+        // 패킷 전달 지연만큼 보정해서 타이머 동기화
+        float elapsed = (float)(PhotonNetwork.Time - serverTime);
+        float remaining = timerManager.skillSelectLimit - elapsed;
+        timerManager.SyncTimerFromServer(remaining);
     }
 
     // 2. 상대방 착수 수신
@@ -217,7 +223,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     private void HandleUndoReply(object[] data)
     {
     bool isAccepted = (bool)data[0];
-        // 결과 보여주고 타이머 재개하는 함수
+    // 결과 보여주고 타이머 재개하는 함수
         if (gameHUD != null)
         {
             gameHUD.ShowUndoResultAndClose(isAccepted);
@@ -274,8 +280,23 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     }
 
     // Ready 버튼 클릭 시 호출
+    private bool _isReadySent = false;//중복전송차단 플래그
     public void SendSyncPlayerInfo()
-    {
+    {   
+         //  슬롯에 -1(선택X)이 하나라도 있으면 전송 차단
+        for (int i = 0; i < _selectedSkillIDs.Length; i++)
+        {
+            if (_selectedSkillIDs[i] == -1)
+            {
+                Debug.Log($"[GameSession] {i + 1}번 슬롯이 비어있습니다. 스킬을 3개 모두 선택해 주세요.");
+                return; // 전송 안 함
+            }
+        }
+
+        //검증 통과했으면 중복 전송 방지 플래그 체크
+        if (_isReadySent) return;
+        _isReadySent = true;
+
         object[] data = new object[]
         {
             gameManager.localPlayerName,
