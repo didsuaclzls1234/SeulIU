@@ -36,6 +36,7 @@ public class GameHUD : MonoBehaviour
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
     public TimerManager timerManager;
+    public InputManager inputManager;
 
     [Header("플레이어 정보 UI (신규)")]
     public TextMeshProUGUI myNicknameText;   // 내 닉네임 
@@ -190,8 +191,9 @@ public class GameHUD : MonoBehaviour
 
     // (1) 상대방이 Undo 요청했을 때 (버튼 ON)
     public void ShowUndoPopup()
-    {
-        inputManager?.BlockInput(); // 팝업이 뜨면 입력 차단
+    {   
+        inputManager?.HideHover();
+        inputManager?.BlockInput();
         undoPopupPanel.SetActive(true);
         undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
         if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
@@ -204,6 +206,8 @@ public class GameHUD : MonoBehaviour
     // (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
     public void ShowUndoWaitingPopup()
     {
+        inputManager?.HideHover();
+        inputManager?.BlockInput();
         undoPopupPanel.SetActive(true);
         undoRequestText.text = "상대방의 응답을 기다리는 중...";
         if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
@@ -234,10 +238,12 @@ public class GameHUD : MonoBehaviour
         await Task.Delay(1500);
 
         if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
+        inputManager?.UnblockInput();
     }
 
     public void HideUndoRequestPopup()
     {
+        inputManager?.UnblockInput();
         undoPopupPanel.SetActive(false);
     }
 
