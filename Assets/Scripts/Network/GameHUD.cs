@@ -32,6 +32,7 @@ public class GameHUD : MonoBehaviour
 
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
+    public InputManager inputManager;
 
     [Header("플레이어 정보 UI (신규)")]
     public TextMeshProUGUI myNicknameText;   // 내 닉네임 
@@ -175,17 +176,22 @@ public class GameHUD : MonoBehaviour
 
     public void ShowUndoPopup()
     {
+        inputManager?.BlockInput(); // 팝업이 뜨면 입력 차단
         undoPopupPanel.SetActive(true);
         undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
     }
 
-    public void HideUndoRequestPopup() => undoPopupPanel.SetActive(false);
+    public void HideUndoRequestPopup(){
+    inputManager?.UnblockInput(); // 팝업이 닫히면 입력 허용
+    undoPopupPanel.SetActive(false);
+    }
 
     // ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
 
     // 1. [수락] 버튼
     public void OnAcceptUndoClicked()
-    {
+    {   
+        inputManager?.UnblockInput();
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
         gameManager.ReplyToUndoRequest(true); // GameManager에게 'true(수락)' 토스
     }
@@ -193,6 +199,7 @@ public class GameHUD : MonoBehaviour
     // 2. [거절] 버튼
     public void OnRefuseUndoClicked()
     {
+        inputManager?.UnblockInput();
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
         gameManager.ReplyToUndoRequest(false); // GameManager에게 'false(거절)' 토스
     }

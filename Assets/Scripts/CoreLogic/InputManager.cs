@@ -18,6 +18,12 @@ public class InputManager : MonoBehaviour
     // 찰나의 중복 클릭이나 마우스 이동을 막기 위한 잠금 변수
     private bool isProcessingClick = false;
 
+    //팝업이 떴을떄 입력을 차단하기 위한 변수
+    private bool _isInputBlocked = false;
+
+    public void BlockInput() => _isInputBlocked = true;
+    public void UnblockInput() => _isInputBlocked = false;
+
     void Start()
     {
         if (gameManager == null) gameManager = FindFirstObjectByType<GameManager>();
@@ -38,7 +44,7 @@ public class InputManager : MonoBehaviour
         // 내 턴이 아니거나, 게임이 끝났거나, 처리 중이면 완벽하게 차단
         if (gameManager.currentState == GameState.GameOver ||
             (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
-            isProcessingClick)
+            isProcessingClick || _isInputBlocked)
         {
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
             return;
