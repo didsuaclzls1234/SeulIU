@@ -19,6 +19,8 @@ public class InputManager : MonoBehaviour
     // 찰나의 중복 클릭이나 마우스 이동을 막기 위한 잠금 변수
     private bool isProcessingClick = false;
 
+    private bool _isInputBlocked = false; // 외부에서 입력 차단할 때 사용하는 변수
+
     void Start()
     {
         if (gameManager == null) gameManager = FindFirstObjectByType<GameManager>();
@@ -44,7 +46,7 @@ public class InputManager : MonoBehaviour
         if (gameManager.currentState != GameState.Playing ||
             (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
             isProcessingClick ||
-            isPointerOverUI)
+            isPointerOverUI|| _isInputBlocked)
         {
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
             return;
@@ -108,5 +110,13 @@ public class InputManager : MonoBehaviour
             // 마우스가 허공(보드 밖)을 가리킬 때 호버 돌 숨기기
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
         }
+    }
+
+    // 외부에서 강제로 호버를 숨겨야 할 때 사용할 함수
+    public void BlockInput() => _isInputBlocked = true;
+    public void UnblockInput() => _isInputBlocked = false;
+    public void HideHover()
+    {
+        if (hoverIndicator != null) hoverIndicator.SetActive(false);
     }
 }

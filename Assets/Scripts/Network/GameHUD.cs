@@ -36,6 +36,7 @@ public class GameHUD : MonoBehaviour
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
     public TimerManager timerManager;
+    public InputManager inputManager;
 
     [Header("플레이어 정보 UI (신규)")]
     public TextMeshProUGUI myNicknameText;   // 내 닉네임 
@@ -190,7 +191,9 @@ public class GameHUD : MonoBehaviour
 
     // (1) 상대방이 Undo 요청했을 때 (버튼 ON)
     public void ShowUndoPopup()
-    {
+    {   
+        inputManager?.HideHover();
+        inputManager?.BlockInput();
         undoPopupPanel.SetActive(true);
         undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
         if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
@@ -203,6 +206,8 @@ public class GameHUD : MonoBehaviour
     // (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
     public void ShowUndoWaitingPopup()
     {
+        inputManager?.HideHover();
+        inputManager?.BlockInput();
         undoPopupPanel.SetActive(true);
         undoRequestText.text = "상대방의 응답을 기다리는 중...";
         if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
@@ -233,10 +238,12 @@ public class GameHUD : MonoBehaviour
         await Task.Delay(1500);
 
         if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
+        inputManager?.UnblockInput();
     }
 
     public void HideUndoRequestPopup()
     {
+        inputManager?.UnblockInput();
         undoPopupPanel.SetActive(false);
     }
 
@@ -244,7 +251,8 @@ public class GameHUD : MonoBehaviour
 
     // 1. [수락] 버튼
     public void OnAcceptUndoClicked()
-    {
+    {   
+        inputManager?.UnblockInput();
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
 
         // 내가 수락했으니 턴이 뒤로 감 -> 타이머도 처음부터(30초) 다시 시작
@@ -256,6 +264,7 @@ public class GameHUD : MonoBehaviour
     // 2. [거절] 버튼
     public void OnRefuseUndoClicked()
     {
+        inputManager?.UnblockInput();
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
 
         // 내가 거절했으니 턴은 그대로 유지 -> 멈췄던 타이머를 다시 흐르게 함
