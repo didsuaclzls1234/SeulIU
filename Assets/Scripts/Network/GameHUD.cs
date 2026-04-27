@@ -100,10 +100,10 @@ public class GameHUD : MonoBehaviour
     }
 
     // 멀티플레이 모드일 때 GameSession에서 호출하여 불필요한 버튼 숨기기
-    public void SetupForMultiplayer()
-    {
-        if (restartButton) restartButton.gameObject.SetActive(false); // 멀티에선 중간 재시작 금지
-    }
+    //public void SetupForMultiplayer()
+    //{
+    //    if (restartButton) restartButton.gameObject.SetActive(false); // 멀티에선 중간 재시작 금지
+    //}
 
     public void ShowRoleAssigned(StoneColor myColor)
     {
@@ -328,5 +328,4 @@ public class GameHUD : MonoBehaviour
         if (restartButton != null) restartButton.interactable = isInteractable;
         if (undoButton != null) undoButton.interactable = isInteractable;
     }
-
 }

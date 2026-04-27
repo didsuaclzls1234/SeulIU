@@ -1010,6 +1010,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1642039771649808315, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: skillManager
+      value: 
+      objectReference: {fileID: 5425225473003340373}
     - target: {fileID: 4115228335132474100, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: m_Name
       value: 'Manager '
@@ -1054,6 +1058,10 @@ PrefabInstance:
       propertyPath: currentMode
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 9133781494971274617, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: skillManager
+      value: 
+      objectReference: {fileID: 5425225473003340373}
     - target: {fileID: 9133781494971274617, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: timerManager
       value: 

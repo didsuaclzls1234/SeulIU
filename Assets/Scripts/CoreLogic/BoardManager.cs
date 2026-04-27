@@ -265,6 +265,35 @@ public class BoardManager : MonoBehaviour
         return validMoves[randomIndex];
     }
 
+    // 특정 좌표(x, y)에 있는 3D 돌 오브젝트를 찾아서 비활성화(풀 반환) 하는 함수
+    public void RemoveStoneObjectAt(int x, int y)
+    {
+        // 바둑판 좌표를 실제 월드 좌표(x * gridSize, y * gridSize)로 변환
+        float targetWorldX = x * gridSize;
+        float targetWorldZ = y * gridSize;
+
+        GameObject stoneToRemove = null;
+
+        // activeStones 리스트를 뒤져서 해당 좌표에 있는 돌을 찾음
+        foreach (GameObject stone in activeStones)
+        {
+            if (stone.activeSelf &&
+                Mathf.Approximately(stone.transform.position.x, targetWorldX) &&
+                Mathf.Approximately(stone.transform.position.z, targetWorldZ))
+            {
+                stoneToRemove = stone;
+                break; // 찾았으니 검색 중단
+            }
+        }
+
+        if (stoneToRemove != null)
+        {
+            // 씬에서 숨김 처리 (ObjectPooler 반환)
+            stoneToRemove.SetActive(false);
+            activeStones.Remove(stoneToRemove); // 활성 리스트에서도 제거
+        }
+    }
+
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()
     {

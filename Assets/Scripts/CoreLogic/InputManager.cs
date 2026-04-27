@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 public class InputManager : MonoBehaviour
 {
     public GameManager gameManager;
+    public SkillManager skillManager;
     public float gridSize = 1f;
 
     [Header("Hover Settings")]
@@ -24,6 +25,7 @@ public class InputManager : MonoBehaviour
     void Start()
     {
         if (gameManager == null) gameManager = FindFirstObjectByType<GameManager>();
+        if (skillManager == null) skillManager = FindFirstObjectByType<SkillManager>();
 
         // 1. 프리팹이 연결되어 있다면, 코드로 직접 Instantiate 해서 생성합니다.
         if (hoverIndicatorPrefab != null)
@@ -43,10 +45,9 @@ public class InputManager : MonoBehaviour
         bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
         // 상태 차단: 게임 중(Playing)이 아니거나, 내 턴이 아니거나, UI 위라면 호버 끄고 로직 중단
-        if (gameManager.currentState != GameState.Playing ||
-            (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
-            isProcessingClick ||
-            isPointerOverUI|| _isInputBlocked)
+        if ((gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting) ||
+        (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
+        isProcessingClick || isPointerOverUI || _isInputBlocked)
         {
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
             return;
@@ -98,8 +99,19 @@ public class InputManager : MonoBehaviour
                 // 호버 인디케이터 즉시 숨김
                 if (hoverIndicator != null) hoverIndicator.SetActive(false);
 
-                // 돌 놓기 실행
-                gameManager.TryPlaceStone(x, y);
+                if (gameManager.currentState == GameState.Playing)
+                {
+                    // [일반 모드] 돌을 놓는다
+                    gameManager.TryPlaceStone(x, y);
+                }
+                else if (gameManager.currentState == GameState.SkillTargeting)
+                {
+                    // [스킬 모드] 스킬 매니저에게 좌표를 전달하고 스킬을 쏜다
+                    if (skillManager != null)
+                    {
+                        skillManager.ExecuteSkillAt(x, y);
+                    }
+                }
 
                 // 연산이 끝난 후 락 해제
                 isProcessingClick = false;
