@@ -15,7 +15,11 @@ public class ActiveEffect
 
 public class SkillManager : MonoBehaviour
 {
+
+    [Header("Core & Network")]
     public GameManager gameManager;
+    public GameSession gameSession;
+    public TimerManager timerManager;
 
     [Header("Skill Selection State")]
     public bool isLocalPlayerReady = false;
@@ -33,8 +37,8 @@ public class SkillManager : MonoBehaviour
 
     [Header("Skill Decks (Network IDs)")]
     // ** 네트워크 담당자가 방 입장 시 세팅해 줄 '스킬 번호' 배열 (데이터용)
-    public int[] mySkillsID = new int[3];
-    public int[] oppSkillsID = new int[3];
+    public int[] mySkillsID = new int[] { -1, -1, -1 };
+    public int[] oppSkillsID = new int[] { -1, -1, -1 };
 
     // -------------------------------------------------------
     // 현재 적용된 스킬(내가 적용한 & 남이 적용한) 리스트 -> 턴이 끝날 때마다 이 리스트를 순회하며 remainingTurns를 1씩 깎고, 0이 되면 리스트에서 제거한 뒤 UI에 "아이콘 지워!"라고 알려줍니다.
@@ -47,6 +51,15 @@ public class SkillManager : MonoBehaviour
     public event Action<int> OnSPChanged; // SP가 변했을 때 (내 SP 던져줌)
     public event Action<List<ActiveEffect>> OnActiveEffectsChanged; // 버프/디버프 리스트가 갱신됐을 때
     public event Action<int, bool> OnSkillButtonStateChanged; // 특정 스킬 버튼의 활성화/비활성화 상태가 변했을 때
+
+    // 1. 초기화 시 타임아웃 이벤트 구독 (GameManager가 상태를 바꿀 때 타이머를 켜준다고 가정)
+    private void Start()
+    {
+        if (timerManager != null)
+        {
+            timerManager.OnTimeOut += OnSkillSelectionTimeOut;
+        }
+    }
 
 
     /// <summary>
@@ -112,7 +125,7 @@ public class SkillManager : MonoBehaviour
     }
 
     // 스킬 선택창 관련 --------------------------------------------------
-    // 1. 상화님이 UI에서 스킬을 고를 때마다 호출할 함수
+    // 1. UI에서 스킬을 고를 때마다 호출할 함수
     public void OnSkillSelected(int slotIndex, int skillId)
     {
         // slotIndex: 0~2번 자리, skillId: 선택한 스킬 번호
@@ -120,7 +133,7 @@ public class SkillManager : MonoBehaviour
         Debug.Log($"{slotIndex}번 슬롯에 {skillId}번 스킬 장착");
     }
 
-    // 2. 상화님이 '준비 완료' 버튼 누르거나 패킷 받았을 때 호출
+    // 2. '준비 완료' 버튼 누르거나 패킷 받았을 때 호출
     public void SetPlayerReady(bool isLocal)
     {
         if (isLocal) isLocalPlayerReady = true;
@@ -130,6 +143,63 @@ public class SkillManager : MonoBehaviour
         if (isLocalPlayerReady && isRemotePlayerReady)
         {
             gameManager.StartGameAfterSelection();
+        }
+    }
+
+    // 2. 스킬 선택 시간 종료 시 로직
+    private void OnSkillSelectionTimeOut()
+    {
+        // 스킬 선택 중인 상태가 아니면 무시
+        if (gameManager.currentState != GameState.WaitingForSkillSelect) return;
+
+        Debug.Log("[SkillManager] 스킬 선택 시간 초과! 남은 슬롯을 랜덤으로 채웁니다.");
+
+        AutoSelectRandomSkills(); // 랜덤 선택 함수 호출
+    }
+
+    // TimerManager에서 '스킬 선택 시간 초과' 시 이 함수를 호출하도록 연결
+    public void AutoSelectRandomSkills()
+    {
+        // 1. 선택 가능한 전체 스킬 풀(Pool) 리스트
+        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+        // 2. 이미 선택된 스킬은 목록에서 제거
+        foreach (int selectedId in mySkillsID)
+        {
+            if (selectedId > 0) availableSkills.Remove(selectedId);
+        }
+
+        // 3. 비어있는 슬롯(-1)을 찾아서 남은 스킬 중 랜덤으로 넣기
+        for (int i = 0; i < 3; i++)
+        {
+            if (mySkillsID[i] == -1) // 비어있다면?
+            {
+                int randomIndex = UnityEngine.Random.Range(0, availableSkills.Count);
+                int pickedId = availableSkills[randomIndex];
+
+                mySkillsID[i] = pickedId; // 슬롯에 장착
+                availableSkills.RemoveAt(randomIndex); // 중복 방지를 위해 리스트에서 제거
+
+                // UI에 반영 
+                OnSkillSelected(i, pickedId);
+            }
+        }
+
+        Debug.Log($"[SkillManager] 타임아웃! 스킬 자동 선택 완료: {mySkillsID[0]}, {mySkillsID[1]}, {mySkillsID[2]}");
+
+        // 예외 처리 및 분기
+        if (gameSession != null)
+        {
+            // 1. 멀티플레이 모드: GameSession이 존재하면 패킷 쏘고 상대방 기다림
+            gameSession.SendSyncPlayerInfo();
+        }
+        else
+        {
+            // 2. 솔로/AI 모드: GameSession이 없으면 상대방 기다릴 필요 없이 즉시 게임 시작
+            if (gameManager != null)
+            {
+                gameManager.StartGameAfterSelection();
+            }
         }
     }
 }

@@ -36,7 +36,7 @@ public class BoardManager : MonoBehaviour
     }
 
     // 1: 돌을 둘 수 있는 정상적인 위치인지 검사
-    public bool IsValidMove(int x, int y, StoneColor playerColor)
+    public bool IsValidMove(int x, int y, StoneColor playerColor, bool silent = false)
     {
         // 1-1. 바둑판 범위를 벗어났는가? (IndexOutOfRange 에러 방어)
         if (x < 0 || x >= boardSize || y < 0 || y >= boardSize)
@@ -53,7 +53,7 @@ public class BoardManager : MonoBehaviour
         }
 
         // 1-3. 현재 오목 규칙 기준으로, 돌을 놔도 되는지 RuleManager에게 검사 요청
-        if (ruleManager != null && ruleManager.IsForbiddenMove(x, y, (int)playerColor, grid, boardSize))
+        if (ruleManager != null && ruleManager.IsForbiddenMove(x, y, (int)playerColor, grid, boardSize, silent))
         {
             Debug.LogWarning("❌ 금수 자리입니다! 돌을 놓을 수 없습니다.");
             return false;
@@ -237,6 +237,32 @@ public class BoardManager : MonoBehaviour
             float requiredHeight = ((boardSize * gridSize) / 2f + cameraPadding) / Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
             mainCamera.transform.position = new Vector3(centerOffset, requiredHeight, centerOffset);
         }
+    }
+
+    // 돌 랜덤 착수를 위한, 좌표를 반환하는 함수
+    public Vector2Int GetRandomValidMove(StoneColor playerColor)
+    {
+        List<Vector2Int> validMoves = new List<Vector2Int>();
+
+        // 바둑판 전체를 순회하며 둘 수 있는 모든 좌표를 수집
+        for (int x = 0; x < boardSize; x++)
+        {
+            for (int y = 0; y < boardSize; y++)
+            {
+                // silent를 true로 넘겨서 경고 로그 도배 방지
+                if (IsValidMove(x, y, playerColor, silent: true))
+                {
+                    validMoves.Add(new Vector2Int(x, y));
+                }
+            }
+        }
+
+        // 바둑판이 꽉 차서 둘 곳이 없으면 (-1, -1) 반환
+        if (validMoves.Count == 0) return new Vector2Int(-1, -1);
+
+        // 수집된 합법적 자리 중 하나를 랜덤으로 뽑아서 반환
+        int randomIndex = UnityEngine.Random.Range(0, validMoves.Count);
+        return validMoves[randomIndex];
     }
 
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
