@@ -12,7 +12,7 @@ public abstract class SkillBase
     }
 
     // 조건 검사 (SP가 충분한가? 쿨타임이 도는가? 안티매직에 걸렸는가?)
-    public virtual bool CanUse(int currentSP, bool isAntiMagicActive)
+    public virtual bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
     {
         if (isAntiMagicActive && data.type != "전용") return false; // 패시브 제외 봉인
         if (currentSP < data.spCost) return false;
@@ -21,7 +21,7 @@ public abstract class SkillBase
     }
 
     // 실제 효과 발동 (랜덤 좌표들은 매개변수로 받음)
-    public abstract void Execute(int[] targetX, int[] targetY, GameManager gameManager, BoardManager board);
+    public abstract bool Execute(int[] targetX, int[] targetY, GameManager gameManager, BoardManager board);
 
     // 턴이 끝날 때마다 호출되어 쿨타임과 지속시간을 줄임
     public virtual void OnTurnPassed()

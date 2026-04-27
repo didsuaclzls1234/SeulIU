@@ -6,7 +6,7 @@ using System.Threading.Tasks; // Stack 사용
 
 
 // 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
-public enum GameState { WaitingForSkillSelect, Playing, GameOver }
+public enum GameState { WaitingForSkillSelect, Playing, SkillTargeting, GameOver }
 public enum PlayMode { Solo, AI, Multiplayer } // 플레이 모드 
 
 // 방금 둔 돌의 정보를 기억할 구조체
@@ -33,6 +33,7 @@ public class GameManager : MonoBehaviour
     public BoardManager board;
     public GameHUD gameHUD;
     public TimerManager timerManager;
+    public SkillManager skillManager;
 
     private StoneColor _currentTurnColor = StoneColor.Black;    // 1: 흑돌(선공), 2: 백돌
     public StoneColor currentTurnColor
@@ -182,6 +183,12 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        // 턴을 넘기기 직전에 방금 돌을 둔 사람의 SP를 올려주고 쿨타임 깎기
+        if (skillManager != null)
+        {
+            skillManager.AddSPOnTurnEnd(playerColor);
+        }
+
         // 5. 승부가 안 났다면 턴 넘기기 
         currentTurnColor = currentTurnColor.Opponent();
 
@@ -249,21 +256,22 @@ public class GameManager : MonoBehaviour
     // UI 무르기 버튼에 연결할 함수
     public void RequestUndo()
     {
+        if (currentMode == PlayMode.Multiplayer) return;
         if (moveHistory.Count == 0 || currentState == GameState.GameOver) return; // 무를 수단이 없으면 리턴
 
         // 2. 모드별 분기 처리
-        if (currentMode == PlayMode.Multiplayer)
-        {
-            // [멀티플레이] 상대방에게 "물러도 될까?" 물어보는 패킷을 GameSession이 쏘도록 이벤트 호출
-            // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
-            OnUndoRequestedLocally?.Invoke();
-            Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
+        //if (currentMode == PlayMode.Multiplayer)
+        //{
+        //    // [멀티플레이] 상대방에게 "물러도 될까?" 물어보는 패킷을 GameSession이 쏘도록 이벤트 호출
+        //    // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
+        //    OnUndoRequestedLocally?.Invoke();
+        //    Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
 
-            // 요청하자마자 '대기 팝업'을 띄움 (돌 놓기 방지)
-            if (gameHUD != null) gameHUD.ShowUndoWaitingPopup();
-        }
-        else
-        {
+        //    // 요청하자마자 '대기 팝업'을 띄움 (돌 놓기 방지)
+        //    if (gameHUD != null) gameHUD.ShowUndoWaitingPopup();
+        //}
+        //else
+        //{
             // [Solo / AI] 기다릴 필요 없이 즉시 내 화면에서 무르기 실행
             ExecuteUndo();
 
@@ -273,7 +281,7 @@ public class GameManager : MonoBehaviour
             {
                 ExecuteUndo();
             }
-        }
+        //}
     }
 
     // ** 상대가 무르기를 요청했을 경우 수신됨
@@ -407,6 +415,9 @@ public class GameManager : MonoBehaviour
     public void StartGameAfterSelection()
     {
         currentState = GameState.Playing;
+
+        // 게임 상태가 Playing으로 바뀔 때 스킬 인스턴스 생성 및 버튼 연결!
+        if (skillManager != null) skillManager.GenerateSkillInstances();
 
         // 타이머 시작 및 첫 턴 금수 표시 등 초기화
         if (timerManager != null) timerManager.StartTurnTimer();

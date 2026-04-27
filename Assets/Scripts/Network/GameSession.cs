@@ -37,15 +37,15 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameManager.currentMode = PlayMode.Multiplayer;
             gameManager.OnStonePlacedLocally += SendPlaceStoneEvent;
             gameManager.OnGameOverLocally += SendGameOverEvent; 
-            gameManager.OnUndoRequestedLocally += SendUndoRequestEvent;
-            gameManager.OnUndoReplyLocally += SendUndoReplyEvent;
+            //gameManager.OnUndoRequestedLocally += SendUndoRequestEvent;
+            //gameManager.OnUndoReplyLocally += SendUndoReplyEvent;
         }
 
         // * 멀티플레이 세팅: GameHUD에 불필요한 버튼 끄라고 지시
-        if (gameHUD)
-        {
-            gameHUD.SetupForMultiplayer();
-        }
+        //if (gameHUD)
+        //{
+        //    gameHUD.SetupForMultiplayer();
+        //}
      
         // 스킬 버튼 자동 연결
         InitSkillButtons();
@@ -64,8 +64,8 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         {
             gameManager.OnStonePlacedLocally -= SendPlaceStoneEvent;
             gameManager.OnGameOverLocally -= SendGameOverEvent;
-            gameManager.OnUndoRequestedLocally -= SendUndoRequestEvent;
-            gameManager.OnUndoReplyLocally -= SendUndoReplyEvent;
+            //gameManager.OnUndoRequestedLocally -= SendUndoRequestEvent;
+            //gameManager.OnUndoReplyLocally -= SendUndoReplyEvent;
         }
     }
 
@@ -215,21 +215,21 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         
     }
 
-    private void HandleUndoRequest()
-    {
-    gameManager.ReceiveNetworkUndoRequest();
-    }
+    //private void HandleUndoRequest()
+    //{
+    //gameManager.ReceiveNetworkUndoRequest();
+    //}
 
-    private void HandleUndoReply(object[] data)
-    {
-    bool isAccepted = (bool)data[0];
-    // 결과 보여주고 타이머 재개하는 함수
-        if (gameHUD != null)
-        {
-            gameHUD.ShowUndoResultAndClose(isAccepted);
-        }
-        gameManager.ReceiveNetworkUndoReply(isAccepted);
-    }
+    //private void HandleUndoReply(object[] data)
+    //{
+    //bool isAccepted = (bool)data[0];
+    //// 결과 보여주고 타이머 재개하는 함수
+    //    if (gameHUD != null)
+    //    {
+    //        gameHUD.ShowUndoResultAndClose(isAccepted);
+    //    }
+    //    gameManager.ReceiveNetworkUndoReply(isAccepted);
+    //}
 
     private void HandleSyncTimer(object[] data)
     {
@@ -247,7 +247,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         int[] xs      = (int[])data[1];
         int[] ys      = (int[])data[2];
 
-        skillManager.ReceiveOpponentSkill(skillId, xs, ys);
+        // SkillManager에게 넘겨서 상대방 화면에서도 똑같이 실행하게 함
+        if (skillManager != null)
+        {
+            skillManager.ReceiveOpponentSkill(skillId, xs, ys);
+        }
     }
     #endregion
 
@@ -319,19 +323,19 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     }
 
     //무르기 요청 이벤트 발신
-    private void SendUndoRequestEvent()
-    {
-    RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-    PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoRequest, null, opts, SendOptions.SendReliable);
-    }
+    //private void SendUndoRequestEvent()
+    //{
+    //RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+    //PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoRequest, null, opts, SendOptions.SendReliable);
+    //}
 
     //무르기 수락/거절 이벤트 발신
-    private void SendUndoReplyEvent(bool isAccepted)
-    {
-    object[] data = new object[] { isAccepted };
-    RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-    PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoReply, data, opts, SendOptions.SendReliable);
-    }
+    //private void SendUndoReplyEvent(bool isAccepted)
+    //{
+    //object[] data = new object[] { isAccepted };
+    //RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+    //PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoReply, data, opts, SendOptions.SendReliable);
+    //}
 
     // 타이머 동기화 - 방장이 턴 시작 시 호출
     public void SendSyncTimer()
@@ -380,12 +384,12 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             case PhotonEventCodes.UseSkill:
                 HandleUseSkill((object[])photonEvent.CustomData);
                 break;
-            case PhotonEventCodes.UndoRequest:
-                HandleUndoRequest();
-                break;
-            case PhotonEventCodes.UndoReply:
-                HandleUndoReply((object[])photonEvent.CustomData);
-                break;
+            //case PhotonEventCodes.UndoRequest:
+            //    HandleUndoRequest();
+            //    break;
+            //case PhotonEventCodes.UndoReply:
+            //    HandleUndoReply((object[])photonEvent.CustomData);
+            //    break;
         }
     }
     #endregion  

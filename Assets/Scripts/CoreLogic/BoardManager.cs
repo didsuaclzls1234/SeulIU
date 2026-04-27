@@ -18,6 +18,9 @@ public class BoardManager : MonoBehaviour
     public Camera mainCamera; // 인스펙터에서 MainCamera 연결
     public float cameraPadding = 2f; // 화면 가장자리 여백
 
+    [Header("Skill Visuals")]
+    private List<GameObject> skillTargetMarkers = new List<GameObject>();
+
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
 
@@ -263,6 +266,78 @@ public class BoardManager : MonoBehaviour
         // 수집된 합법적 자리 중 하나를 랜덤으로 뽑아서 반환
         int randomIndex = UnityEngine.Random.Range(0, validMoves.Count);
         return validMoves[randomIndex];
+    }
+
+    // 특정 좌표(x, y)에 있는 3D 돌 오브젝트를 찾아서 비활성화(풀 반환) 하는 함수
+    public void RemoveStoneObjectAt(int x, int y)
+    {
+        // 바둑판 좌표를 실제 월드 좌표(x * gridSize, y * gridSize)로 변환
+        float targetWorldX = x * gridSize;
+        float targetWorldZ = y * gridSize;
+
+        GameObject stoneToRemove = null;
+
+        // activeStones 리스트를 뒤져서 해당 좌표에 있는 돌을 찾음
+        foreach (GameObject stone in activeStones)
+        {
+            if (stone.activeSelf &&
+                Mathf.Approximately(stone.transform.position.x, targetWorldX) &&
+                Mathf.Approximately(stone.transform.position.z, targetWorldZ))
+            {
+                stoneToRemove = stone;
+                break; // 찾았으니 검색 중단
+            }
+        }
+
+        if (stoneToRemove != null)
+        {
+            // 씬에서 숨김 처리 (ObjectPooler 반환)
+            stoneToRemove.SetActive(false);
+            activeStones.Remove(stoneToRemove); // 활성 리스트에서도 제거
+        }
+    }
+
+    // 제거 가능한 상대방 돌들 위에 하이라이트 표시
+    public void ShowSkillTargetMarkers(StoneColor myColor)
+    {
+        HideSkillTargetMarkers(); // 기존 마커 청소
+
+        int enemyColorInt = (myColor == StoneColor.Black) ? 2 : 1;
+
+        // BoardManager는 모든 돌을 activeStones 리스트로 가지고 있으므로, 
+        // 리스트를 순회하며 상대 돌의 VisualOutline 컴포넌트를 켜주면 됨
+        foreach (GameObject stoneObj in activeStones)
+        {
+            if (stoneObj == null || !stoneObj.activeSelf) continue;
+
+            // 돌의 위치로 데이터 배열 좌표(x, y)를 역계산
+            int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
+
+            // 상대 돌이라면 테두리를 켜줌
+            if (grid[x, y] == enemyColorInt)
+            {
+                VisualOutline outline = stoneObj.GetComponent<VisualOutline>();
+                if (outline != null)
+                {
+                    // 제거 가능한 돌을 초록색 테두리로 만듦
+                    outline.EnableOutline(Color.green); // unlit 머티리얼이 여기에 녹색을 입힙니다.
+                }
+            }
+        }
+    }
+
+    public void HideSkillTargetMarkers()
+    {
+        // 모든 활성 돌을 순회하며 테두리를 끔 (SRP: 테두리 관리는 BoardManager가 총괄)
+        foreach (GameObject stoneObj in activeStones)
+        {
+            if (stoneObj != null)
+            {
+                VisualOutline outline = stoneObj.GetComponent<VisualOutline>();
+                if (outline != null) outline.DisableOutline();
+            }
+        }
     }
 
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
