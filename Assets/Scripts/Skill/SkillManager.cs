@@ -319,10 +319,13 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
-        selectedSkillSlot = slotIndex;
-
         // 상태를 '스킬 타겟팅'으로 변경 (이제 InputManager가 클릭하면 TryPlaceStone 대신 SkillManager한테 좌표를 넘기게 될 겁니다)
+        selectedSkillSlot = slotIndex;
         gameManager.currentState = GameState.SkillTargeting;
+
+        // 비주얼 효과 시작: 보드의 모든 상대 돌에 초록색 테두리 표시
+        gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+
         Debug.Log($"==== [{selectedSkill.data.skillName}] 타겟팅 모드 진입! ====");
     }
 
@@ -360,5 +363,8 @@ public class SkillManager : MonoBehaviour
             selectedSkillSlot = -1;
             gameManager.currentState = GameState.Playing;
         }
+
+        // 스킬이 성공하든 실패하든 마커는 지워야 함
+        gameManager.board.HideSkillTargetMarkers();
     }
 }

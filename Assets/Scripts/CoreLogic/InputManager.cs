@@ -14,6 +14,9 @@ public class InputManager : MonoBehaviour
     public Material blackAlphaMat; // 반투명 흑돌 재질
     public Material whiteAlphaMat; // 반투명 백돌 재질
 
+    [Header("Skill Visual Settings")]
+    public Material targetingMat; // 조준용 빨간색/주황색 재질
+
     // 콜라이더 대신 사용할 '수학적인 무한 평면 (Y=0 바닥)'
     private Plane mathPlane = new Plane(Vector3.up, Vector3.zero);
 
@@ -53,6 +56,22 @@ public class InputManager : MonoBehaviour
             return;
         }
 
+        // 우클릭 취소 로직(어느 상태에서든 우클릭하면 평소로 복귀)
+        if (Input.GetMouseButtonDown(1))
+        {
+            if (gameManager.currentState == GameState.SkillTargeting)
+            {
+                CancelSkillTargeting();
+                return;
+            }
+        }
+
+        if (gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting)
+        {
+            HideHover();
+            return;
+        }
+
         // 1. 카메라에서 마우스 위치로 레이저 쏘기
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
@@ -78,15 +97,21 @@ public class InputManager : MonoBehaviour
             if (hoverIndicator != null)
             {
                 if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);
-
                 hoverIndicator.transform.position = new Vector3(x * gridSize, 0.1f, y * gridSize);
 
-                // 내 색깔에 맞춰서 반투명 재질 변경
-                if (hoverRenderer != null)
+                if (gameManager.currentState == GameState.SkillTargeting)
                 {
-                    // 호버 돌 색상 로직: 솔로 모드면 현재 턴 색상, 멀티면 내 색상 고정
+                    // 스킬 모드일 때는 빨간색 조준점 재질로 변경
+                    hoverRenderer.material = targetingMat;
+                    // 필요하다면 호버 돌의 크기를 살짝 키워서 더 티 나게 할 수도 있음
+                    hoverIndicator.transform.localScale = Vector3.one * 1.2f;
+                }
+                else
+                {
+                    // 일반 모드일 때는 다시 돌 모양으로 복구
                     int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
                     hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
+                    hoverIndicator.transform.localScale = Vector3.one;
                 }
             }
 
@@ -122,6 +147,14 @@ public class InputManager : MonoBehaviour
             // 마우스가 허공(보드 밖)을 가리킬 때 호버 돌 숨기기
             if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
         }
+    }
+
+    private void CancelSkillTargeting()
+    {
+        Debug.Log("스킬 사용 취소");
+        gameManager.currentState = GameState.Playing;
+        skillManager.selectedSkillSlot = -1;
+        gameManager.board.HideSkillTargetMarkers(); // 하이라이트 끄기
     }
 
     // 외부에서 강제로 호버를 숨겨야 할 때 사용할 함수
