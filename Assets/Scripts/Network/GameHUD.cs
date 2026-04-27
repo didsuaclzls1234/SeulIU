@@ -1,5 +1,6 @@
 using Photon.Pun;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,17 +30,19 @@ public class GameHUD : MonoBehaviour
     [Header("무르기(Undo) 요청 팝업")]
     public GameObject undoPopupPanel;
     public TextMeshProUGUI undoRequestText;
+    public Button undoAcceptButton; 
+    public Button undoRefuseButton;
 
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
-    public InputManager inputManager;
+    public TimerManager timerManager;
 
     [Header("플레이어 정보 UI (신규)")]
     public TextMeshProUGUI myNicknameText;   // 내 닉네임 
     public TextMeshProUGUI oppNicknameText;  // 상대 닉네임 
 
     [Header("스킬 & 타이머 UI")]
-    public TextMeshProUGUI timerText;       // 시간 표시용
+    public TextMeshProUGUI turnTimerText;       // 턴 시간 표시용
     //public Slider timerSlider;             // (선택) 시각적으로 줄어드는 바
     public TextMeshProUGUI mySPText;        // 내 SP 표시
     public TextMeshProUGUI oppSPText;        // 상대방 SP 표시용 (신규)
@@ -53,6 +56,7 @@ public class GameHUD : MonoBehaviour
     public Button exitButton;
 
     [Header("스킬 선택창 UI (Pre-Game)")]
+    public TextMeshProUGUI skillSelectTimerText; // 스킬창 전용 타이머
     public GameObject skillSelectPanel;      // 스킬 선택 팝업창 전체
     public Button[] skillSelectButtons;      // 선택 가능한 10개 버튼 (임시)
     public Button readyButton;               // 선택 완료 버튼
@@ -75,7 +79,7 @@ public class GameHUD : MonoBehaviour
 
         // 리매치 / 나가기 버튼은 여기서 코드로 연결
         if (rematchButton) rematchButton.onClick.AddListener(OnClickRematch);
-        if (exitButton)    exitButton.onClick.AddListener(OnClickExit);
+        if (exitButton) exitButton.onClick.AddListener(OnClickExit);
     }
 
     // ── GameSession에서 호출 ─────────────────────────────────────
@@ -127,8 +131,18 @@ public class GameHUD : MonoBehaviour
     // 타이머 업데이트 함수
     public void UpdateTimerUI(float remainingTime)
     {
-        if (timerText) timerText.text = Mathf.CeilToInt(remainingTime).ToString();
-        //if (timerSlider) timerSlider.value = remainingTime / 30f; // 슬라이더 비율
+        string timeStr = Mathf.CeilToInt(remainingTime).ToString();
+
+        // 1. 스킬 선택 중일 때는 팝업창 타이머에 표시
+        if (gameManager.currentState == GameState.WaitingForSkillSelect)
+        {
+            if (skillSelectTimerText) skillSelectTimerText.text = timeStr;
+        }
+        // 2. 인게임 중일 때는 상단 타이머에 표시
+        else if (gameManager.currentState == GameState.Playing)
+        {
+            if (turnTimerText) turnTimerText.text = timeStr;
+        }
     }
 
     // SP 및 스킬 버튼 상태 갱신 (SkillManager에서 호출)
@@ -170,20 +184,61 @@ public class GameHUD : MonoBehaviour
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText)  resultText.text = "상대방이 나갔습니다.";
+        if (resultText) resultText.text = "상대방이 나갔습니다.";
         if (rematchButton) rematchButton.gameObject.SetActive(false); // 나갔는데 리매치는 불가
     }
 
+    // (1) 상대방이 Undo 요청했을 때 (버튼 ON)
     public void ShowUndoPopup()
     {
         inputManager?.BlockInput(); // 팝업이 뜨면 입력 차단
         undoPopupPanel.SetActive(true);
         undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
+        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
+        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(true);
+
+        // 요청을 받는 즉시 타이머 일시정지
+        if (timerManager != null) timerManager.PauseTimer();
     }
 
-    public void HideUndoRequestPopup(){
-    inputManager?.UnblockInput(); // 팝업이 닫히면 입력 허용
-    undoPopupPanel.SetActive(false);
+    // (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
+    public void ShowUndoWaitingPopup()
+    {
+        undoPopupPanel.SetActive(true);
+        undoRequestText.text = "상대방의 응답을 기다리는 중...";
+        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
+        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
+
+        // [네트워크 동기화] 내가 요청을 보낸 순간 내 타이머도 멈춤!
+        if (timerManager != null) timerManager.PauseTimer();
+    }
+
+    // (3) 상대방이 응답했을 때 결과를 잠깐 보여주고 닫기 (버튼 OFF 유지)
+    public async void ShowUndoResultAndClose(bool isAccepted)
+    {
+        if (!undoPopupPanel.activeSelf) undoPopupPanel.SetActive(true);
+
+        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
+        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
+
+        undoRequestText.text = isAccepted ? "상대방이 무르기를 수락했습니다!" : "상대방이 무르기를 거절했습니다.";
+
+        // 수락/거절 결과에 따라 타이머 처리
+        if (timerManager != null)
+        {
+            if (isAccepted) timerManager.RestartTurnTimer(); // 수락 시 턴 초기화
+            else timerManager.ResumeTimer(); // 거절 시 남은 시간부터 재개
+        }
+
+        // 1.5초 동안 결과 텍스트 보여주고 팝업 닫기
+        await Task.Delay(1500);
+
+        if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
+    }
+
+    public void HideUndoRequestPopup()
+    {
+        undoPopupPanel.SetActive(false);
     }
 
     // ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
@@ -193,6 +248,10 @@ public class GameHUD : MonoBehaviour
     {   
         inputManager?.UnblockInput();
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
+
+        // 내가 수락했으니 턴이 뒤로 감 -> 타이머도 처음부터(30초) 다시 시작
+        if (timerManager != null) timerManager.RestartTurnTimer();
+
         gameManager.ReplyToUndoRequest(true); // GameManager에게 'true(수락)' 토스
     }
 
@@ -201,6 +260,10 @@ public class GameHUD : MonoBehaviour
     {
         inputManager?.UnblockInput();
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
+
+        // 내가 거절했으니 턴은 그대로 유지 -> 멈췄던 타이머를 다시 흐르게 함
+        if (timerManager != null) timerManager.ResumeTimer();
+
         gameManager.ReplyToUndoRequest(false); // GameManager에게 'false(거절)' 토스
     }
 
@@ -250,6 +313,14 @@ public class GameHUD : MonoBehaviour
     {
         // TODO: 기존 아이콘 다 지우고 리스트 돌면서 새로 생성
         // 상화님은 여기서 아이콘 프리팹 생성하는 로직만 짜시면 됨.
+    }
+
+    // -------------------------------------------------------
+    // AI가 생각 중일 때 버튼들을 클릭 못 하게(회색으로) 막는 함수
+    public void SetInteractableButtons(bool isInteractable)
+    {
+        if (restartButton != null) restartButton.interactable = isInteractable;
+        if (undoButton != null) undoButton.interactable = isInteractable;
     }
 
 }

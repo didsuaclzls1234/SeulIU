@@ -144,7 +144,8 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameHUD.ShowRoleAssigned(myColor);
             gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
             gameHUD.DisplayMyRole(myColor);
-            gameHUD.skillSelectPanel?.SetActive(true);  
+            gameHUD.skillSelectPanel?.SetActive(true);
+            timerManager.StartSkillSelectTimer();
         }
     }
 
@@ -158,6 +159,12 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         // GameManager로 색상과 순서까지 전부 넘겨서 안전하게 처리
         gameManager.ReceiveNetworkMove(x, y, receivedColor, seq);
+
+        // 상대가 뒀으니 내 타이머를 30초부터 새로 시작
+        if (timerManager != null)
+        {
+            timerManager.RestartTurnTimer();
+        }
     }
 
     // 3. 상대방 화면에서 게임 끝났다고 날아올 때
@@ -210,7 +217,12 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     private void HandleUndoReply(object[] data)
     {
     bool isAccepted = (bool)data[0];
-    gameManager.ReceiveNetworkUndoReply(isAccepted);
+        // 결과 보여주고 타이머 재개하는 함수
+        if (gameHUD != null)
+        {
+            gameHUD.ShowUndoResultAndClose(isAccepted);
+        }
+        gameManager.ReceiveNetworkUndoReply(isAccepted);
     }
 
     private void HandleSyncTimer(object[] data)
@@ -250,7 +262,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             SendSyncTimer();
 
         // 타이머 재시작
-        timerManager?.StartTimer();
+        timerManager?.StartTurnTimer();
     }
 
     // [발신] 내가 이기거나 무승부 났을 때
