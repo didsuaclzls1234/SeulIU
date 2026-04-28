@@ -4,15 +4,11 @@ using UnityEngine;
 public class BoardManager : MonoBehaviour
 {
     public RuleManager ruleManager;
+    public GameManager gameManager;
 
     [Header("Board Settings")]
     public int boardSize = 19;  // 19x19 격자
     public float gridSize = 1f; // -> InputManager의 gridSize와 동일해야 함!
-
-    [Header("Prefabs")]         // ** 추후 아트 작업 마무리 시 교체
-    public GameObject blackStonePrefab; // 흑돌 프리팹
-    public GameObject whiteStonePrefab; // 백돌 프리팹
-    public GameObject forbiddenMarkPrefab; // ❌(못 놓는 자리 표시) 프리팹
 
     [Header("Camera Auto Setup")]
     public Camera mainCamera; // 인스펙터에서 MainCamera 연결
@@ -28,14 +24,27 @@ public class BoardManager : MonoBehaviour
     private List<GameObject> activeStones = new List<GameObject>();
     private List<GameObject> forbiddenMarks = new List<GameObject>(); // '❌' 마커들을 담아둘 리스트
 
+    // 좌표(Vector2Int)별로 떠 있는 자물쇠 오브젝트를 기억하는 사전
+    private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
+    // ---------------------------------------------------
+    // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
+    public struct SealInfo
+    {
+        public int turns;
+        public StoneColor owner;
+    }
+    // 봉인 스킬 관련: 0이면 정상, 1 이상이면 남은 봉인 턴 수
+    public SealInfo[,] sealedGrid;
 
     void Awake()
     {
         // 게임 시작과 동시에 15x15 짜리 빈 배열 생성
         grid = new int[boardSize, boardSize];
+        sealedGrid = new SealInfo[boardSize, boardSize];
+
         Debug.Log($"[BoardManager] {boardSize}x{boardSize} 오목판 데이터 생성 완료!");
 
-        AdjustCameraToBoardSize(); // 시작 시 카메라 자동 세팅!
+        AdjustCameraToBoardSize(); // 시작 시 카메라 자동 세팅
     }
 
     // 1: 돌을 둘 수 있는 정상적인 위치인지 검사
@@ -55,7 +64,19 @@ public class BoardManager : MonoBehaviour
             return false;
         }
 
-        // 1-3. 현재 오목 규칙 기준으로, 돌을 놔도 되는지 RuleManager에게 검사 요청
+        // 1-3. 스킬로 봉인된 칸인지 검사
+        if (sealedGrid[x, y].turns > 0)
+        {
+            // 기획: 나는 놓을 수 있음. 상대방만 못 놓음
+            // 방금 턴을 넘겨받은 사람이 상대방이라면 막기
+            if (playerColor != sealedGrid[x, y].owner)
+            {
+                if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+                return false;
+            }
+        }
+
+        // 1-4. 현재 오목 규칙 기준으로, 돌을 놔도 되는지 RuleManager에게 검사 요청
         if (ruleManager != null && ruleManager.IsForbiddenMove(x, y, (int)playerColor, grid, boardSize, silent))
         {
             Debug.LogWarning("❌ 금수 자리입니다! 돌을 놓을 수 없습니다.");
@@ -135,6 +156,10 @@ public class BoardManager : MonoBehaviour
         // ❌ 마커도 청소
         foreach (GameObject mark in forbiddenMarks) mark.SetActive(false);
         forbiddenMarks.Clear();
+
+        // '봉인' 마커 청소
+        foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
+        activeSealMarkers.Clear();
 
         // 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
         System.Array.Clear(grid, 0, grid.Length);
@@ -327,6 +352,79 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 현재 '봉인'된 위치 남은 지속턴과 함께 기록하기
+    public void ApplySeal(int x, int y, int turns, StoneColor ownerColor)
+    {
+        sealedGrid[x, y].turns = turns;
+        sealedGrid[x, y].owner = ownerColor;
+
+        Vector2Int posKey = new Vector2Int(x, y);
+
+        // 이미 그 자리에 자물쇠가 떠 있지 않다면 생성
+        if (!activeSealMarkers.ContainsKey(posKey))
+        {
+            // 바둑판 바닥보다 살짝 위(0.15f)에 띄움
+            Vector3 spawnPos = new Vector3(x * gridSize, 0.15f, y * gridSize);
+            GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+
+            if (marker == null)
+            {
+                Debug.LogError("[ObjectPooler] 'SealMarker'를 찾을 수 없습니다! 인스펙터 Pool 설정을 확인하세요.");
+                return;
+            }
+
+            // 자물쇠 색상 변경 로직
+            MeshRenderer mr = marker.GetComponent<MeshRenderer>();
+
+            if (mr != null)
+            {
+                // OCP 원칙 준수: 원본 머티리얼을 훼손하지 않기 위해 인스턴스를 만듦
+                // (mr.material을 부르는 순간 인스턴스가 자동으로 생성됨)
+                Material instancedMat = mr.material;
+
+                Color finalColor;
+                if (ownerColor == gameManager.localPlayerColor)
+                {
+                    finalColor = new Color(0.2f, 0.6f, 1f, 0.8f); // 아군 (파랑)
+                }
+                else
+                {
+                    finalColor = new Color(1f, 0.2f, 0.2f, 0.8f); // 적군 (빨강)
+                }
+
+                // URP Unlit/Lit 셰이더의 메인 색상 변수 이름은 보통 "_BaseColor" 입니다.
+                // (만약 빌트인 Standard 셰이더라면 "_Color" 입니다.)
+                if (instancedMat.HasProperty("_BaseColor"))
+                {
+                    instancedMat.SetColor("_BaseColor", finalColor);
+                }
+                else if (instancedMat.HasProperty("_Color")) // 빌트인 대응
+                {
+                    instancedMat.SetColor("_Color", finalColor);
+                }
+            }
+
+            // 사전에 등록!
+            activeSealMarkers.Add(posKey, marker);
+        }
+
+        Debug.Log($"({x}, {y}) 좌표에 자물쇠 이펙트 생성 완료!");
+    }
+
+    // 턴이 다 되어서 자물쇠를 치워야 할 때 부르는 함수
+    public void RemoveSealEffect(int x, int y)
+    {
+        Vector2Int posKey = new Vector2Int(x, y);
+
+        // 사전에 해당 좌표 자물쇠가 있는지 확인
+        if (activeSealMarkers.TryGetValue(posKey, out GameObject marker))
+        {
+            marker.SetActive(false); // 씬에서 숨기기 (풀러 반환)
+            activeSealMarkers.Remove(posKey); // 사전에서도 삭제
+        }
+    }
+
+    // 해당 스킬이 어떤 돌(내 돌 or 상대 돌)을 수정하는가?
     public void ShowSkillTargetMarkers_My(StoneColor myColor)
     {
         HideSkillTargetMarkers();

@@ -8,4 +8,5 @@ public struct SkillData
     public int cooldown;
     public int durationTurn; // 지속 턴 (없으면 0)
     public string targetType; // "enemy", "my", "cell", "none"
+    public string description; // 스킬 설명
 }
