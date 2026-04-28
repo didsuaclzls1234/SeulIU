@@ -17,6 +17,8 @@ public class ActiveEffect
 
 public class SkillManager : MonoBehaviour
 {
+    // 모든 스킬의 기본 정보를 담아둘 딕셔너리
+    public Dictionary<int, SkillData> skillDatabase = new Dictionary<int, SkillData>();
 
     [Header("Core & Network")]
     public GameManager gameManager;
@@ -61,16 +63,16 @@ public class SkillManager : MonoBehaviour
     // 2. 팩토리 메서드 (OCP 원칙: 새로운 스킬이 생기면 여기 case만 추가하면 됨)
     private SkillBase CreateSkillByID(int id)
     {
-        // 임시 데이터 뼈대 (나중엔 CSV나 ScriptableObject에서 불러옴)
-        SkillData data = new SkillData { skillId = id };
+        // CSV에서 미리 로드한 데이터를 가져옴
+        if (!skillDatabase.TryGetValue(id, out SkillData data)) return null;
 
         switch (id)
         {
             case 5:
-                data.spCost = 4;
-                data.cooldown = 2;
-                data.skillName = "제거 (Erase)";
-                data.type = "공격형";
+                //data.spCost = 4;
+                //data.cooldown = 2;
+                //data.skillName = "제거 (Erase)";
+                //data.type = "공격형";
                 return new SkillErase(data); // 👈 3단계에서 만들 클래스
 
             // 나중에 다른 스킬들도 여기에 case 추가
@@ -82,6 +84,12 @@ public class SkillManager : MonoBehaviour
     }
 
     // ---------------------------------------------
+
+    private void Awake() // Start보다 먼저 실행되게
+    {
+        LoadSkillDataFromCSV();
+    }
+
     // 1. 초기화 시 타임아웃 이벤트 구독 (GameManager가 상태를 바꿀 때 타이머를 켜준다고 가정)
     private void Start()
     {
@@ -91,6 +99,29 @@ public class SkillManager : MonoBehaviour
         }
     }
 
+    private void LoadSkillDataFromCSV()
+    {
+        // Resources 폴더 안의 SkillData.csv 읽기
+        TextAsset csvFile = Resources.Load<TextAsset>("SkillData");
+        if (csvFile == null) return;
+
+        string[] lines = csvFile.text.Split('\n');
+        for (int i = 1; i < lines.Length; i++) // i=1 (첫 줄 헤더 스킵)
+        {
+            if (string.IsNullOrWhiteSpace(lines[i])) continue;
+            string[] columns = lines[i].Split(',');
+
+            SkillData data = new SkillData();
+            data.skillId = int.Parse(columns[0]);
+            data.skillName = columns[1];
+            data.type = columns[2];
+            data.spCost = int.Parse(columns[3]);
+            // ... 나머지 데이터 파싱 ... // + 설명
+
+            skillDatabase.Add(data.skillId, data);
+        }
+        Debug.Log($"스킬 데이터 {skillDatabase.Count}개 로드 완료!");
+    }
 
     /// <summary>
     /// 네트워크 담당자님이 스킬 선택 정보를 동기화했을 때 호출할 함수입니다.
