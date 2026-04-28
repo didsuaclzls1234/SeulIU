@@ -47,10 +47,13 @@ MonoBehaviour:
   pools:
   - tag: BlackStone
     prefab: {fileID: 8342665929519426539, guid: 111bdec5bdb36bc4a816ff50fb8394ce, type: 3}
-    size: 150
+    size: 250
   - tag: WhiteStone
     prefab: {fileID: 104304899901899556, guid: 63c63fabf36e7c049afba02281a8f0f5, type: 3}
-    size: 150
+    size: 250
   - tag: ForbiddenMark
     prefab: {fileID: 5236384367792362936, guid: 5034d6f67d1e9114daf7e096222a8f70, type: 3}
-    size: 150
+    size: 50
+  - tag: SealMarker
+    prefab: {fileID: 8864367706667506944, guid: 4bff2227f16be954088261c8ca07155d, type: 3}
+    size: 50

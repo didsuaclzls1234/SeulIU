@@ -17,6 +17,8 @@ public class ActiveEffect
 
 public class SkillManager : MonoBehaviour
 {
+    // 모든 스킬의 기본 정보를 담아둘 딕셔너리
+    public Dictionary<int, SkillData> skillDatabase = new Dictionary<int, SkillData>();
 
     [Header("Core & Network")]
     public GameManager gameManager;
@@ -61,18 +63,15 @@ public class SkillManager : MonoBehaviour
     // 2. 팩토리 메서드 (OCP 원칙: 새로운 스킬이 생기면 여기 case만 추가하면 됨)
     private SkillBase CreateSkillByID(int id)
     {
-        // 임시 데이터 뼈대 (나중엔 CSV나 ScriptableObject에서 불러옴)
-        SkillData data = new SkillData { skillId = id };
+        // CSV에서 미리 로드한 데이터를 가져옴
+        if (!skillDatabase.TryGetValue(id, out SkillData data)) return null;
 
         switch (id)
         {
             case 1:
-                data.spCost = 2;
-                data.cooldown = 3;
-                data.skillName = "돌 이동 (Stone Shift)";
-                data.type = "특수형";
-                data.targetType = "my";
                 return new Skill_1_StoneShift(data); // 
+            case 2:
+                return new Skill_2_Seal(data);
             case 3:
                 data.spCost = 3;
                 data.cooldown = 4;
@@ -88,12 +87,7 @@ public class SkillManager : MonoBehaviour
                 data.targetType = "none";
                 return new Skill_4_AntiMagic(data);
             case 5:
-                data.spCost = 4;
-                data.cooldown = 2;
-                data.skillName = "제거 (Erase)";
-                data.type = "공격형";
-                data.targetType = "enemy";
-                return new SkillErase(data); // 👈 3단계에서 만들 클래스
+                return new SkillErase(data); 
 
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
@@ -104,6 +98,12 @@ public class SkillManager : MonoBehaviour
     }
 
     // ---------------------------------------------
+
+    private void Awake() // Start보다 먼저 실행되게
+    {
+        LoadSkillDataFromCSV();
+    }
+
     // 1. 초기화 시 타임아웃 이벤트 구독 (GameManager가 상태를 바꿀 때 타이머를 켜준다고 가정)
     private void Start()
     {
@@ -113,6 +113,41 @@ public class SkillManager : MonoBehaviour
         }
     }
 
+    private void LoadSkillDataFromCSV()
+    {
+        // Resources 폴더 안의 SkillData.csv 읽기
+        TextAsset csvFile = Resources.Load<TextAsset>("SkillData");
+        if (csvFile == null)
+        {
+            Debug.LogError("Resources 폴더에 SkillData.csv 파일이 없습니다!");
+            return;
+        }
+
+        string[] lines = csvFile.text.Split('\n');
+        for (int i = 1; i < lines.Length; i++) // 첫 줄 헤더 스킵
+        {
+            if (string.IsNullOrWhiteSpace(lines[i])) continue;
+
+            // 쉼표로 데이터 쪼개기 (내용에 쉼표가 들어가면 배열이 꼬이니 주의!)
+            string[] columns = lines[i].Split(',');
+
+            // 엑셀 빈 칸이나 줄바꿈 처리 방어
+            if (columns.Length < 8) continue;
+
+            SkillData data = new SkillData();
+            data.skillId = int.Parse(columns[0]);
+            data.skillName = columns[1];
+            data.type = columns[2];
+            data.spCost = int.Parse(columns[3]);
+            data.cooldown = int.Parse(columns[4]);
+            data.durationTurn = int.Parse(columns[5]); // 지속 턴
+            data.targetType = columns[6]; // 타겟 타입
+            data.description = columns[7].Trim(); // 설명 (끝에 붙은 쓸데없는 공백/줄바꿈 제거)
+
+            skillDatabase.Add(data.skillId, data);
+        }
+        Debug.Log($"[SkillManager] 스킬 데이터 {skillDatabase.Count}개 로드 완료!");
+    }
 
     /// <summary>
     /// 네트워크 담당자님이 스킬 선택 정보를 동기화했을 때 호출할 함수입니다.
@@ -421,13 +456,29 @@ public class SkillManager : MonoBehaviour
         selectedSkillSlot = slotIndex;
         gameManager.currentState = GameState.SkillTargeting;
 
+
         // 비주얼 효과 시작: 보드의 모든 자신/상대 돌에 초록색 테두리 표시
         // targetType 기준으로 하이라이트 분기
         if (selectedSkill.data.targetType == "my")
+        {
             gameManager.board.ShowSkillTargetMarkers_My(gameManager.localPlayerColor);
-        else if (selectedSkill.data.targetType == "enemy")
+        }
+        else if (selectedSkill.data.targetType == "enemy") 
+        { 
             gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
-        //gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+            //gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+        }
+        else if (selectedSkill.data.targetType == "cell")
+        {
+            // TODO: 빈 칸에 호버될 때 특별한 표시를 하거나, 전체 빈칸에 마커 띄우기
+            // (일단 마커 안 띄우고 조준점(InputManager)만 바뀌게 냅둬도 무방)
+            gameManager.board.HideSkillTargetMarkers();
+        }
+        else // "none" (타겟팅 필요 없는 즉발 스킬. 예: 4번 안티매직)
+        {
+            // 타겟팅 모드 진입 안 하고 바로 스킬 실행!
+            ExecuteSkillAt(-1, -1);
+        }
 
         Debug.Log($"==== [{selectedSkill.data.skillName}] 타겟팅 모드 진입! ====");
     }

@@ -24,49 +24,54 @@ public class Skill_1_StoneShift : SkillBase
         int tx = targetX[0];
         int ty = targetY[0];
 
+        // 현재 이 스킬을 시전한 사람의 색상 (네트워크 양쪽에서 동일함)
+        StoneColor casterColor = gm.currentTurnColor;
+
         // 1. 선택한 칸이 내 돌인지 검증
-        if (board.grid[tx, ty] != (int)gm.localPlayerColor)
+        if (board.grid[tx, ty] != (int)casterColor)
         {
-            Debug.LogWarning("[StoneShift] 선택한 칸이 내 돌이 아닙니다!");
+            Debug.LogWarning("[StoneShift] 시전자의 돌이 아닙니다!");
             return false;
         }
 
-        // 2. 합법적인 빈 칸 수집 (금수 제외)
-        List<Vector2Int> validDestinations = new List<Vector2Int>();
-        for (int x = 0; x < board.boardSize; x++)
+        // 네트워크 패킷에 담겨올(또는 담을) 목적지 좌표
+        int destX = targetX[1];
+        int destY = targetY[1];
+
+        // 2. 합법적인 빈 칸 수집 (금수 제외) - destX가 -1 이면 내가 직접 클릭한 것 -> 랜덤 연산 수행
+        if (destX == -1)
         {
-            for (int y = 0; y < board.boardSize; y++)
+            List<Vector2Int> validDestinations = new List<Vector2Int>();
+            for (int x = 0; x < board.boardSize; x++)
+                for (int y = 0; y < board.boardSize; y++)
+                    if (!(x == tx && y == ty) && board.IsValidMove(x, y, casterColor, silent: true))
+                        validDestinations.Add(new Vector2Int(x, y));
+
+            if (validDestinations.Count == 0)
             {
-                // 원래 자리는 제외
-                if (x == tx && y == ty) continue;
-
-                // IsValidMove로 금수 포함 합법적 빈 칸만 수집
-                if (board.IsValidMove(x, y, gm.localPlayerColor, silent: true))
-                    validDestinations.Add(new Vector2Int(x, y));
+                Debug.LogWarning("[StoneShift] 이동 가능한 합법적인 빈 칸이 없습니다!");
+                return false;
             }
-        }
 
-        if (validDestinations.Count == 0)
-        {
-            Debug.LogWarning("[StoneShift] 이동 가능한 합법적인 빈 칸이 없습니다!");
-            return false;
-        }
+            // 3. 랜덤 목적지 선택
+            Vector2Int dest = validDestinations[Random.Range(0, validDestinations.Count)];
+            destX = dest.x;
+            destY = dest.y;
 
-        // 3. 랜덤 목적지 선택
-        Vector2Int dest = validDestinations[Random.Range(0, validDestinations.Count)];
+            // 상대방에게 보낼 패킷용으로 좌표 저장
+            targetX[1] = destX;
+            targetY[1] = destY;
+        }
 
         // 4. 원래 자리 제거 (데이터 + 3D 오브젝트)
         board.grid[tx, ty] = 0;
         board.RemoveStoneObjectAt(tx, ty);
 
         // 5. 목적지에 배치 (데이터 + 3D 오브젝트)
-        board.PlaceStone(dest.x, dest.y, gm.localPlayerColor);
+        board.PlaceStone(destX, destY, casterColor);
 
-        // 6. 네트워크 전송용 목적지 저장
-        targetX[1] = dest.x;
-        targetY[1] = dest.y;
+        Debug.Log($"[StoneShift] ({tx},{ty}) → ({destX},{destY}) 이동 완료!");
 
-        Debug.Log($"[StoneShift] ({tx},{ty}) → ({dest.x},{dest.y}) 이동 완료!");
         return true;
     }
 }

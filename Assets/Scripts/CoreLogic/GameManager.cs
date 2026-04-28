@@ -221,10 +221,32 @@ public class GameManager : MonoBehaviour
         }
 
         // 턴을 넘기기 직전에 방금 돌을 둔 사람의 SP를 올려주고 쿨타임 깎기
-        // if (skillManager != null && extraPlacementCount == 0)
-        // {
-        //     skillManager.AddSPOnTurnEnd(playerColor);
-        // }
+        if (skillManager != null)
+        {
+            skillManager.AddSPOnTurnEnd(playerColor);
+        }
+
+        // 턴 넘기기 직전에 봉인 턴 수 감소 (코어 시스템)
+        for (int i = 0; i < board.boardSize; i++)
+        {
+            for (int j = 0; j < board.boardSize; j++)
+            {
+                if (board.sealedGrid[i, j].turns > 0)
+                {
+                    // 방금 돌을 둔 사람(playerColor)이 봉인의 주인일 때만 턴을 깎음
+                    if (board.sealedGrid[i, j].owner == playerColor)
+                    {
+                        board.sealedGrid[i, j].turns--;
+
+                        if (board.sealedGrid[i, j].turns == 0)
+                        {
+                            board.RemoveSealEffect(i, j);
+                            Debug.Log($"({i}, {j}) 봉인이 해제되었습니다.");
+                        }
+                    }
+                }
+            }
+        }
 
         // 5. extraPlacementCount가 있으면 랜덤 착수만 하고 턴 넘기기 없이 return
         
