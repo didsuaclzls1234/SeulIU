@@ -25,8 +25,9 @@ public class BoardManager : MonoBehaviour
     private List<GameObject> activeStones = new List<GameObject>();
     private List<GameObject> forbiddenMarks = new List<GameObject>(); // '❌' 마커들을 담아둘 리스트
 
-    // 좌표(Vector2Int)별로 떠 있는 자물쇠 오브젝트를 기억하는 사전
+    // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패) 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
+    private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
     public struct SealInfo
@@ -36,12 +37,15 @@ public class BoardManager : MonoBehaviour
     }
     // 봉인 스킬 관련: 0이면 정상, 1 이상이면 남은 봉인 턴 수
     public SealInfo[,] sealedGrid;
+    // 보호막 여부를 저장하는 배열 (true면 보호받음)
+    public bool[,] shieldGrid;
 
     void Awake()
     {
         // 게임 시작과 동시에 15x15 짜리 빈 배열 생성
         grid = new int[boardSize, boardSize];
         sealedGrid = new SealInfo[boardSize, boardSize];
+        shieldGrid = new bool[boardSize, boardSize];
 
         Debug.Log($"[BoardManager] {boardSize}x{boardSize} 오목판 데이터 생성 완료!");
 
@@ -165,9 +169,14 @@ public class BoardManager : MonoBehaviour
         foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
         activeSealMarkers.Clear();
 
+        // '신의 가호' 방패 아이콘 청소
+        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        activeShieldMarkers.Clear();
+
         // 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
         System.Array.Clear(grid, 0, grid.Length);
-
+        System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
+        
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }
 
@@ -428,6 +437,26 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 보호막 씌우는 핵심 API
+    public void ApplyShield(int x, int y)
+    {
+        shieldGrid[x, y] = true;
+        Vector2Int posKey = new Vector2Int(x, y);
+
+        if (!activeShieldMarkers.ContainsKey(posKey))
+        {
+            // 바둑돌 위에 예쁘게 씌워지도록 높이 조절
+            Vector3 spawnPos = new Vector3(x * gridSize, 0.6f, y * gridSize);
+            GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+
+            if (marker != null)
+            {
+                activeShieldMarkers.Add(posKey, marker);
+            }
+        }
+        Debug.Log($"({x}, {y}) 좌표 돌에 신의 가호(보호막)가 부여되었습니다!");
+    }
+
     // 해당 스킬이 어떤 돌(내 돌 or 상대 돌)을 수정하는가?
     public void ShowSkillTargetMarkers_My(StoneColor myColor)
     {
@@ -449,7 +478,25 @@ public class BoardManager : MonoBehaviour
                     outline.EnableOutline(Color.blue); // 내 돌은 파란색 테두리
             }
         }
-    }    
+    }
+
+    // 특정 좌표에 있는 돌 오브젝트를 반환하는 헬퍼 함수
+    public GameObject GetStoneObjectAt(int x, int y)
+    {
+        float targetWorldX = x * gridSize;
+        float targetWorldZ = y * gridSize;
+
+        foreach (GameObject stone in activeStones)
+        {
+            if (stone.activeSelf &&
+                Mathf.Approximately(stone.transform.position.x, targetWorldX) &&
+                Mathf.Approximately(stone.transform.position.z, targetWorldZ))
+            {
+                return stone;
+            }
+        }
+        return null;
+    }
 
     public void HideSkillTargetMarkers()
     {

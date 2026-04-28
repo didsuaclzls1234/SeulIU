@@ -63,8 +63,8 @@ public class Skill_5_Erase : SkillBase
         {
             for (int y = 0; y < board.boardSize; y++)
             {
-                // 상대방 돌이면서, 내가 방금 지운 좌표가 아닌 것들을 수집
-                if (board.grid[x, y] == enemyColorInt && !(x == tx && y == ty))
+                // 상대방 돌이면서, 내가 방금 지운 좌표가 아닌 것, 보호막(shieldGrid)이 없는 돌만 수집
+                if (board.grid[x, y] == enemyColorInt && !(x == tx && y == ty) && !board.shieldGrid[x, y])
                 {
                     otherEnemyStones.Add(new Vector2Int(x, y));
                 }
@@ -104,6 +104,11 @@ public class Skill_5_Erase : SkillBase
         if (x < 0 || x >= board.boardSize || y < 0 || y >= board.boardSize) return false;
         if (board.grid[x, y] == 0) return false; // 빈 칸
         if (board.grid[x, y] == (int)gm.currentTurnColor) return false; // 내 돌
+        if (board.shieldGrid[x, y])
+        {
+            Debug.LogWarning("[Erase] 신의 가호로 보호받는 돌은 제거할 수 없습니다!");
+            return false;
+        }
         return true;
     }
 

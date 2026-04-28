@@ -70,25 +70,17 @@ public class SkillManager : MonoBehaviour
         switch (id)
         {
             case 1:
-                return new Skill_1_StoneShift(data); // 
+                return new Skill_1_StoneShift(data); 
             case 2:
                 return new Skill_2_Seal(data);
             case 3:
-                data.spCost = 3;
-                data.cooldown = 4;
-                data.skillName = "이중 착수 (Double Down)";
-                data.type = "공격형";
-                data.targetType = "none";
-                return new Skill_3_DoubleDown(data); // 👈 3단계에서 만들 클래스
+                return new Skill_3_DoubleDown(data); 
             case 4:
-                data.spCost = 3;
-                data.cooldown = 4;
-                data.skillName = "안티매직 (AntiMagic)";
-                data.type = "방어형";
-                data.targetType = "none";
                 return new Skill_4_AntiMagic(data);
             case 5:
-                return new Skill_5_Erase(data); 
+                return new Skill_5_Erase(data);
+            case 8:
+                return new Skill_8_GodBless(data);
 
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
@@ -247,6 +239,7 @@ public class SkillManager : MonoBehaviour
             case 3: ReceiveSkill_DoubleDown(xs, ys); break;
             case 4: ReceiveSkill_AntiMagic(xs, ys); break;
             case 5: ReceiveSkill_Erase(xs, ys);      break;
+            case 8: ReceiveSkill_GodBless(xs, ys); break;
             default:
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
@@ -307,22 +300,6 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    public void DecreaseSealedTurns()
-    {
-        if (sealedTurnsRemaining > 0)
-        {
-            sealedTurnsRemaining--;
-            Debug.Log($"[SkillManager] 봉인 턴 감소 → 남은 턴: {sealedTurnsRemaining}");
-
-            // 0이 되면 자물쇠 치우기
-            if (sealedTurnsRemaining == 0 && gameManager.gameHUD != null)
-            {
-                gameManager.gameHUD.SetOpponentSilencedUI(false);
-                gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
-            }
-        }
-    }
-    
     //  5번스킬 분리
     private void ReceiveSkill_Erase(int[] xs, int[] ys)
     {
@@ -332,6 +309,27 @@ public class SkillManager : MonoBehaviour
             {
                 gameManager.board.grid[xs[i], ys[i]] = 0;
                 gameManager.board.RemoveStoneObjectAt(xs[i], ys[i]);
+            }
+        }
+    }
+
+    // 8번 스킬
+    private void ReceiveSkill_GodBless(int[] xs, int[] ys)
+    {
+        // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
+        for (int i = 0; i < xs.Length; i++)
+        {
+            if (xs[i] != -1 && ys[i] != -1)
+            {
+                // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
+                gameManager.board.ApplyShield(xs[i], ys[i]);
+
+                // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
+                GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
+                if (stone != null)
+                {
+                    gameManager.board.BlinkStoneEffect(stone, Color.cyan);
+                }
             }
         }
     }
@@ -355,6 +353,22 @@ public class SkillManager : MonoBehaviour
         if (isLocalPlayerReady && isRemotePlayerReady)
         {
             gameManager.StartGameAfterSelection();
+        }
+    }
+
+    public void DecreaseSealedTurns()
+    {
+        if (sealedTurnsRemaining > 0)
+        {
+            sealedTurnsRemaining--;
+            Debug.Log($"[SkillManager] 봉인 턴 감소 → 남은 턴: {sealedTurnsRemaining}");
+
+            // 0이 되면 자물쇠 치우기
+            if (sealedTurnsRemaining == 0 && gameManager.gameHUD != null)
+            {
+                gameManager.gameHUD.SetOpponentSilencedUI(false);
+                gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
+            }
         }
     }
 
@@ -387,6 +401,10 @@ public class SkillManager : MonoBehaviour
 
         // 생성 끝났으니 하단 버튼 이벤트 연결
         BindSkillButtons();
+
+        // 게임 시작 직후, 현재 SP와 쿨타임에 맞춰 버튼 상태를 즉시 업데이트
+        // 내 로컬 플레이어 컬러를 넘겨서 내 버튼들을 새로고침합니다.
+        UpdateSkillDurations(gameManager.localPlayerColor);
     }
 
     // 2. 스킬 선택 시간 종료 시 로직
