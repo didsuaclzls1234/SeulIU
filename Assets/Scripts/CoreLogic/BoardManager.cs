@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class BoardManager : MonoBehaviour
@@ -24,8 +25,9 @@ public class BoardManager : MonoBehaviour
     private List<GameObject> activeStones = new List<GameObject>();
     private List<GameObject> forbiddenMarks = new List<GameObject>(); // '❌' 마커들을 담아둘 리스트
 
-    // 좌표(Vector2Int)별로 떠 있는 자물쇠 오브젝트를 기억하는 사전
+    // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패) 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
+    private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
     public struct SealInfo
@@ -35,12 +37,15 @@ public class BoardManager : MonoBehaviour
     }
     // 봉인 스킬 관련: 0이면 정상, 1 이상이면 남은 봉인 턴 수
     public SealInfo[,] sealedGrid;
+    // 보호막 여부를 저장하는 배열 (true면 보호받음)
+    public bool[,] shieldGrid;
 
     void Awake()
     {
         // 게임 시작과 동시에 15x15 짜리 빈 배열 생성
         grid = new int[boardSize, boardSize];
         sealedGrid = new SealInfo[boardSize, boardSize];
+        shieldGrid = new bool[boardSize, boardSize];
 
         Debug.Log($"[BoardManager] {boardSize}x{boardSize} 오목판 데이터 생성 완료!");
 
@@ -118,7 +123,10 @@ public class BoardManager : MonoBehaviour
     public void UpdateForbiddenMarks(StoneColor currentPlayerColor)
     {
         // 1. 이전 턴에 그려둔 ❌ 마커들 싹 지우기
-        foreach (GameObject mark in forbiddenMarks) Destroy(mark);
+        foreach (GameObject mark in forbiddenMarks)
+        {
+            if (mark != null) mark.SetActive(false);
+        }
         forbiddenMarks.Clear();
 
         if (ruleManager == null) return;
@@ -161,9 +169,14 @@ public class BoardManager : MonoBehaviour
         foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
         activeSealMarkers.Clear();
 
+        // '신의 가호' 방패 아이콘 청소
+        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        activeShieldMarkers.Clear();
+
         // 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
         System.Array.Clear(grid, 0, grid.Length);
-
+        System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
+        
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }
 
@@ -424,6 +437,26 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 보호막 씌우는 핵심 API
+    public void ApplyShield(int x, int y)
+    {
+        shieldGrid[x, y] = true;
+        Vector2Int posKey = new Vector2Int(x, y);
+
+        if (!activeShieldMarkers.ContainsKey(posKey))
+        {
+            // 바둑돌 위에 예쁘게 씌워지도록 높이 조절
+            Vector3 spawnPos = new Vector3(x * gridSize, 0.6f, y * gridSize);
+            GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+
+            if (marker != null)
+            {
+                activeShieldMarkers.Add(posKey, marker);
+            }
+        }
+        Debug.Log($"({x}, {y}) 좌표 돌에 신의 가호(보호막)가 부여되었습니다!");
+    }
+
     // 해당 스킬이 어떤 돌(내 돌 or 상대 돌)을 수정하는가?
     public void ShowSkillTargetMarkers_My(StoneColor myColor)
     {
@@ -445,7 +478,25 @@ public class BoardManager : MonoBehaviour
                     outline.EnableOutline(Color.blue); // 내 돌은 파란색 테두리
             }
         }
-    }    
+    }
+
+    // 특정 좌표에 있는 돌 오브젝트를 반환하는 헬퍼 함수
+    public GameObject GetStoneObjectAt(int x, int y)
+    {
+        float targetWorldX = x * gridSize;
+        float targetWorldZ = y * gridSize;
+
+        foreach (GameObject stone in activeStones)
+        {
+            if (stone.activeSelf &&
+                Mathf.Approximately(stone.transform.position.x, targetWorldX) &&
+                Mathf.Approximately(stone.transform.position.z, targetWorldZ))
+            {
+                return stone;
+            }
+        }
+        return null;
+    }
 
     public void HideSkillTargetMarkers()
     {
@@ -459,7 +510,55 @@ public class BoardManager : MonoBehaviour
             }
         }
     }
-    
+
+    // UX/UI 요소 ---------------------------------------------------------
+    // 1. 돌이 생성될 때 깜빡임 ('3번' 이중 착수 등)
+    public void BlinkStoneEffect(GameObject stoneObj, Color blinkColor)
+    {
+        if (stoneObj != null && stoneObj.activeSelf)
+        {
+            StartCoroutine(BlinkRoutine(stoneObj.GetComponent<MeshRenderer>(), blinkColor));
+        }
+    }
+
+    // 2. 빈 자리가 깜빡임 ('5번' 제거 스킬 등 - 바닥의 하이라이트 마커를 잠시 켰다 끄기)
+    public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor)
+    {
+        Vector3 pos = new Vector3(x * gridSize, 0.15f, y * gridSize);
+        GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.Euler(90, 0, 0));
+
+        if (marker != null)
+        {
+            StartCoroutine(BlinkRoutine(marker.GetComponent<MeshRenderer>(), blinkColor, true, marker));
+        }
+    }
+
+    private IEnumerator BlinkRoutine(MeshRenderer mr, Color color, bool destroyAfter = false, GameObject objToHide = null)
+    {
+        if (mr == null) yield break;
+
+        Material mat = mr.material; // 인스턴스화
+        Color originalColor = mat.HasProperty("_BaseColor") ? mat.GetColor("_BaseColor") : mat.color;
+
+        // 0.1초 간격으로 3번 깜빡임
+        for (int i = 0; i < 3; i++)
+        {
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            else mat.color = color;
+            yield return new WaitForSeconds(0.1f);
+
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", originalColor);
+            else mat.color = originalColor;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        if (destroyAfter && objToHide != null)
+        {
+            objToHide.SetActive(false);
+        }
+    }
+
+
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()
     {

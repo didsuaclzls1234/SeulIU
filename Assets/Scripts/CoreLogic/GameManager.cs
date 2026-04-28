@@ -34,6 +34,7 @@ public class GameManager : MonoBehaviour
     public GameHUD gameHUD;
     public TimerManager timerManager;
     public SkillManager skillManager;
+
     [Header("Skill State")]
     public int extraPlacementCount = 0; // 돌 여러번 놓는 스킬(예: 3번 스킬) 사용 시, 남은 추가 착수 횟수 저장용 변수
     public bool pendingExtraPlacement = false; // 추가 착수 대기 상태 플래그 (네트워크에서 랜덤 착수 패킷을 기다리는 중인지)
@@ -154,7 +155,13 @@ public class GameManager : MonoBehaviour
                 Vector2Int randomMove = board.GetRandomValidMove(currentTurnColor);
                 if (randomMove.x != -1)
                 {
+                    // * 새로 추가 착수되는 돌을 받아서 깜빡임 이펙트 적용!
                     ExecutePlaceStone(randomMove.x, randomMove.y, currentTurnColor);
+
+                    // 스택의 맨 위에 방금 놓은 돌이 있으므로 가져옴
+                    MoveRecord extraRec = moveHistory.Peek();
+                    board.BlinkStoneEffect(extraRec.stoneObj, Color.yellow); // 추가된 돌 노란색 깜빡임
+
                     if (currentState == GameState.GameOver) return;
 
                     if (currentMode == PlayMode.Multiplayer)
@@ -291,12 +298,15 @@ public class GameManager : MonoBehaviour
     
         GameObject placedStone = board.PlaceStone(x, y, color);
         if (placedStone == null)
-    {
-        Debug.LogWarning("[ReceiveExtraPlacement] PlaceStone 실패 - null 반환");
-        return;
-    }
+        {
+            Debug.LogWarning("[ReceiveExtraPlacement] PlaceStone 실패 - null 반환");
+            return;
+        }
 
         moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = color, stoneObj = placedStone });
+
+        // * 상대방의 이중 착수 돌도 노란색으로 깜빡이게!
+        board.BlinkStoneEffect(placedStone, Color.yellow);
 
         if (board.CheckWin(x, y, color))
         {

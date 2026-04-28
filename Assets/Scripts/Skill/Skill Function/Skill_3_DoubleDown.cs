@@ -25,6 +25,14 @@ public class Skill_3_DoubleDown : SkillBase
         // extraPlacementCount를 1로 설정 → GameManager가 다음 착수 시 랜덤위치에 자동 착수
         gm.extraPlacementCount = 1;
 
+        // 네트워크 수신을 위해 배열 세팅 (특별한 좌표가 필요 없으므로 -1)
+        targetX[1] = -1;
+        targetY[1] = -1;
+
+        // 시스템 메시지 띄우기
+        if (gm.gameHUD != null)
+            gm.gameHUD.ShowSystemMessage("이중 착수 발동! 이번 턴에 돌을 2번 놓습니다.");
+
         Debug.Log("[DoubleDown] 이번 턴 추가 착수 1회 부여!");
         return true;
     }
