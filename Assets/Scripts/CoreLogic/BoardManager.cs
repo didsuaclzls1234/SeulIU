@@ -327,6 +327,28 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    public void ShowSkillTargetMarkers_My(StoneColor myColor)
+    {
+        HideSkillTargetMarkers();
+
+        int myColorInt = (int)myColor;
+
+        foreach (GameObject stoneObj in activeStones)
+        {
+            if (stoneObj == null || !stoneObj.activeSelf) continue;
+
+            int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
+
+            if (grid[x, y] == myColorInt)
+            {
+                VisualOutline outline = stoneObj.GetComponent<VisualOutline>();
+                if (outline != null)
+                    outline.EnableOutline(Color.blue); // 내 돌은 파란색 테두리
+            }
+        }
+    }    
+
     public void HideSkillTargetMarkers()
     {
         // 모든 활성 돌을 순회하며 테두리를 끔 (SRP: 테두리 관리는 BoardManager가 총괄)
@@ -339,7 +361,7 @@ public class BoardManager : MonoBehaviour
             }
         }
     }
-
+    
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()
     {
