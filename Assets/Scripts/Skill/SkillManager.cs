@@ -73,6 +73,13 @@ public class SkillManager : MonoBehaviour
                 data.type = "특수형";
                 data.targetType = "my";
                 return new Skill_1_StoneShift(data); // 
+            case 3:
+                data.spCost = 3;
+                data.cooldown = 4;
+                data.skillName = "이중 착수 (Double Down)";
+                data.type = "공격형";
+                data.targetType = "none";
+                return new Skill_3_DoubleDown(data); // 👈 3단계에서 만들 클래스
             case 5:
                 data.spCost = 4;
                 data.cooldown = 2;
@@ -166,22 +173,62 @@ public class SkillManager : MonoBehaviour
         oppSP -= skillObj.data.spCost;
         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
+
+         //  스킬 ID별 분기
+        switch (skillId)
+        {
+            case 1: ReceiveSkill_StoneShift(xs, ys); break;
+            case 3: ReceiveSkill_DoubleDown(xs, ys); break;
+            case 5: ReceiveSkill_Erase(xs, ys);      break;
+            default:
+                Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
+                break;
+        }
         // 3. 실제 효과 실행 (Execute 내부에서 보드 데이터 지우기 수행)
         // xs, ys 배열을 돌면서 들어있는 모든 좌표를 지움 (최대 2개)
-        for (int i = 0; i < xs.Length; i++)
-        {
-            int tx = xs[i];
-            int ty = ys[i];
+        // for (int i = 0; i < xs.Length; i++)
+        // {
+        //     int tx = xs[i];
+        //     int ty = ys[i];
 
-            // 유효한 좌표(-1이 아님)이고 바둑판에 돌이 있다면 삭제
-            if (tx != -1 && ty != -1)
-            {
-                gameManager.board.grid[tx, ty] = 0;
-                gameManager.board.RemoveStoneObjectAt(tx, ty);
-            }
-        }
+        //     // 유효한 좌표(-1이 아님)이고 바둑판에 돌이 있다면 삭제
+        //     if (tx != -1 && ty != -1)
+        //     {
+        //         gameManager.board.grid[tx, ty] = 0;
+        //         gameManager.board.RemoveStoneObjectAt(tx, ty);
+        //     }
+        // }
 
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
+    }
+    //  1번스킬 추가
+    private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
+    {
+        // xs[0], ys[0] = 이동 전 좌표 제거
+        gameManager.board.grid[xs[0], ys[0]] = 0;
+        gameManager.board.RemoveStoneObjectAt(xs[0], ys[0]);
+
+        // xs[1], ys[1] = 이동 후 좌표 배치
+        StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
+        gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
+    }
+    //  3번스킬 추가
+    private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
+    {
+        gameManager.pendingExtraPlacement = true;
+        Debug.Log("[Network] DoubleDown 수신 — 추가 착수 대기 중");
+    }
+    //  5번스킬 분리
+    private void ReceiveSkill_Erase(int[] xs, int[] ys)
+    {
+        for (int i = 0; i < xs.Length; i++)
+        {
+            if (xs[i] != -1 && ys[i] != -1)
+            {
+                gameManager.board.grid[xs[i], ys[i]] = 0;
+                gameManager.board.RemoveStoneObjectAt(xs[i], ys[i]);
+            }
+        }
     }
 
     // 스킬 선택창 관련 --------------------------------------------------
@@ -327,6 +374,25 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
+        // 추가 — targetType이 "none"이면 즉시 실행 (타겟팅 불필요)
+        if (selectedSkill.data.targetType == "none")
+        {
+            selectedSkillSlot = slotIndex;
+            int[] targetX = new int[] { -1, -1 };
+            int[] targetY = new int[] { -1, -1 };
+
+            if (selectedSkill.Execute(targetX, targetY, gameManager, gameManager.board))
+            {
+                mySP -= selectedSkill.data.spCost;
+                selectedSkill.currentCooldown = selectedSkill.data.cooldown;
+                if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
+
+                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+                    gameSession.SendUseSkill(selectedSkill.data.skillId, targetX, targetY);
+            }
+            selectedSkillSlot = -1;
+            return; //  타겟팅 모드 진입 없이 바로 종료
+        }
         // 상태를 '스킬 타겟팅'으로 변경 (이제 InputManager가 클릭하면 TryPlaceStone 대신 SkillManager한테 좌표를 넘기게 될 겁니다)
         selectedSkillSlot = slotIndex;
         gameManager.currentState = GameState.SkillTargeting;
@@ -370,6 +436,7 @@ public class SkillManager : MonoBehaviour
 
             selectedSkillSlot = -1;
             gameManager.currentState = GameState.Playing;
+            gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
         }
         else
         {
