@@ -39,6 +39,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameManager.OnGameOverLocally += SendGameOverEvent; 
             //gameManager.OnUndoRequestedLocally += SendUndoRequestEvent;
             //gameManager.OnUndoReplyLocally += SendUndoReplyEvent;
+            gameManager.OnDoubleDownExtraPlaced += SendDoubleDownExtraEvent;
         }
 
         // * 멀티플레이 세팅: GameHUD에 불필요한 버튼 끄라고 지시
@@ -66,6 +67,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameManager.OnGameOverLocally -= SendGameOverEvent;
             //gameManager.OnUndoRequestedLocally -= SendUndoRequestEvent;
             //gameManager.OnUndoReplyLocally -= SendUndoReplyEvent;
+            gameManager.OnDoubleDownExtraPlaced -= SendDoubleDownExtraEvent;
         }
     }
 
@@ -253,6 +255,16 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             skillManager.ReceiveOpponentSkill(skillId, xs, ys);
         }
     }
+    
+    private void HandleExtraPlacement(object[] data)
+    {
+    StoneColor color = (StoneColor)(int)data[0];
+    int x = (int)data[1];
+    int y = (int)data[2];
+
+    gameManager.ReceiveExtraPlacement(x, y, color);
+    }
+    
     #endregion
 
     #region Photon이벤트 발신
@@ -354,6 +366,14 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(PhotonEventCodes.UseSkill, data, opts, SendOptions.SendReliable);
     }
+    
+    // Double Down 스킬로 AI가 랜덤 착수했을 때 발신
+    private void SendDoubleDownExtraEvent(int x, int y, int seq)
+    {
+    object[] data = new object[] { (int)gameManager.localPlayerColor, x, y, seq };
+    RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+    PhotonNetwork.RaiseEvent(PhotonEventCodes.ExtraPlacement, data, opts, SendOptions.SendReliable);
+    }
     #endregion
     
     #region Photon 이벤트 수신
@@ -390,6 +410,9 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             //case PhotonEventCodes.UndoReply:
             //    HandleUndoReply((object[])photonEvent.CustomData);
             //    break;
+            case PhotonEventCodes.ExtraPlacement:
+                HandleExtraPlacement((object[])photonEvent.CustomData); // 착수 처리 로직 재활용
+                break;
         }
     }
     #endregion  

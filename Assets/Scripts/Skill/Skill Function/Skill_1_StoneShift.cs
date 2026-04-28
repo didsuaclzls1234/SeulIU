@@ -5,18 +5,19 @@ public class Skill_1_StoneShift : SkillBase
 {
     public Skill_1_StoneShift(SkillData skillData) : base(skillData) { }
 
-    public override bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
+    public override SkillUseResult CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
     {
-        if (!base.CanUse(currentSP, isAntiMagicActive, board, myColor)) return false;
-
+        SkillUseResult baseResult = base.CanUse(currentSP, isAntiMagicActive, board, myColor);
+        if (baseResult != SkillUseResult.Success) return baseResult;
+        
         // 내 돌이 하나라도 있어야 사용 가능
         int myColorInt = (int)myColor;
         for (int x = 0; x < board.boardSize; x++)
             for (int y = 0; y < board.boardSize; y++)
-                if (board.grid[x, y] == myColorInt) return true;
+                if (board.grid[x, y] == myColorInt) return SkillUseResult.Success;
 
         Debug.LogWarning("[StoneShift] 이동할 내 돌이 없습니다!");
-        return false;
+        return SkillUseResult.NoValidTarget;
     }
 
     public override bool Execute(int[] targetX, int[] targetY, GameManager gm, BoardManager board)

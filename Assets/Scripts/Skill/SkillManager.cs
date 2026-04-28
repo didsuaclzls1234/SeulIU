@@ -51,8 +51,8 @@ public class SkillManager : MonoBehaviour
     // 현재 적용된 스킬(내가 적용한 & 남이 적용한) 리스트 -> 턴이 끝날 때마다 이 리스트를 순회하며 remainingTurns를 1씩 깎고, 0이 되면 리스트에서 제거한 뒤 UI에 "아이콘 지워!"라고 알려줍니다.
     public List<ActiveEffect> activeEffects = new List<ActiveEffect>();
 
-    // 상대방이 안티매직을 썼는지 여부
-    public bool isMySkillSealed = false;
+    // 상대방이 안티매직을 썼는지 여부(남은 턴수)
+    public int sealedTurnsRemaining = 0;
 
     // UI가 구독할 이벤트들 (데이터만 던져줌)
     public event Action<int> OnSPChanged; // SP가 변했을 때 (내 SP 던져줌)
@@ -72,8 +72,22 @@ public class SkillManager : MonoBehaviour
                 return new Skill_1_StoneShift(data); // 
             case 2:
                 return new Skill_2_Seal(data);
+            case 3:
+                data.spCost = 3;
+                data.cooldown = 4;
+                data.skillName = "이중 착수 (Double Down)";
+                data.type = "공격형";
+                data.targetType = "none";
+                return new Skill_3_DoubleDown(data); // 👈 3단계에서 만들 클래스
+            case 4:
+                data.spCost = 3;
+                data.cooldown = 4;
+                data.skillName = "안티매직 (AntiMagic)";
+                data.type = "방어형";
+                data.targetType = "none";
+                return new Skill_4_AntiMagic(data);
             case 5:
-                return new SkillErase(data); 
+                return new Skill_5_Erase(data); 
 
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
@@ -201,9 +215,88 @@ public class SkillManager : MonoBehaviour
         oppSP -= skillObj.data.spCost;
         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
-        skillObj.Execute(xs, ys, gameManager, gameManager.board);
+
+         //  스킬 ID별 분기
+        switch (skillId)
+        {
+            case 1: ReceiveSkill_StoneShift(xs, ys); break;
+            case 2: ReceiveSkill_Seal(xs, ys);       break;
+            case 3: ReceiveSkill_DoubleDown(xs, ys); break;
+            case 4: ReceiveSkill_AntiMagic(xs, ys); break;
+            case 5: ReceiveSkill_Erase(xs, ys);      break;
+            default:
+                Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
+                break;
+        }
+        // 3. 실제 효과 실행 (Execute 내부에서 보드 데이터 지우기 수행)
+        // xs, ys 배열을 돌면서 들어있는 모든 좌표를 지움 (최대 2개)
+        // for (int i = 0; i < xs.Length; i++)
+        // {
+        //     int tx = xs[i];
+        //     int ty = ys[i];
+
+        //     // 유효한 좌표(-1이 아님)이고 바둑판에 돌이 있다면 삭제
+        //     if (tx != -1 && ty != -1)
+        //     {
+        //         gameManager.board.grid[tx, ty] = 0;
+        //         gameManager.board.RemoveStoneObjectAt(tx, ty);
+        //     }
+        // }
 
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
+    }
+    //  1번스킬 추가
+    private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
+    {
+        // xs[0], ys[0] = 이동 전 좌표 제거
+        gameManager.board.grid[xs[0], ys[0]] = 0;
+        gameManager.board.RemoveStoneObjectAt(xs[0], ys[0]);
+
+        // xs[1], ys[1] = 이동 후 좌표 배치
+        StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
+        gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
+    }
+    //  2번스킬 추가
+    private void ReceiveSkill_Seal(int[] xs, int[] ys)
+    {
+         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
+        int duration = skillDatabase[2].durationTurn;
+        gameManager.board.ApplySeal(xs[0], ys[0], duration, opponentColor);
+    }
+
+    //  3번스킬 추가
+    private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
+    {
+        gameManager.pendingExtraPlacement = true;
+        Debug.Log("[Network] DoubleDown 수신 — 추가 착수 대기 중");
+    }
+    //  4번스킬 추가
+    private void ReceiveSkill_AntiMagic(int[] xs, int[] ys)
+    {
+        sealedTurnsRemaining = 2;
+        Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 2턴간 봉인");
+    }
+
+    public void DecreaseSealedTurns()
+    {
+        if (sealedTurnsRemaining > 0)
+        {
+            sealedTurnsRemaining--;
+            Debug.Log($"[SkillManager] 봉인 턴 감소 → 남은 턴: {sealedTurnsRemaining}");
+        }
+    }
+    
+    //  5번스킬 분리
+    private void ReceiveSkill_Erase(int[] xs, int[] ys)
+    {
+        for (int i = 0; i < xs.Length; i++)
+        {
+            if (xs[i] != -1 && ys[i] != -1)
+            {
+                gameManager.board.grid[xs[i], ys[i]] = 0;
+                gameManager.board.RemoveStoneObjectAt(xs[i], ys[i]);
+            }
+        }
     }
 
     // 스킬 선택창 관련 --------------------------------------------------
@@ -341,14 +434,51 @@ public class SkillManager : MonoBehaviour
         if (slotIndex >= mySkills.Count) return;
 
         SkillBase selectedSkill = mySkills[slotIndex];
-
+        
+        SkillUseResult result = selectedSkill.CanUse(mySP, sealedTurnsRemaining > 0, gameManager.board, gameManager.localPlayerColor);
+        
         // 스킬 사용 가능 여부 체크 (SP, 쿨타임 등)
-        if (!selectedSkill.CanUse(mySP, isMySkillSealed, gameManager.board, gameManager.localPlayerColor))
+        if (result != SkillUseResult.Success)
         {
-            Debug.LogWarning($"[{selectedSkill.data.skillName}] 사용 불가! (SP 부족 또는 쿨타임)");
+            string errorMessage = "";
+            switch (result)
+            {
+                case SkillUseResult.AntiMagicBlocked:
+                    errorMessage = "안티매직에 걸려 있습니다!";
+                    break;
+                case SkillUseResult.NotEnoughSP:
+                    errorMessage = "SP가 부족합니다!";
+                    break;
+                case SkillUseResult.OnCooldown:
+                    errorMessage = "쿨타임 중입니다!";
+                    break;
+                case SkillUseResult.NoValidTarget:
+                    errorMessage = "유효한 타겟이 없습니다!";
+                    break;  
+            }
+            Debug.LogWarning($"[{selectedSkill.data.skillName}] 사용 불가! ({errorMessage})");
             return;
         }
 
+        // 추가 — targetType이 "none"이면 즉시 실행 (타겟팅 불필요)
+        if (selectedSkill.data.targetType == "none")
+        {
+            selectedSkillSlot = slotIndex;
+            int[] targetX = new int[] { -1, -1 };
+            int[] targetY = new int[] { -1, -1 };
+
+            if (selectedSkill.Execute(targetX, targetY, gameManager, gameManager.board))
+            {
+                mySP -= selectedSkill.data.spCost;
+                selectedSkill.currentCooldown = selectedSkill.data.cooldown;
+                if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
+
+                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+                    gameSession.SendUseSkill(selectedSkill.data.skillId, targetX, targetY);
+            }
+            selectedSkillSlot = -1;
+            return; //  타겟팅 모드 진입 없이 바로 종료
+        }
         // 상태를 '스킬 타겟팅'으로 변경 (이제 InputManager가 클릭하면 TryPlaceStone 대신 SkillManager한테 좌표를 넘기게 될 겁니다)
         selectedSkillSlot = slotIndex;
         gameManager.currentState = GameState.SkillTargeting;
@@ -408,6 +538,7 @@ public class SkillManager : MonoBehaviour
 
             selectedSkillSlot = -1;
             gameManager.currentState = GameState.Playing;
+            gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
         }
         else
         {

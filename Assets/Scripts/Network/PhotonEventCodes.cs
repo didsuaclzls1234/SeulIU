@@ -25,4 +25,5 @@ public static class PhotonEventCodes
     public const byte UndoReply    = 8; // 무르기 수락/거절 
 
     public const byte PlayerReady = 9;  // 준비 완료 신호
+    public const byte ExtraPlacement = 10; // 추가 착수 전용
 }

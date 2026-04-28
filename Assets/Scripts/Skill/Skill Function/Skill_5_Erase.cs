@@ -1,18 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SkillErase : SkillBase
+public class Skill_5_Erase : SkillBase
 {
     // 생성자 (부모 클래스의 생성자로 데이터를 넘겨줌)
-    public SkillErase(SkillData skillData) : base(skillData)
+    public Skill_5_Erase(SkillData skillData) : base(skillData)
     {
     }
 
     // 1. 스킬 버튼 누를 때 검사 로직 덮어쓰기
-    public override bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
+    public override SkillUseResult CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
     {
-        // SP나 쿨타임이 안 되면 끝내기
-        if (!base.CanUse(currentSP, isAntiMagicActive, board, myColor)) return false;
+        SkillUseResult baseResult = base.CanUse(currentSP, isAntiMagicActive, board, myColor);
+        if (baseResult != SkillUseResult.Success) return baseResult;
 
         // 보드판을 스캔해서 상대방 돌이 하나라도 있는지 확인
         bool hasEnemyStone = false;
@@ -34,10 +34,10 @@ public class SkillErase : SkillBase
         if (!hasEnemyStone)
         {
             Debug.LogWarning("[SkillErase] 바둑판에 제거할 상대방 돌이 없습니다!");
-            return false; // 스킬 사용 불가!
+            return SkillUseResult.NoValidTarget; // 스킬 사용 불가!
         }
 
-        return true;
+        return SkillUseResult.Success;
     }
 
     // 5번 스킬(제거)의 고유 발동 로직
