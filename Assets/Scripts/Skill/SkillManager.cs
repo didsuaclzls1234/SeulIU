@@ -70,8 +70,10 @@ public class SkillManager : MonoBehaviour
         {
             case 1:
                 return new Skill_1_StoneShift(data); // 
+            case 2:
+                return new Skill_2_Seal(data);
             case 5:
-                return new SkillErase(data); // 👈 3단계에서 만들 클래스
+                return new SkillErase(data); 
 
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
@@ -101,24 +103,36 @@ public class SkillManager : MonoBehaviour
     {
         // Resources 폴더 안의 SkillData.csv 읽기
         TextAsset csvFile = Resources.Load<TextAsset>("SkillData");
-        if (csvFile == null) return;
+        if (csvFile == null)
+        {
+            Debug.LogError("Resources 폴더에 SkillData.csv 파일이 없습니다!");
+            return;
+        }
 
         string[] lines = csvFile.text.Split('\n');
-        for (int i = 1; i < lines.Length; i++) // i=1 (첫 줄 헤더 스킵)
+        for (int i = 1; i < lines.Length; i++) // 첫 줄 헤더 스킵
         {
             if (string.IsNullOrWhiteSpace(lines[i])) continue;
+
+            // 쉼표로 데이터 쪼개기 (내용에 쉼표가 들어가면 배열이 꼬이니 주의!)
             string[] columns = lines[i].Split(',');
+
+            // 엑셀 빈 칸이나 줄바꿈 처리 방어
+            if (columns.Length < 8) continue;
 
             SkillData data = new SkillData();
             data.skillId = int.Parse(columns[0]);
             data.skillName = columns[1];
             data.type = columns[2];
             data.spCost = int.Parse(columns[3]);
-            // ... 나머지 데이터 파싱 ... // + 설명
+            data.cooldown = int.Parse(columns[4]);
+            data.durationTurn = int.Parse(columns[5]); // 지속 턴
+            data.targetType = columns[6]; // 타겟 타입
+            data.description = columns[7].Trim(); // 설명 (끝에 붙은 쓸데없는 공백/줄바꿈 제거)
 
             skillDatabase.Add(data.skillId, data);
         }
-        Debug.Log($"스킬 데이터 {skillDatabase.Count}개 로드 완료!");
+        Debug.Log($"[SkillManager] 스킬 데이터 {skillDatabase.Count}개 로드 완료!");
     }
 
     /// <summary>
@@ -187,20 +201,7 @@ public class SkillManager : MonoBehaviour
         oppSP -= skillObj.data.spCost;
         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
-        // 3. 실제 효과 실행 (Execute 내부에서 보드 데이터 지우기 수행)
-        // xs, ys 배열을 돌면서 들어있는 모든 좌표를 지움 (최대 2개)
-        for (int i = 0; i < xs.Length; i++)
-        {
-            int tx = xs[i];
-            int ty = ys[i];
-
-            // 유효한 좌표(-1이 아님)이고 바둑판에 돌이 있다면 삭제
-            if (tx != -1 && ty != -1)
-            {
-                gameManager.board.grid[tx, ty] = 0;
-                gameManager.board.RemoveStoneObjectAt(tx, ty);
-            }
-        }
+        skillObj.Execute(xs, ys, gameManager, gameManager.board);
 
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
     }
@@ -352,13 +353,29 @@ public class SkillManager : MonoBehaviour
         selectedSkillSlot = slotIndex;
         gameManager.currentState = GameState.SkillTargeting;
 
+
         // 비주얼 효과 시작: 보드의 모든 자신/상대 돌에 초록색 테두리 표시
         // targetType 기준으로 하이라이트 분기
         if (selectedSkill.data.targetType == "my")
+        {
             gameManager.board.ShowSkillTargetMarkers_My(gameManager.localPlayerColor);
-        else if (selectedSkill.data.targetType == "enemy")
+        }
+        else if (selectedSkill.data.targetType == "enemy") 
+        { 
             gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
-        //gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+            //gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+        }
+        else if (selectedSkill.data.targetType == "cell")
+        {
+            // TODO: 빈 칸에 호버될 때 특별한 표시를 하거나, 전체 빈칸에 마커 띄우기
+            // (일단 마커 안 띄우고 조준점(InputManager)만 바뀌게 냅둬도 무방)
+            gameManager.board.HideSkillTargetMarkers();
+        }
+        else // "none" (타겟팅 필요 없는 즉발 스킬. 예: 4번 안티매직)
+        {
+            // 타겟팅 모드 진입 안 하고 바로 스킬 실행!
+            ExecuteSkillAt(-1, -1);
+        }
 
         Debug.Log($"==== [{selectedSkill.data.skillName}] 타겟팅 모드 진입! ====");
     }

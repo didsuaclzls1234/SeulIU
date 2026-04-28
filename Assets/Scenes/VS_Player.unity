@@ -942,11 +942,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.size
-      value: 3
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[3].tag
-      value: TargetHighlight
+      value: SealMarker
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[0].size
@@ -962,12 +962,12 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[3].size
-      value: 250
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[3].prefab
       value: 
-      objectReference: {fileID: 8582576767628541372, guid: 0d602812d30c3c64b898a9d321e5bfe8, type: 3}
+      objectReference: {fileID: 8864367706667506944, guid: 4bff2227f16be954088261c8ca07155d, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -985,6 +985,10 @@ PrefabInstance:
       propertyPath: mainCamera
       value: 
       objectReference: {fileID: 1990110467}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: gameManager
+      value: 
+      objectReference: {fileID: 1945295697}
     - target: {fileID: 1314095100817575299, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: gameHUD
       value: 
