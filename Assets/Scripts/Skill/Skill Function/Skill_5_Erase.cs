@@ -53,6 +53,7 @@ public class Skill_5_Erase : SkillBase
 
         board.grid[tx, ty] = 0;
         board.RemoveStoneObjectAt(tx, ty);
+        board.BlinkEmptySpaceEffect(tx, ty, Color.red); // * 빈자리 빨간색 깜빡임
 
         // 2. 두 번째 돌(랜덤 돌) 찾기
         int enemyColorInt = (gameManager.currentTurnColor == StoneColor.Black) ? 2 : 1;
@@ -78,6 +79,7 @@ public class Skill_5_Erase : SkillBase
 
             board.grid[randomPos.x, randomPos.y] = 0;
             board.RemoveStoneObjectAt(randomPos.x, randomPos.y);
+            board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red); // * 빈자리 빨간색 깜빡임
 
             // 랜덤으로 고른 좌표를 배열의 1번 인덱스에 저장 (네트워크 전송용)
             // 호출부인 SkillManager에서 이 배열을 그대로 가져다 씁니다.

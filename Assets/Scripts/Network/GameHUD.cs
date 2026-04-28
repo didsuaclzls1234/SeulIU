@@ -1,4 +1,5 @@
 using Photon.Pun;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TMPro;
@@ -66,7 +67,13 @@ public class GameHUD : MonoBehaviour
     [Header("인게임 스킬 UI(우측 하단 위치)")]
     public Button[] activeSkillButtons;      // 게임 중 누를 스킬 버튼 3개
     public Image[] skillCooldownImages;      // 쿨타임 표시용 Image (Fill Amount 조절용)
-    public TextMeshProUGUI[] skillCostTexts; // SP 소모량 표시 텍스트
+    public TextMeshProUGUI[] skillCostTexts;  // SP 소모량 표시 텍스트
+                                              
+    public TextMeshProUGUI[] skillNameTexts; // 스킬 이름과 쿨타임 텍스트 배열
+    public TextMeshProUGUI[] cooldownTexts;
+
+    public TextMeshProUGUI systemMessageText; // 화면에 띄울 현재 상태 텍스트 UI
+    public GameObject opponentSilencedIcon;   // 상대방 스킬 덱 위에 띄울 자물쇠나 X표시 아이콘
 
     [Header("현재 적용된 스킬(Buff/Debuff) UI")]
     public Transform buffContainer;          // 버프 아이콘들이 배치될 부모(Layout Group)
@@ -303,6 +310,34 @@ public class GameHUD : MonoBehaviour
         {
             // 포톤 연결을 끊을 필요 없이 바로 로비(또는 메인메뉴) 씬으로 넘김
             SceneManager.LoadScene("Lobby");
+        }
+    }
+
+    // 시스템 로그 띄우는 텍스트
+    public void ShowSystemMessage(string message)
+    {
+        if (systemMessageText == null) return;
+
+        systemMessageText.text = message;
+        systemMessageText.gameObject.SetActive(true);
+
+        StopAllCoroutines(); // 기존에 떠있던 메시지가 있다면 취소하고 새로 시작
+        StartCoroutine(FadeOutMessage());
+    }
+
+    private IEnumerator FadeOutMessage()
+    {
+        // 2초 대기 후 서서히 사라짐
+        yield return new WaitForSeconds(2.0f);
+        systemMessageText.gameObject.SetActive(false);
+    }
+
+    // 상대방 스킬버튼 위에 띄울 이미지('안티매직' 스킬 적용된 경우 스킬 사용 불가 특수효과)
+    public void SetOpponentSilencedUI(bool isSilenced)
+    {
+        if (opponentSilencedIcon != null)
+        {
+            opponentSilencedIcon.SetActive(isSilenced);
         }
     }
 

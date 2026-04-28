@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine.UI;
 using UnityEngine.Rendering;
+using TMPro;
 
 [System.Serializable]
 public class ActiveEffect
@@ -193,14 +194,36 @@ public class SkillManager : MonoBehaviour
 
     private void UpdateSkillDurations(StoneColor turnColor)
     {
-        // 턴이 지날 때마다 스킬들의 OnTurnPassed()를 호출하여 쿨다운 감소
-        if (turnColor == gameManager.localPlayerColor)
+        //// 턴이 지날 때마다 스킬들의 OnTurnPassed()를 호출하여 쿨다운 감소
+        //if (turnColor == gameManager.localPlayerColor)
+        //{
+        //    foreach (var skill in mySkills) skill.OnTurnPassed();
+        //}
+        //else
+        //{
+        //    foreach (var skill in oppSkills) skill.OnTurnPassed();
+        //}
+        List<SkillBase> targetSkills = (turnColor == gameManager.localPlayerColor) ? mySkills : oppSkills;
+
+        for (int i = 0; i < targetSkills.Count; i++)
         {
-            foreach (var skill in mySkills) skill.OnTurnPassed();
-        }
-        else
-        {
-            foreach (var skill in oppSkills) skill.OnTurnPassed();
+            targetSkills[i].OnTurnPassed(); // 내부 쿨타임 감소 로직 호출
+
+            if (turnColor == gameManager.localPlayerColor && gameManager.gameHUD != null)
+            {
+                Button btn = gameManager.gameHUD.activeSkillButtons[i];
+                TMP_Text cdText = gameManager.gameHUD.cooldownTexts[i];
+
+                bool isSilenced = sealedTurnsRemaining > 0; // 안티매직 걸렸는지
+                bool onCooldown = targetSkills[i].currentCooldown > 0;
+                bool notEnoughSP = mySP < targetSkills[i].data.spCost;
+
+                // 버튼 잠금 처리
+                btn.interactable = !(isSilenced || onCooldown || notEnoughSP);
+
+                // 쿨타임 텍스트 표시
+                cdText.text = onCooldown ? targetSkills[i].currentCooldown.ToString() : "";
+            }
         }
     }
 
@@ -275,6 +298,13 @@ public class SkillManager : MonoBehaviour
     {
         sealedTurnsRemaining = 2;
         Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 2턴간 봉인");
+
+        // 내 화면의 상대방 프로필 쪽에 자물쇠 아이콘 켜기 (직관적 피드백)
+        if (gameManager.gameHUD != null)
+        {
+            gameManager.gameHUD.SetOpponentSilencedUI(true);
+            gameManager.gameHUD.ShowSystemMessage("상대방이 안티매직을 사용했습니다. 2턴간 스킬 사용 불가!");
+        }
     }
 
     public void DecreaseSealedTurns()
@@ -283,6 +313,13 @@ public class SkillManager : MonoBehaviour
         {
             sealedTurnsRemaining--;
             Debug.Log($"[SkillManager] 봉인 턴 감소 → 남은 턴: {sealedTurnsRemaining}");
+
+            // 0이 되면 자물쇠 치우기
+            if (sealedTurnsRemaining == 0 && gameManager.gameHUD != null)
+            {
+                gameManager.gameHUD.SetOpponentSilencedUI(false);
+                gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
+            }
         }
     }
     
@@ -335,10 +372,14 @@ public class SkillManager : MonoBehaviour
             {
                 mySkills.Add(newSkill);
 
-                // UI에 코스트(SP) 텍스트 반영
-                if (gameManager.gameHUD != null && gameManager.gameHUD.skillCostTexts.Length > i)
+                
+                if (gameManager.gameHUD != null)
                 {
-                    gameManager.gameHUD.skillCostTexts[i].text = newSkill.data.spCost.ToString();
+                    if (gameManager.gameHUD.skillCostTexts.Length > i)
+                        gameManager.gameHUD.skillCostTexts[i].text = newSkill.data.spCost.ToString(); // UI에 코스트(SP) 텍스트 반영
+
+                    if (gameManager.gameHUD.skillNameTexts != null && gameManager.gameHUD.skillNameTexts.Length > i)
+                        gameManager.gameHUD.skillNameTexts[i].text = newSkill.data.skillName; // UI에 스킬 이름 텍스트 반영
                 }
             }
         }
@@ -434,7 +475,6 @@ public class SkillManager : MonoBehaviour
         if (slotIndex >= mySkills.Count) return;
 
         SkillBase selectedSkill = mySkills[slotIndex];
-        
         SkillUseResult result = selectedSkill.CanUse(mySP, sealedTurnsRemaining > 0, gameManager.board, gameManager.localPlayerColor);
         
         // 스킬 사용 가능 여부 체크 (SP, 쿨타임 등)
@@ -539,6 +579,7 @@ public class SkillManager : MonoBehaviour
             selectedSkillSlot = -1;
             gameManager.currentState = GameState.Playing;
             gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
+
         }
         else
         {
