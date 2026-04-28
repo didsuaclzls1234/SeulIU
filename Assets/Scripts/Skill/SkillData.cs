@@ -7,4 +7,5 @@ public struct SkillData
     public int spCost;
     public int cooldown;
     public int durationTurn; // 지속 턴 (없으면 0)
+    public string targetType; // "enemy", "my", "cell", "none"
 }

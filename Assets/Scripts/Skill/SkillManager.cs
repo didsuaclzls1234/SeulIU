@@ -66,11 +66,19 @@ public class SkillManager : MonoBehaviour
 
         switch (id)
         {
+            case 1:
+                data.spCost = 2;
+                data.cooldown = 3;
+                data.skillName = "돌 이동 (Stone Shift)";
+                data.type = "특수형";
+                data.targetType = "my";
+                return new Skill_1_StoneShift(data); // 
             case 5:
                 data.spCost = 4;
                 data.cooldown = 2;
                 data.skillName = "제거 (Erase)";
                 data.type = "공격형";
+                data.targetType = "enemy";
                 return new SkillErase(data); // 👈 3단계에서 만들 클래스
 
             // 나중에 다른 스킬들도 여기에 case 추가
@@ -323,8 +331,13 @@ public class SkillManager : MonoBehaviour
         selectedSkillSlot = slotIndex;
         gameManager.currentState = GameState.SkillTargeting;
 
-        // 비주얼 효과 시작: 보드의 모든 상대 돌에 초록색 테두리 표시
-        gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+        // 비주얼 효과 시작: 보드의 모든 자신/상대 돌에 초록색 테두리 표시
+        // targetType 기준으로 하이라이트 분기
+        if (selectedSkill.data.targetType == "my")
+            gameManager.board.ShowSkillTargetMarkers_My(gameManager.localPlayerColor);
+        else if (selectedSkill.data.targetType == "enemy")
+            gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+        //gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
 
         Debug.Log($"==== [{selectedSkill.data.skillName}] 타겟팅 모드 진입! ====");
     }
