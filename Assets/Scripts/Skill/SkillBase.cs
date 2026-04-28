@@ -1,5 +1,6 @@
 using UnityEngine;
 
+public enum SkillUseResult { Success, AntiMagicBlocked, NotEnoughSP, OnCooldown, NoValidTarget }
 public abstract class SkillBase
 {
     public SkillData data;
@@ -11,13 +12,22 @@ public abstract class SkillBase
         this.data = skillData;
     }
 
-    // 조건 검사 (SP가 충분한가? 쿨타임이 도는가? 안티매직에 걸렸는가?)
-    public virtual bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
+    // // 조건 검사 (SP가 충분한가? 쿨타임이 도는가? 안티매직에 걸렸는가?)
+    // public virtual bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
+    // {
+    //     if (isAntiMagicActive && data.type != "전용") return false; // 패시브 제외 봉인
+    //     if (currentSP < data.spCost) return false;
+    //     if (currentCooldown > 0) return false;
+    //     return true;
+    // }
+    
+
+    public virtual SkillUseResult CanUse(int currentSP, bool isAntiMagicActive,  BoardManager board, StoneColor myColor)
     {
-        if (isAntiMagicActive && data.type != "전용") return false; // 패시브 제외 봉인
-        if (currentSP < data.spCost) return false;
-        if (currentCooldown > 0) return false;
-        return true;
+        if (isAntiMagicActive) return SkillUseResult.AntiMagicBlocked;
+        if (currentSP < data.spCost) return SkillUseResult.NotEnoughSP;
+        if (currentCooldown > 0) return SkillUseResult.OnCooldown;
+        return SkillUseResult.Success;
     }
 
     // 실제 효과 발동 (랜덤 좌표들은 매개변수로 받음)

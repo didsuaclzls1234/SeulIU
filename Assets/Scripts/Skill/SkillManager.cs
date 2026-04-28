@@ -87,7 +87,7 @@ public class SkillManager : MonoBehaviour
                 data.targetType = "none";
                 return new Skill_4_AntiMagic(data);
             case 5:
-                return new SkillErase(data); 
+                return new Skill_5_Erase(data); 
 
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
@@ -434,11 +434,29 @@ public class SkillManager : MonoBehaviour
         if (slotIndex >= mySkills.Count) return;
 
         SkillBase selectedSkill = mySkills[slotIndex];
-
+        
+        SkillUseResult result = selectedSkill.CanUse(mySP, sealedTurnsRemaining > 0, gameManager.board, gameManager.localPlayerColor);
+        
         // 스킬 사용 가능 여부 체크 (SP, 쿨타임 등)
-        if (!selectedSkill.CanUse(mySP, sealedTurnsRemaining > 0, gameManager.board, gameManager.localPlayerColor))
+        if (result != SkillUseResult.Success)
         {
-            Debug.LogWarning($"[{selectedSkill.data.skillName}] 사용 불가! (SP 부족 또는 쿨타임)");
+            string errorMessage = "";
+            switch (result)
+            {
+                case SkillUseResult.AntiMagicBlocked:
+                    errorMessage = "안티매직에 걸려 있습니다!";
+                    break;
+                case SkillUseResult.NotEnoughSP:
+                    errorMessage = "SP가 부족합니다!";
+                    break;
+                case SkillUseResult.OnCooldown:
+                    errorMessage = "쿨타임 중입니다!";
+                    break;
+                case SkillUseResult.NoValidTarget:
+                    errorMessage = "유효한 타겟이 없습니다!";
+                    break;  
+            }
+            Debug.LogWarning($"[{selectedSkill.data.skillName}] 사용 불가! ({errorMessage})");
             return;
         }
 

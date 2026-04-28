@@ -4,10 +4,12 @@ public class Skill_4_AntiMagic : SkillBase
 {
     public Skill_4_AntiMagic(SkillData skillData) : base(skillData) { }
 
-    public override bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
+    public override SkillUseResult CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
     {
-        if (!base.CanUse(currentSP, isAntiMagicActive, board, myColor)) return false;
-        return true;
+        SkillUseResult baseResult = base.CanUse(currentSP, isAntiMagicActive, board, myColor);
+        if (baseResult != SkillUseResult.Success) return baseResult;
+
+        return SkillUseResult.Success;
     }
 
     public override bool Execute(int[] targetX, int[] targetY, GameManager gm, BoardManager board)
