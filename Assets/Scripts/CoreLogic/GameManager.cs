@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 using System.Collections.Generic;
 using System;
@@ -27,7 +27,7 @@ public class GameManager : MonoBehaviour
     public event Action<bool> OnUndoReplyLocally;       // 내가 상대방의 무르기를 수락/거절했을 때 발송
     public event Action OnRestartRequestedLocally;      // 내가 재시작 버튼 눌렀을 때
     //public event Action<int> OnSkillUsedLocally;      // 스킬 썼을 때 (나중에 확장)
-    public event Action<int, int, int> OnDoubleDownExtraPlaced; // Double Down 스킬로 AI가 랜덤 착수했을 때 (x, y, seq)
+    public event Action<int, int, int> OnDoubleDownExtraPlaced; // Double Down 스킬로 랜덤 착수했을 때 (x, y, seq)
     // -----------------------------------------------------------------------------
 
     public BoardManager board;
@@ -166,6 +166,7 @@ public class GameManager : MonoBehaviour
             if (currentState != GameState.GameOver)
             {
                 skillManager?.AddSPOnTurnEnd(currentTurnColor);
+                skillManager?.DecreaseSealedTurns();
                 currentTurnColor = currentTurnColor.Opponent();
                 board.UpdateForbiddenMarks(currentTurnColor);
                 if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
@@ -221,10 +222,10 @@ public class GameManager : MonoBehaviour
         }
 
         // 턴을 넘기기 직전에 방금 돌을 둔 사람의 SP를 올려주고 쿨타임 깎기
-        if (skillManager != null)
-        {
-            skillManager.AddSPOnTurnEnd(playerColor);
-        }
+        // if (skillManager != null)
+        // {
+        //     skillManager.AddSPOnTurnEnd(playerColor);
+        // }
 
         // 턴 넘기기 직전에 봉인 턴 수 감소 (코어 시스템)
         for (int i = 0; i < board.boardSize; i++)

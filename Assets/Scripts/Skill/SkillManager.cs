@@ -220,6 +220,7 @@ public class SkillManager : MonoBehaviour
         switch (skillId)
         {
             case 1: ReceiveSkill_StoneShift(xs, ys); break;
+            case 2: ReceiveSkill_Seal(xs, ys);       break;
             case 3: ReceiveSkill_DoubleDown(xs, ys); break;
             case 4: ReceiveSkill_AntiMagic(xs, ys); break;
             case 5: ReceiveSkill_Erase(xs, ys);      break;
@@ -255,6 +256,14 @@ public class SkillManager : MonoBehaviour
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
         gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
     }
+    //  2번스킬 추가
+    private void ReceiveSkill_Seal(int[] xs, int[] ys)
+    {
+         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
+        int duration = skillDatabase[2].durationTurn;
+        gameManager.board.ApplySeal(xs[0], ys[0], duration, opponentColor);
+    }
+
     //  3번스킬 추가
     private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
     {
