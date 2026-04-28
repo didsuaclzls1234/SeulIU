@@ -43,110 +43,101 @@ public class InputManager : MonoBehaviour
 
     void Update()
     {
-        // UI 클릭 방지: 마우스가 UI(팝업창, 버튼, 블로커 등) 위에 있는지 확인
-        // (블로커를 깔아뒀기 때문에 팝업이 뜨면 이게 무조건 true가 됨.)
-        bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-
-        // 상태 차단: 게임 중(Playing)이 아니거나, 내 턴이 아니거나, UI 위라면 호버 끄고 로직 중단
-        if ((gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting) ||
-        (gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor) ||
-        isProcessingClick || isPointerOverUI || _isInputBlocked)
-        {
-            if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
-            return;
-        }
-
-        // 우클릭 취소 로직(어느 상태에서든 우클릭하면 평소로 복귀)
-        if (Input.GetMouseButtonDown(1))
-        {
-            if (gameManager.currentState == GameState.SkillTargeting)
-            {
-                CancelSkillTargeting();
-                return;
-            }
-        }
-
-        if (gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting)
+        // 1. 입력 차단 조건 검사 (가드 클로즈)
+        if (ShouldBlockInput())
         {
             HideHover();
             return;
         }
 
-        // 1. 카메라에서 마우스 위치로 레이저 쏘기
+        // 2. 우클릭 취소 로직
+        if (Input.GetMouseButtonDown(1) && gameManager.currentState == GameState.SkillTargeting)
+        {
+            CancelSkillTargeting();
+            return; // 취소했으면 이번 프레임은 여기서 끝!
+        }
+
+        // 3. 레이캐스트 및 보드 좌표 계산
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-
-        // 2. Physics.Raycast 대신, 수학 평면과 레이저가 만나는지 검사
-        if (mathPlane.Raycast(ray, out float enter))
+        if (!mathPlane.Raycast(ray, out float enter))
         {
-            // 레이저가 바닥에 닿은 정확한 3D 좌표 
-            Vector3 hitPoint = ray.GetPoint(enter);
+            HideHover();
+            return; // 허공을 가리키면 끝!
+        }
 
-            // 3D 좌표를 2D 배열 인덱스로 변환
-            int x = Mathf.RoundToInt(hitPoint.x / gridSize);
-            int y = Mathf.RoundToInt(hitPoint.z / gridSize);
+        Vector3 hitPoint = ray.GetPoint(enter);
+        int x = Mathf.RoundToInt(hitPoint.x / gridSize);
+        int y = Mathf.RoundToInt(hitPoint.z / gridSize);
 
-            // 3. 바둑판 밖으로 마우스가 나갔는지 검사 (19x19 범위 이탈 시 안 보이게)
-            if (gameManager.board != null && (x < 0 || x >= gameManager.board.boardSize || y < 0 || y >= gameManager.board.boardSize))
+        // 4. 바둑판 범위 검사
+        if (gameManager.board == null || x < 0 || x >= gameManager.board.boardSize || y < 0 || y >= gameManager.board.boardSize)
+        {
+            HideHover();
+            return; // 보드 밖이면 끝!
+        }
+
+        // 여기까지 내려왔다는 건 '정상적인 바둑판 위를 가리키고 있다'는 뜻!
+        // 5. 호버 비주얼 업데이트
+        UpdateHoverVisuals(x, y);
+
+        // 6. 좌클릭 처리
+        if (Input.GetMouseButtonDown(0))
+        {
+            ProcessClick(x, y);
+        }
+    }
+
+    // ==========================================
+    // 헬퍼 함수들 (기능별 분리)
+    // ==========================================
+
+    private bool ShouldBlockInput()
+    {
+        bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        bool isInvalidState = gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting;
+        bool isNotMyTurn = gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor;
+
+        return isPointerOverUI || isInvalidState || isNotMyTurn || isProcessingClick || _isInputBlocked;
+    }
+
+    private void UpdateHoverVisuals(int x, int y)
+    {
+        if (hoverIndicator == null) return;
+
+        if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);
+        hoverIndicator.transform.position = new Vector3(x * gridSize, 0.1f, y * gridSize);
+
+        if (hoverRenderer != null)
+        {
+            if (gameManager.currentState == GameState.SkillTargeting)
             {
-                // 보드 바깥이면 호버 숨기고 리턴
-                if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
-                return;
+                hoverRenderer.material = targetingMat;
+                hoverIndicator.transform.localScale = Vector3.one * 1.2f;
             }
-
-            // 호버 표시기 이동 (정상 범위 안일 때만)
-            if (hoverIndicator != null)
+            else
             {
-                if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);
-                hoverIndicator.transform.position = new Vector3(x * gridSize, 0.1f, y * gridSize);
-
-                if (gameManager.currentState == GameState.SkillTargeting)
-                {
-                    // 스킬 모드일 때는 빨간색 조준점 재질로 변경
-                    hoverRenderer.material = targetingMat;
-                    // 필요하다면 호버 돌의 크기를 살짝 키워서 더 티 나게 할 수도 있음
-                    hoverIndicator.transform.localScale = Vector3.one * 1.2f;
-                }
-                else
-                {
-                    // 일반 모드일 때는 다시 돌 모양으로 복구
-                    int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
-                    hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
-                    hoverIndicator.transform.localScale = Vector3.one;
-                }
-            }
-
-            // 4. 클릭 처리
-            if (Input.GetMouseButtonDown(0))
-            {
-                // 클릭하는 순간 락을 걸어서, 프레임이 밀려도 좌표가 바뀌지 않게 고정
-                isProcessingClick = true;
-
-                // 호버 인디케이터 즉시 숨김
-                if (hoverIndicator != null) hoverIndicator.SetActive(false);
-
-                if (gameManager.currentState == GameState.Playing)
-                {
-                    // [일반 모드] 돌을 놓는다
-                    gameManager.TryPlaceStone(x, y);
-                }
-                else if (gameManager.currentState == GameState.SkillTargeting)
-                {
-                    // [스킬 모드] 스킬 매니저에게 좌표를 전달하고 스킬을 쏜다
-                    if (skillManager != null)
-                    {
-                        skillManager.ExecuteSkillAt(x, y);
-                    }
-                }
-
-                // 연산이 끝난 후 락 해제
-                isProcessingClick = false;
+                int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
+                hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
+                hoverIndicator.transform.localScale = Vector3.one;
             }
         }
-        else
+    }
+
+    private void ProcessClick(int x, int y)
+    {
+        isProcessingClick = true;
+        HideHover();
+
+        if (gameManager.currentState == GameState.Playing)
         {
-            // 마우스가 허공(보드 밖)을 가리킬 때 호버 돌 숨기기
-            if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+            gameManager.TryPlaceStone(x, y);
         }
+        else if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
+        {
+            skillManager.ExecuteSkillAt(x, y);
+        }
+
+        isProcessingClick = false;
     }
 
     private void CancelSkillTargeting()
@@ -162,6 +153,6 @@ public class InputManager : MonoBehaviour
     public void UnblockInput() => _isInputBlocked = false;
     public void HideHover()
     {
-        if (hoverIndicator != null) hoverIndicator.SetActive(false);
+        if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
     }
 }
