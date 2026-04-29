@@ -2364,6 +2364,14 @@ PrefabInstance:
       propertyPath: targetingMat
       value: 
       objectReference: {fileID: 2100000, guid: 8f0cb74d7cd95e94c88586f0992dc054, type: 2}
+    - target: {fileID: 1642039771649808315, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: blackHoverPrefab
+      value: 
+      objectReference: {fileID: 4198048179304034673, guid: 76f052f86850d094683a83724b81d2e0, type: 3}
+    - target: {fileID: 1642039771649808315, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: whiteHoverPrefab
+      value: 
+      objectReference: {fileID: 375456540994023728, guid: 971c5c9b54a3dc144a5a87b75b938a1e, type: 3}
     - target: {fileID: 4115228335132474100, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: m_Name
       value: 'Manager '

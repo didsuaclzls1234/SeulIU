@@ -8,12 +8,18 @@ public class InputManager : MonoBehaviour
     public float gridSize = 1f;
 
     [Header("Hover Settings")]
-    public GameObject hoverIndicatorPrefab; // 프리팹
-    private GameObject hoverIndicator;       // 코드로 생성한 객체를 담을 변수
-    private MeshRenderer hoverRenderer;   // 호버 돌의 색깔을 바꿔주기 위한 렌더러
-    public Material blackAlphaMat; // 반투명 흑돌 재질
-    public Material whiteAlphaMat; // 반투명 백돌 재질
-
+    // public GameObject hoverIndicatorPrefab; // 프리팹
+    // // private GameObject hoverIndicator;       // 코드로 생성한 객체를 담을 변수
+    // private MeshRenderer hoverRenderer;   // 호버 돌의 색깔을 바꿔주기 위한 렌더러
+    // public Material blackAlphaMat; // 반투명 흑돌 재질
+    // public Material whiteAlphaMat; // 반투명 백돌 재질
+    public GameObject blackHoverPrefab;  // 흑돌 호버 프리팹
+    public GameObject whiteHoverPrefab;  // 백돌 호버 프리팹
+    private GameObject blackHoverIndicator;
+    private GameObject whiteHoverIndicator;
+    public float hoverYOffset = 0.1f;
+    public float hoverAlpha = 0.5f;
+    
     [Header("Skill Visual Settings")]
     public Material targetingMat; // 조준용 빨간색/주황색 재질
 
@@ -22,8 +28,8 @@ public class InputManager : MonoBehaviour
 
     // 찰나의 중복 클릭이나 마우스 이동을 막기 위한 잠금 변수
     private bool isProcessingClick = false;
-
-    private bool _isInputBlocked = false; // 외부에서 입력 차단할 때 사용하는 변수
+    // 외부에서 입력 차단할 때 사용하는 변수
+    private bool _isInputBlocked = false; 
 
     void Start()
     {
@@ -31,13 +37,44 @@ public class InputManager : MonoBehaviour
         if (skillManager == null) skillManager = FindFirstObjectByType<SkillManager>();
 
         // 1. 프리팹이 연결되어 있다면, 코드로 직접 Instantiate 해서 생성합니다.
-        if (hoverIndicatorPrefab != null)
-        {
-            hoverIndicator = Instantiate(hoverIndicatorPrefab);
-            hoverIndicator.name = "HoverIndicator_Dynamic"; // 하이어라키에서 보기 편하게 이름 변경
-            hoverIndicator.SetActive(false); // 처음엔 숨겨둡니다.
+        // if (hoverIndicatorPrefab != null)
+        // {
+        //     hoverIndicator = Instantiate(hoverIndicatorPrefab);
+        //     hoverIndicator.name = "HoverIndicator_Dynamic"; // 하이어라키에서 보기 편하게 이름 변경
+        //     hoverIndicator.SetActive(false); // 처음엔 숨겨둡니다.
 
-            hoverRenderer = hoverIndicator.GetComponent<MeshRenderer>();
+        //     hoverRenderer = hoverIndicator.GetComponent<MeshRenderer>();
+        // }
+
+        // 두 프리팹 미리 생성 후 숨김
+        if (blackHoverPrefab != null)
+        {
+            blackHoverIndicator = Instantiate(blackHoverPrefab);
+            blackHoverIndicator.name = "BlackHoverIndicator_Dynamic";
+            blackHoverIndicator.SetActive(false);
+            // 반투명 처리
+            MeshRenderer blackMr = blackHoverIndicator.GetComponent<MeshRenderer>();
+            if (blackMr != null)
+            {
+                Color c = blackMr.material.color;
+                c.a = hoverAlpha;
+                blackMr.material.color = c;
+            }
+        }
+
+        if (whiteHoverPrefab != null)
+        {
+            whiteHoverIndicator = Instantiate(whiteHoverPrefab);
+            whiteHoverIndicator.name = "WhiteHoverIndicator_Dynamic";
+            whiteHoverIndicator.SetActive(false);
+            // 반투명 처리
+            MeshRenderer whiteMr = whiteHoverIndicator.GetComponent<MeshRenderer>();
+            if (whiteMr != null)
+            {
+                Color c = whiteMr.material.color;
+                c.a = hoverAlpha;
+                whiteMr.material.color = c;
+            }
         }
     }
 
@@ -102,24 +139,48 @@ public class InputManager : MonoBehaviour
 
     private void UpdateHoverVisuals(int x, int y)
     {
-        if (hoverIndicator == null) return;
+        // if (hoverIndicator == null) return;
 
-        if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);
-        hoverIndicator.transform.position = new Vector3(x * gridSize, 0.1f, y * gridSize);
+        // if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);
+        // hoverIndicator.transform.position = new Vector3(x * gridSize, 0.1f, y * gridSize);
 
-        if (hoverRenderer != null)
+        // if (hoverRenderer != null)
+        // {
+        //     if (gameManager.currentState == GameState.SkillTargeting)
+        //     {
+        //         hoverRenderer.material = targetingMat;
+        //         hoverIndicator.transform.localScale = Vector3.one * 1.2f;
+        //     }
+        //     else
+        //     {
+        //         int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
+        //         hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
+        //         hoverIndicator.transform.localScale = Vector3.one;
+        //     }
+        // }
+        if (gameManager.currentState == GameState.SkillTargeting)
         {
-            if (gameManager.currentState == GameState.SkillTargeting)
-            {
-                hoverRenderer.material = targetingMat;
-                hoverIndicator.transform.localScale = Vector3.one * 1.2f;
-            }
-            else
-            {
-                int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
-                hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
-                hoverIndicator.transform.localScale = Vector3.one;
-            }
+            HideHover();
+            return;
+        }
+
+        int displayColor = (gameManager.currentMode == PlayMode.Solo) ?
+                           (int)gameManager.currentTurnColor :
+                           (int)gameManager.localPlayerColor;
+         // 색상에 맞는 호버만 활성화
+        GameObject activeHover   = (displayColor == 1) ? blackHoverIndicator : whiteHoverIndicator;
+        GameObject inactiveHover = (displayColor == 1) ? whiteHoverIndicator : blackHoverIndicator;
+
+        if (inactiveHover != null) inactiveHover.SetActive(false);
+
+        if (activeHover != null)
+        {
+            activeHover.SetActive(true);
+            activeHover.transform.position = new Vector3(x * gridSize, hoverYOffset, y * gridSize);
+            float yRotation = (displayColor == 1) ?
+                          gameManager.board.blackStoneYRotation :
+                          gameManager.board.whiteStoneYRotation;
+            activeHover.transform.rotation = Quaternion.Euler(0, yRotation, 0);
         }
     }
 
@@ -153,6 +214,8 @@ public class InputManager : MonoBehaviour
     public void UnblockInput() => _isInputBlocked = false;
     public void HideHover()
     {
-        if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+        // if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+        if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
+        if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
     }
 }
