@@ -241,8 +241,8 @@ public class GameManager : MonoBehaviour
             {
                 if (board.sealedGrid[i, j].turns > 0)
                 {
-                    // 방금 돌을 둔 사람(playerColor)이 봉인의 주인일 때만 턴을 깎음
-                    if (board.sealedGrid[i, j].owner == playerColor)
+                    // 방금 돌을 둔 사람(playerColor)이 봉인의 주인일 때만 턴을 깎음(상대편이 돌을 놓을때 깎이는게 맞지 않나요?)
+                    if (board.sealedGrid[i, j].owner != playerColor)
                     {
                         board.sealedGrid[i, j].turns--;
 
@@ -537,8 +537,11 @@ public class GameManager : MonoBehaviour
         currentState = GameState.Playing;
 
         // 게임 상태가 Playing으로 바뀔 때 스킬 인스턴스 생성 및 버튼 연결!
-        if (skillManager != null) skillManager.GenerateSkillInstances();
-
+        if (skillManager != null) 
+        {
+            skillManager.GenerateSkillInstances();
+            skillManager.AutoActivatePassiveSkills();
+        }
         // 타이머 시작 및 첫 턴 금수 표시 등 초기화
         if (timerManager != null) timerManager.StartTurnTimer();
         board.UpdateForbiddenMarks(currentTurnColor);

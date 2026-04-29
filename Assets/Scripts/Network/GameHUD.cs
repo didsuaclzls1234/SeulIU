@@ -347,8 +347,18 @@ public class GameHUD : MonoBehaviour
     public void DisplayMyRole(StoneColor myColor)
     {
         if (skillSelectRoleText) skillSelectRoleText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 고르세요.";
-    }
+        // 색상 전용 스킬 버튼 제한 (버튼 인덱스 = 스킬 ID - 1)
+        if (skillSelectButtons == null) return;
+        for (int i = 0; i < skillSelectButtons.Length; i++)
+        {
+            int skillId = i + 1;
 
+            bool isRestricted = (skillId == 9 && myColor != StoneColor.Black)
+                            || (skillId == 10 && myColor != StoneColor.White);
+
+            skillSelectButtons[i].interactable = !isRestricted;
+        }
+    }
     // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
     public void RefreshBuffIcons(List<ActiveEffect> effects)
     {

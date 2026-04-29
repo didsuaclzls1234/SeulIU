@@ -79,8 +79,12 @@ public class SkillManager : MonoBehaviour
                 return new Skill_4_AntiMagic(data);
             case 5:
                 return new Skill_5_Erase(data);
+            case 6:
+                return new Skill_6_Bladefall(data);
             case 8:
                 return new Skill_8_GodBless(data);
+            case 9:
+                return new Skill_9_Destruction(data);
 
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
@@ -206,15 +210,16 @@ public class SkillManager : MonoBehaviour
                 Button btn = gameManager.gameHUD.activeSkillButtons[i];
                 TMP_Text cdText = gameManager.gameHUD.cooldownTexts[i];
 
+                bool isPassive = targetSkills[i].data.type == "전용";
                 bool isSilenced = sealedTurnsRemaining > 0; // 안티매직 걸렸는지
                 bool onCooldown = targetSkills[i].currentCooldown > 0;
                 bool notEnoughSP = mySP < targetSkills[i].data.spCost;
 
                 // 버튼 잠금 처리
-                btn.interactable = !(isSilenced || onCooldown || notEnoughSP);
+                btn.interactable = !isPassive;
 
                 // 쿨타임 텍스트 표시
-                cdText.text = onCooldown ? targetSkills[i].currentCooldown.ToString() : "";
+                cdText.text = (!isPassive && onCooldown) ? targetSkills[i].currentCooldown.ToString() : "";
             }
         }
     }
@@ -239,7 +244,9 @@ public class SkillManager : MonoBehaviour
             case 3: ReceiveSkill_DoubleDown(xs, ys); break;
             case 4: ReceiveSkill_AntiMagic(xs, ys); break;
             case 5: ReceiveSkill_Erase(xs, ys);      break;
+            case 6: ReceiveSkill_Bladefall(xs, ys); break;
             case 8: ReceiveSkill_GodBless(xs, ys); break;
+            case 9: ReceiveSkill_Destruction(); break;
             default:
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
@@ -312,7 +319,24 @@ public class SkillManager : MonoBehaviour
             }
         }
     }
+    //6번스킬
+    private void ReceiveSkill_Bladefall(int[] xs, int[] ys)
+    {
+        StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
 
+        for (int i = 0; i < xs.Length; i++)
+        {
+            if (xs[i] != -1 && ys[i] != -1)
+            {
+                gameManager.board.ApplySeal(xs[i], ys[i], 1, opponentColor);//skillDatabase[6].durationTurn에 duration이 0으로 되어있어서 일단 1로 고정
+            }
+        }
+
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.ShowSystemMessage("상대방이 칼날비를 사용했습니다. 빈 교차점이 봉인됩니다!");
+
+        Debug.Log("[Network] 칼날비 수신 — 봉인 적용 완료!");
+    }   
     // 8번 스킬
     private void ReceiveSkill_GodBless(int[] xs, int[] ys)
     {
@@ -332,6 +356,20 @@ public class SkillManager : MonoBehaviour
                 }
             }
         }
+    }
+    //9번 스킬
+    private void ReceiveSkill_Destruction()
+    {
+        // 상대방(흑돌)이 룰 파괴를 썼으니, 내 화면의 RuleManager에도 동일하게 적용
+        gameManager.board.ruleManager.DisableRenjuRules(1);
+
+        // 금수 마커 즉시 갱신
+        gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
+
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.ShowSystemMessage("상대방이 룰 파괴를 사용했습니다. 흑돌의 금수가 해제됩니다.");
+
+        Debug.Log("[Network] 룰 파괴 수신 — 흑돌 금수 해제 적용!");
     }
 
     // 스킬 선택창 관련 --------------------------------------------------
@@ -389,11 +427,16 @@ public class SkillManager : MonoBehaviour
                 
                 if (gameManager.gameHUD != null)
                 {
+                    bool isPassive = newSkill.data.type == "전용";
+
                     if (gameManager.gameHUD.skillCostTexts.Length > i)
                         gameManager.gameHUD.skillCostTexts[i].text = newSkill.data.spCost.ToString(); // UI에 코스트(SP) 텍스트 반영
 
                     if (gameManager.gameHUD.skillNameTexts != null && gameManager.gameHUD.skillNameTexts.Length > i)
                         gameManager.gameHUD.skillNameTexts[i].text = newSkill.data.skillName; // UI에 스킬 이름 텍스트 반영
+
+                    // 패시브 스킬은 클릭 불가
+                    gameManager.gameHUD.activeSkillButtons[i].interactable = !isPassive;
                 }
             }
         }
@@ -422,7 +465,12 @@ public class SkillManager : MonoBehaviour
     public void AutoSelectRandomSkills()
     {
         // 1. 선택 가능한 전체 스킬 풀(Pool) 리스트
-        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8};//전용 스킬 9,10 은 별도로.
+
+        if (gameManager.localPlayerColor == StoneColor.Black)
+            availableSkills.Add(9);
+        else
+            availableSkills.Add(10);
 
         // 2. 이미 선택된 스킬은 목록에서 제거
         foreach (int selectedId in mySkillsID)
@@ -522,8 +570,11 @@ public class SkillManager : MonoBehaviour
         if (selectedSkill.data.targetType == "none")
         {
             selectedSkillSlot = slotIndex;
-            int[] targetX = new int[] { -1, -1 };
-            int[] targetY = new int[] { -1, -1 };
+            // 칼날비(6번)는 최대 10칸 좌표가 필요
+            int arraySize = (selectedSkill.data.skillId == 6) ? 10 : 2;
+            int[] targetX = new int[arraySize];
+            int[] targetY = new int[arraySize];
+            for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
 
             if (selectedSkill.Execute(targetX, targetY, gameManager, gameManager.board))
             {
@@ -607,5 +658,21 @@ public class SkillManager : MonoBehaviour
 
         // 스킬이 성공하든 실패하든 마커는 지워야 함
         gameManager.board.HideSkillTargetMarkers();
+    }
+
+    public void AutoActivatePassiveSkills()
+    {
+        int[] noTarget = System.Array.Empty<int>();
+
+        SkillBase passiveSkill = mySkills.Find(s => s.data.type == "전용");
+        if (passiveSkill == null) return;
+
+        if (passiveSkill.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor)
+            != SkillUseResult.Success) return;
+
+        passiveSkill.Execute(noTarget, noTarget, gameManager, gameManager.board);
+
+        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+            gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 });
     }
 }
