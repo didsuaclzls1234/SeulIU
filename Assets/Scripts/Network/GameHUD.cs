@@ -76,7 +76,8 @@ public class GameHUD : MonoBehaviour
     public GameObject opponentSilencedIcon;   // 상대방 스킬 덱 위에 띄울 자물쇠나 X표시 아이콘
 
     [Header("현재 적용된 스킬(Buff/Debuff) UI")]
-    public Transform buffContainer;          // 버프 아이콘들이 배치될 부모(Layout Group)
+    public Transform blackBuffContainer;     // 버프 아이콘들이 배치될 부모(Layout Group)
+    public Transform whiteBuffContainer;          
     public GameObject buffIconPrefab;        // 아이콘 하나하나의 프리팹
 
     private void Start()
@@ -360,10 +361,27 @@ public class GameHUD : MonoBehaviour
         }
     }
     // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
-    public void RefreshBuffIcons(List<ActiveEffect> effects)
+    public void RefreshBuffIcons(List<ActiveEffect> effects, StoneColor myColor)
     {
-        // TODO: 기존 아이콘 다 지우고 리스트 돌면서 새로 생성
-        // 상화님은 여기서 아이콘 프리팹 생성하는 로직만 짜시면 됨.
+        // 기존 아이콘 전부 제거
+        foreach (Transform child in blackBuffContainer) Destroy(child.gameObject);
+        foreach (Transform child in whiteBuffContainer) Destroy(child.gameObject);
+
+        foreach (ActiveEffect effect in effects)
+        {
+            // isBuff면 내 컨테이너, 아니면 상대 컨테이너
+            Transform targetContainer = effect.isBuff ?
+                (myColor == StoneColor.Black ? blackBuffContainer : whiteBuffContainer) :
+                (myColor == StoneColor.Black ? whiteBuffContainer : blackBuffContainer);
+
+            GameObject icon = Instantiate(buffIconPrefab, targetContainer);
+
+            TextMeshProUGUI nameText = icon.transform.Find("SkillNameText").GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI turnsText = icon.transform.Find("RemainingTurnsText").GetComponent<TextMeshProUGUI>();
+
+            if (nameText) nameText.text = effect.effectName;
+            if (turnsText) turnsText.text = $"남은 턴: {effect.remainingTurns}";
+        }
     }
 
     // -------------------------------------------------------
