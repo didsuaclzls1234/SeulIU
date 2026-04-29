@@ -2607,6 +2607,21 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1945295697}
     - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: blackGhostMat
+      value: 
+      objectReference: {fileID: 2100000, guid: a27b4e26cf4a1a644ade007c4ac0d233, type: 2}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: whiteGhostMat
+      value: 
+      objectReference: {fileID: 2100000, guid: 714b5fafb4e3a6b43903f193710a7fb1, type: 2}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: normalBlackMat
+      value: 
+      objectReference: {fileID: 2100000, guid: d2a576658de76c74d9673f263d6e031c, type: 2}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: normalWhiteMat
+      value: 
+      objectReference: {fileID: 2100000, guid: efe1d9216a3f6a74b9f6ca8e69cbf22e, type: 2}
       propertyPath: stoneYOffset
       value: 0.4
       objectReference: {fileID: 0}

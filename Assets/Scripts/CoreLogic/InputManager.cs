@@ -158,29 +158,69 @@ public class InputManager : MonoBehaviour
         //         hoverIndicator.transform.localScale = Vector3.one;
         //     }
         // }
+        
+        // 1. 착수 프리뷰 (3D 캐릭터 로직 + 타겟팅 예외처리)
         if (gameManager.currentState == GameState.SkillTargeting)
         {
-            HideHover();
-            return;
+            // 스킬 타겟팅 중에는 새로운 돌을 놓는 게 아니므로 캐릭터 프리뷰를 숨깁니다.
+            if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
+            if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
+            
+            // (과거의 작은 빨간 점 조준점은 캐릭터 모델과 충돌하므로 생략하고, 
+            // 아래의 초록/파랑 테두리(아웃라인)로 타겟팅을 직관적으로 보여줍니다.)
+        }
+        else
+        {
+            // 일반 돌 착수 상태: 캐릭터 호버링 로직 적용
+            int displayColor = (gameManager.currentMode == PlayMode.Solo) ?
+                               (int)gameManager.currentTurnColor :
+                               (int)gameManager.localPlayerColor;
+                               
+            GameObject activeHover   = (displayColor == 1) ? blackHoverIndicator : whiteHoverIndicator;
+            GameObject inactiveHover = (displayColor == 1) ? whiteHoverIndicator : blackHoverIndicator;
+
+            if (inactiveHover != null) inactiveHover.SetActive(false);
+
+            if (activeHover != null)
+            {
+                activeHover.SetActive(true);
+                activeHover.transform.position = new Vector3(x * gridSize, hoverYOffset, y * gridSize);
+                
+                float yRotation = (displayColor == 1) ?
+                                  gameManager.board.blackStoneYRotation :
+                                  gameManager.board.whiteStoneYRotation;
+                activeHover.transform.rotation = Quaternion.Euler(0, yRotation, 0);
+            }
         }
 
-        int displayColor = (gameManager.currentMode == PlayMode.Solo) ?
-                           (int)gameManager.currentTurnColor :
-                           (int)gameManager.localPlayerColor;
-         // 색상에 맞는 호버만 활성화
-        GameObject activeHover   = (displayColor == 1) ? blackHoverIndicator : whiteHoverIndicator;
-        GameObject inactiveHover = (displayColor == 1) ? whiteHoverIndicator : blackHoverIndicator;
-
-        if (inactiveHover != null) inactiveHover.SetActive(false);
-
-        if (activeHover != null)
+        // 2. 타겟팅 호버링 아웃라인(테두리) 처리
+        if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
         {
-            activeHover.SetActive(true);
-            activeHover.transform.position = new Vector3(x * gridSize, hoverYOffset, y * gridSize);
-            float yRotation = (displayColor == 1) ?
-                          gameManager.board.blackStoneYRotation :
-                          gameManager.board.whiteStoneYRotation;
-            activeHover.transform.rotation = Quaternion.Euler(0, yRotation, 0);
+            int skillId = skillManager.GetSelectedSkillId();
+            int myColorInt = (int)gameManager.localPlayerColor;
+            int enemyColorInt = (gameManager.localPlayerColor == StoneColor.Black) ? 2 : 1;
+
+            // * 5번(제거) - 상대 돌 호버 (기존 코드)
+            if (skillId == 5)
+            {
+                if (gameManager.board.grid[x, y] == enemyColorInt && !gameManager.board.shieldGrid[x, y])
+                    gameManager.board.HighlightSingleStone(x, y, Color.green);
+                else
+                    gameManager.board.ClearHoverHighlight();
+            }
+            // * 1번(돌 이동), 8번(신의 가호) - 내 돌 호버
+            else if (skillId == 1 || skillId == 8)
+            {
+                // 마우스 올린 곳이 내 돌이면 파란색 테두리 켜기
+                if (gameManager.board.grid[x, y] == myColorInt)
+                    gameManager.board.HighlightSingleStone(x, y, Color.blue);
+                else
+                    gameManager.board.ClearHoverHighlight();
+            }
+            else
+            {
+                gameManager.board.ClearHoverHighlight();
+            }
         }
     }
 
@@ -207,6 +247,9 @@ public class InputManager : MonoBehaviour
         gameManager.currentState = GameState.Playing;
         skillManager.selectedSkillSlot = -1;
         gameManager.board.HideSkillTargetMarkers(); // 하이라이트 끄기
+
+        // 호버 하이라이트도 끔
+        gameManager.board.ClearHoverHighlight();
     }
 
     // 외부에서 강제로 호버를 숨겨야 할 때 사용할 함수
@@ -214,8 +257,11 @@ public class InputManager : MonoBehaviour
     public void UnblockInput() => _isInputBlocked = false;
     public void HideHover()
     {
-        // if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+        // 1. 두 호버 인디케이터 모두 끄기
         if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
         if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
+
+        // 2. 보드 밖으로 나가면 켜져있던 테두리(아웃라인)도 끄기
+        if (gameManager.board != null) gameManager.board.ClearHoverHighlight();
     }
 }

@@ -7,6 +7,8 @@ public class BoardManager : MonoBehaviour
     public RuleManager ruleManager;
     public GameManager gameManager;
 
+    private GameObject currentHoveredStone = null; // 현재 마우스가 올라가 있는 돌 기억용 (스킬 관련)
+
     [Header("Board Settings")]
     public int boardSize = 19;  // 19x19 격자
     public float gridSize = 1f; // -> InputManager의 gridSize와 동일해야 함!
@@ -18,6 +20,10 @@ public class BoardManager : MonoBehaviour
     [Header("Skill Visuals")]
     private List<GameObject> skillTargetMarkers = new List<GameObject>();
 
+    [Header("Normal Stone Materials")] // '제거' 스킬 적용 시 사라질 때 사용
+    public Material normalBlackMat; // 일반 흑돌 머티리얼 연결
+    public Material normalWhiteMat; // 일반 백돌 머티리얼 연결 
+    
     [Header("Y 오프셋.조절 완료 후 코드 기본값도 동일하게 수정 필요")]
     public float stoneYOffset = 0.4f;       // 바둑돌 높이
     public float forbiddenYOffset = 0.1f;   // 금수(❌) 마커 높이
@@ -39,6 +45,7 @@ public class BoardManager : MonoBehaviour
     // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패) 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
     private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
+
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
     public struct SealInfo
@@ -50,6 +57,17 @@ public class BoardManager : MonoBehaviour
     public SealInfo[,] sealedGrid;
     // 보호막 여부를 저장하는 배열 (true면 보호받음)
     public bool[,] shieldGrid;
+
+    [Header("Invisibility Settings")] // 스킬용
+    public Material blackGhostMat; // 반투명 검은돌 연결
+    public Material whiteGhostMat; // 반투명 하얀돌 연결
+
+    // 원래 머티리얼을 기억해둘 딕셔너리 (투명화 풀렸을 때 원상복구용)
+    private Dictionary<GameObject, Material> originalMats = new Dictionary<GameObject, Material>();
+
+    // 신성화(10번) 스킬 전용
+    [Header("Sanctification State")]
+    public bool isSanctificationActive = false;
 
     void Awake()
     {
@@ -69,14 +87,14 @@ public class BoardManager : MonoBehaviour
         // 1-1. 바둑판 범위를 벗어났는가? (IndexOutOfRange 에러 방어)
         if (x < 0 || x >= boardSize || y < 0 || y >= boardSize)
         {
-            //Debug.LogWarning("[BoardManager] 바둑판 범위를 벗어났습니다!");
+            //if (!silent) Debug.LogWarning("[BoardManager] 바둑판 범위를 벗어났습니다!");
             return false;
         }
 
         // 1-2. 이미 돌이 놓여져 있는가? (0이어야 빈칸)
         if (grid[x, y] != 0)
         {
-            Debug.LogWarning("[BoardManager] 이미 돌이 있는 자리입니다!");
+            if (!silent) Debug.LogWarning("[BoardManager] 이미 돌이 있는 자리입니다!");
             return false;
         }
 
@@ -111,7 +129,12 @@ public class BoardManager : MonoBehaviour
             grid[x, y] = (int)playerColor;
 
             // 2-2. 어떤 돌을 생성할지 결정
-            string poolTag = (playerColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
+            // (10번 스킬 발동 중이면 무조건 백돌 프리팹만 꺼냄)
+            string poolTag = "WhiteStone";
+            if (!isSanctificationActive && playerColor == StoneColor.Black)
+            {
+                poolTag = "BlackStone";
+            }
 
             // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: stoneYOffset)
             Vector3 spawnPos = new Vector3(x * gridSize, stoneYOffset, y * gridSize);
@@ -121,6 +144,17 @@ public class BoardManager : MonoBehaviour
             float yRotation = (playerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
             GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.Euler(0, yRotation, 0));// 생성한 돌을 변수에 담고            
             activeStones.Add(newStone); // 리스트에 추가해서 기억해둠
+
+            // ** 10번(신성화) 스킬 시전자(백돌 플레이어)의 화면에서만 피아 식별용 아웃라인 켜기
+            if (isSanctificationActive && gameManager.localPlayerColor == StoneColor.White)
+            {
+                VisualOutline outline = newStone.GetComponent<VisualOutline>();
+                if (outline != null)
+                {
+                    // 내 돌(백돌)은 파란색 테두리, 상대 돌(흑돌)은 노란색 테두리로 구분
+                    if (playerColor == StoneColor.White) outline.EnableOutline(Color.yellow);
+                }
+            }
 
             Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
 
@@ -189,7 +223,10 @@ public class BoardManager : MonoBehaviour
         // 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
         System.Array.Clear(grid, 0, grid.Length);
         System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
-        
+
+        // 신성화 스킬적용 여부 false로
+        isSanctificationActive = false;
+
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }
 
@@ -465,6 +502,18 @@ public class BoardManager : MonoBehaviour
             if (marker != null)
             {
                 activeShieldMarkers.Add(posKey, marker);
+
+                // 방패를 씌운 돌이 현재 내 눈에 보이는지 검사
+                GameObject stone = GetStoneObjectAt(x, y);
+                if (stone != null)
+                {
+                    MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+                    // 내 화면에서 이 돌이 렌더링 오프(투명화) 상태라면 방패도 같이 끔
+                    if (mr != null && !mr.enabled)
+                    {
+                        marker.SetActive(false);
+                    }
+                }
             }
         }
         Debug.Log($"({x}, {y}) 좌표 돌에 신의 가호(보호막)가 부여되었습니다!");
@@ -519,7 +568,73 @@ public class BoardManager : MonoBehaviour
             if (stoneObj != null)
             {
                 VisualOutline outline = stoneObj.GetComponent<VisualOutline>();
-                if (outline != null) outline.DisableOutline();
+                if (outline != null) RestoreSanctificationOutline(stoneObj, outline); // 수정됨!
+            }
+        }
+    }
+
+    // 특정 돌 1개의 렌더링 상태를 바꾸는 코어 함수
+    public void ApplyVisibilityToSingleStone(GameObject stone, StoneColor stoneColor, bool isVisible, bool isMyStone)
+    {
+        MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+        if (mr == null) return;
+
+        // 처음 건드리는 돌이면 원래 머티리얼 저장
+        if (!originalMats.ContainsKey(stone))
+        {
+            originalMats[stone] = mr.sharedMaterial;
+        }
+
+        // 좌표 역계산
+        int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+        int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
+        Vector2Int posKey = new Vector2Int(x, y);
+
+        if (isVisible)
+        {
+            // 1. 투명화 해제 (정상 복구)
+            mr.enabled = true;
+            mr.material = originalMats[stone];
+            // 방패 마커 복구
+            if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+        }
+        else
+        {
+            // 2. 투명화 적용 중!
+            if (isMyStone)
+            {
+                // 내 돌이면 반투명(Ghost) 머티리얼 씌우기
+                mr.enabled = true;
+                mr.material = (stoneColor == StoneColor.Black) ? blackGhostMat : whiteGhostMat;
+                // 내 화면의 내 돌이면 방패도 반투명하게 보이게 (필요시 머티리얼 변경, 일단은 켜둠)
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+            }
+            else
+            {
+                // 상대방 돌이면 렌더러 자체를 꺼서 100% 안 보이게 만듦! (최고의 투명화)
+                mr.enabled = false;
+                // 상대방 화면에서 내 돌이 투명해지면 방패 마커도 같이 끔!
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
+            }
+        }
+    }
+
+    // 바둑판에 깔려있는 특정 플레이어의 모든 돌을 한 번에 업데이트하는 함수
+    public void SetStoneInvisibility(StoneColor casterColor, bool isVisible, bool isMyStone)
+    {
+        int colorInt = (int)casterColor;
+        foreach (GameObject stone in activeStones)
+        {
+            if (!stone.activeSelf) continue;
+
+            // 돌의 실제 위치로 grid 배열 좌표 역계산
+            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
+
+            // 시전자의 돌만 골라서 렌더링 변경
+            if (grid[x, y] == colorInt)
+            {
+                ApplyVisibilityToSingleStone(stone, casterColor, isVisible, isMyStone);
             }
         }
     }
@@ -535,14 +650,21 @@ public class BoardManager : MonoBehaviour
     }
 
     // 2. 빈 자리가 깜빡임 ('5번' 제거 스킬 등 - 바닥의 하이라이트 마커를 잠시 켰다 끄기)
-    public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor)
+    public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor, StoneColor originalColor)
     {
         Vector3 pos = new Vector3(x * gridSize, blinkYOffset, y * gridSize);
         GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.Euler(90, 0, 0));
 
         if (marker != null)
         {
-            StartCoroutine(BlinkRoutine(marker.GetComponent<MeshRenderer>(), blinkColor, true, marker));
+            MeshRenderer mr = marker.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                // 깜빡이기 전에, 마커를 방금 죽은 돌과 똑같은 머티리얼(흑/백)로 위장시킵니다!
+                mr.material = (originalColor == StoneColor.Black) ? normalBlackMat : normalWhiteMat;
+            }
+
+            StartCoroutine(BlinkRoutine(mr, blinkColor, true, marker));
         }
     }
 
@@ -571,7 +693,65 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 3-1. 단일 돌 하이라이트 기능 (마우스 호버용)
+    public void HighlightSingleStone(int x, int y, Color highlightColor)
+    {
+        GameObject stone = GetStoneObjectAt(x, y);
 
+        // 마우스가 다른 돌로 넘어갔다면, 이전 돌의 테두리를 끈다.
+        if (currentHoveredStone != stone)
+        {
+            ClearHoverHighlight();
+        }
+
+        // 새로운 돌 테두리 켜기
+        if (stone != null)
+        {
+            VisualOutline outline = stone.GetComponent<VisualOutline>();
+            if (outline != null) outline.EnableOutline(highlightColor);
+
+            currentHoveredStone = stone;
+        }
+    }
+
+    // 3-2. 단일 하이라이트 끄기
+    public void ClearHoverHighlight()
+    {
+        if (currentHoveredStone != null)
+        {
+            VisualOutline outline = currentHoveredStone.GetComponent<VisualOutline>();
+            if (outline != null) RestoreSanctificationOutline(currentHoveredStone, outline); 
+            currentHoveredStone = null;
+        }
+    }
+
+    // 신성화(10번) 스킬 적용
+    public void ActivateSanctification()
+    {
+        isSanctificationActive = true;
+    }
+
+    // 아웃라인을 완전히 끄는 대신, 신성화 상태면 파랑/빨강으로 되돌리는 헬퍼 함수
+    public void RestoreSanctificationOutline(GameObject stoneObj, VisualOutline outline)
+    {
+        // 백돌 플레이어(시전자)의 화면에서만 작동
+        if (isSanctificationActive && gameManager.localPlayerColor == StoneColor.White)
+        {
+            int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
+
+            if (grid[x, y] == (int)StoneColor.White) 
+                outline.EnableOutline(Color.yellow);
+            else 
+                outline.DisableOutline(); // 상대방 돌(흑돌)은 아웃라인 무조건 끔
+        }
+        else
+        {
+            outline.DisableOutline(); // 신성화가 아니면 그냥 끔
+        }
+    }
+
+    // ------------------------------------------------------------------------
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()
     {

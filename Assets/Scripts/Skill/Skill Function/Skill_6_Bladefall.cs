@@ -41,7 +41,7 @@ public class Skill_6_Bladefall : SkillBase
     }
 
     // 봉인 대상 선정 — 돌 인접 칸 우선, 최대 10칸
-    private List<Vector2Int> SelectSealTargets(BoardManager board, StoneColor casterColor, int count = 10)
+    private List<Vector2Int> SelectSealTargets(BoardManager board, StoneColor casterColor, int count = 20)
     {
         List<Vector2Int> adjacent = new List<Vector2Int>();
         List<Vector2Int> others   = new List<Vector2Int>();
