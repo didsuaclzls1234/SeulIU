@@ -2214,6 +2214,14 @@ PrefabInstance:
       value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[0].prefab
+      value: 
+      objectReference: {fileID: 4198048179304034673, guid: 76f052f86850d094683a83724b81d2e0, type: 3}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[1].prefab
+      value: 
+      objectReference: {fileID: 375456540994023728, guid: 971c5c9b54a3dc144a5a87b75b938a1e, type: 3}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[3].prefab
       value: 
       objectReference: {fileID: 8864367706667506944, guid: 4bff2227f16be954088261c8ca07155d, type: 3}
@@ -2279,6 +2287,18 @@ PrefabInstance:
       propertyPath: gameManager
       value: 
       objectReference: {fileID: 1945295697}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: stoneYOffset
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: blackStoneYRotation
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: whiteStoneYRotation
+      value: 90
+      objectReference: {fileID: 0}
     - target: {fileID: 1314095100817575299, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: gameHUD
       value: 

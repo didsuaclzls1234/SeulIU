@@ -346,7 +346,7 @@ public class GameHUD : MonoBehaviour
     // 1. 내가 흑인지 백인지 알려주는 UI 업데이트
     public void DisplayMyRole(StoneColor myColor)
     {
-        if (skillSelectRoleText) skillSelectRoleText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 고르세요.";
+        if (skillSelectRoleText) skillSelectRoleText.text = $"당신은 {myColor.ToKorean()}입니다. 스킬을 3개 고르세요.";
         // 색상 전용 스킬 버튼 제한 (버튼 인덱스 = 스킬 ID - 1)
         if (skillSelectButtons == null) return;
         for (int i = 0; i < skillSelectButtons.Length; i++)

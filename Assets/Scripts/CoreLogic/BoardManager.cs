@@ -18,6 +18,13 @@ public class BoardManager : MonoBehaviour
     [Header("Skill Visuals")]
     private List<GameObject> skillTargetMarkers = new List<GameObject>();
 
+    [Header("Marker Y Offsets")]
+    public float stoneYOffset = 0.4f;// 바둑돌이 바닥에 파묻히지 않도록 Y축으로 띄우는 높이 인스펙터에서 조절 가능하도록 public으로 노출
+
+    [Header("Stone Rotation")]
+    public float blackStoneYRotation = 0f; // 흑돌 Y 회전
+    public float whiteStoneYRotation = 0f; // 백돌 Y 회전
+
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
 
@@ -102,11 +109,13 @@ public class BoardManager : MonoBehaviour
             // 2-2. 어떤 돌을 생성할지 결정
             string poolTag = (playerColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
 
-            // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: 0.2f)
-            Vector3 spawnPos = new Vector3(x * gridSize, 0.2f, y * gridSize);
+            // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: stoneYOffset)
+            Vector3 spawnPos = new Vector3(x * gridSize, stoneYOffset, y * gridSize);
 
             // 2-4. 실제로 씬에 3D 모델 생성
-            GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.identity);  // 생성한 돌을 변수에 담고            
+            // 돌의 Y 회전값 결정 (인스펙터에서 조절 가능하도록 public 변수로 노출)
+            float yRotation = (playerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
+            GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.Euler(0, yRotation, 0));// 생성한 돌을 변수에 담고            
             activeStones.Add(newStone); // 리스트에 추가해서 기억해둠
 
             Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
