@@ -18,8 +18,12 @@ public class BoardManager : MonoBehaviour
     [Header("Skill Visuals")]
     private List<GameObject> skillTargetMarkers = new List<GameObject>();
 
-    [Header("Marker Y Offsets")]
-    public float stoneYOffset = 0.4f;// 바둑돌이 바닥에 파묻히지 않도록 Y축으로 띄우는 높이 인스펙터에서 조절 가능하도록 public으로 노출
+    [Header("Y 오프셋.조절 완료 후 코드 기본값도 동일하게 수정 필요")]
+    public float stoneYOffset = 0.4f;       // 바둑돌 높이
+    public float forbiddenYOffset = 0.1f;   // 금수(❌) 마커 높이
+    public float sealYOffset = 0.15f;       // 봉인(자물쇠) 마커 높이
+    public float shieldYOffset = 0.6f;      // 보호막(신의 가호) 마커 높이
+    public float blinkYOffset = 0.15f;      // 제거 스킬 빈자리 깜빡임 높이
 
     [Header("Stone Rotation")]
     public float blackStoneYRotation = 0f; // 흑돌 Y 회전
@@ -155,7 +159,7 @@ public class BoardManager : MonoBehaviour
                 if (ruleManager.IsForbiddenMove(x, y, (int)currentPlayerColor, grid, boardSize, true))
                 {
                     // 금수 자리라면 ❌ 프리팹 생성 (바닥에 안 파묻히게 높이를 0.1f로 띄움)
-                    Vector3 pos = new Vector3(x * gridSize, 0.1f, y * gridSize);
+                    Vector3 pos = new Vector3(x * gridSize, forbiddenYOffset, y * gridSize);
                     GameObject newMark = ObjectPooler.Instance.SpawnFromPool("ForbiddenMark", pos, Quaternion.Euler(90, 0, 0));
                     forbiddenMarks.Add(newMark);
                 }
@@ -386,7 +390,7 @@ public class BoardManager : MonoBehaviour
         if (!activeSealMarkers.ContainsKey(posKey))
         {
             // 바둑판 바닥보다 살짝 위(0.15f)에 띄움
-            Vector3 spawnPos = new Vector3(x * gridSize, 0.15f, y * gridSize);
+            Vector3 spawnPos = new Vector3(x * gridSize, sealYOffset, y * gridSize);
             GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(90, 0, 0));
 
             if (marker == null)
@@ -455,7 +459,7 @@ public class BoardManager : MonoBehaviour
         if (!activeShieldMarkers.ContainsKey(posKey))
         {
             // 바둑돌 위에 예쁘게 씌워지도록 높이 조절
-            Vector3 spawnPos = new Vector3(x * gridSize, 0.6f, y * gridSize);
+            Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
             GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
 
             if (marker != null)
@@ -533,7 +537,7 @@ public class BoardManager : MonoBehaviour
     // 2. 빈 자리가 깜빡임 ('5번' 제거 스킬 등 - 바닥의 하이라이트 마커를 잠시 켰다 끄기)
     public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor)
     {
-        Vector3 pos = new Vector3(x * gridSize, 0.15f, y * gridSize);
+        Vector3 pos = new Vector3(x * gridSize, blinkYOffset, y * gridSize);
         GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.Euler(90, 0, 0));
 
         if (marker != null)

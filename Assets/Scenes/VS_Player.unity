@@ -1669,6 +1669,19 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3151816049219394997, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_text
+      value: "\uB2F9\uC2E0\uC740 [\uD751\uB3CC/\uBC31\uB3CC]\uC785\uB2C8\uB2E4. \n\uC2A4\uD0AC
+        3\uAC1C\uB97C \uC120\uD0DD\uD558\uC138\uC694."
+      objectReference: {fileID: 0}
+    - target: {fileID: 3151816049219394997, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_VerticalAlignment
+      value: 512
+      objectReference: {fileID: 0}
+    - target: {fileID: 3151816049219394997, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_HorizontalAlignment
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 3451739819366115038, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
