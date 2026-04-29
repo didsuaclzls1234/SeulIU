@@ -236,4 +236,14 @@ public class RuleManager : MonoBehaviour
             winCondition = target.winCondition
         };
     }
+
+   // 스킬 효과로 금수 룰이 해제되는 경우, 이 함수를 호출해서 해당 플레이어의 룰을 즉시 변경할 수 있음
+    public void DisableRenjuRules(int playerType)
+    {
+    RuleSettings target = (playerType == 1) ? blackRules : whiteRules;
+    target.ban33 = false;
+    target.ban44 = false;
+    target.banOverline = false;
+    Debug.Log($"[RuleManager] 플레이어 {playerType}의 모든 금수 규칙이 해제되었습니다! (룰 파괴)");
+    }
 }
