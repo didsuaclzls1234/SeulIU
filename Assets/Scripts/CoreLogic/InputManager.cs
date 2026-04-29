@@ -104,6 +104,7 @@ public class InputManager : MonoBehaviour
     {
         if (hoverIndicator == null) return;
 
+        // 1. 기본 호버 인디케이터(바닥 마커) 처리
         if (!hoverIndicator.activeSelf) hoverIndicator.SetActive(true);
         hoverIndicator.transform.position = new Vector3(x * gridSize, 0.1f, y * gridSize);
 
@@ -112,7 +113,7 @@ public class InputManager : MonoBehaviour
             if (gameManager.currentState == GameState.SkillTargeting)
             {
                 hoverRenderer.material = targetingMat;
-                hoverIndicator.transform.localScale = Vector3.one * 1.2f;
+                hoverIndicator.transform.localScale = Vector3.one * 0.5f;
             }
             else
             {
@@ -120,6 +121,27 @@ public class InputManager : MonoBehaviour
                 hoverRenderer.material = (displayColor == 1) ? blackAlphaMat : whiteAlphaMat;
                 hoverIndicator.transform.localScale = Vector3.one;
             }
+        }
+
+        // 2. 5번 스킬(제거) 돌 호버링 아웃라인(테두리) 처리
+        if (gameManager.currentState == GameState.SkillTargeting && skillManager != null && skillManager.GetSelectedSkillId() == 5)
+        {
+            int enemyColorInt = (gameManager.localPlayerColor == StoneColor.Black) ? 2 : 1;
+
+            // 마우스가 가리킨 곳이 적의 돌이고, 신의 가호(shieldGrid)가 없다면
+            if (gameManager.board.grid[x, y] == enemyColorInt && !gameManager.board.shieldGrid[x, y])
+            {
+                gameManager.board.HighlightSingleStone(x, y, Color.green);
+            }
+            else
+            {
+                gameManager.board.ClearHoverHighlight(); // 타겟이 아니면 끔
+            }
+        }
+        else
+        {
+            // 타겟팅 모드가 아니거나 5번 스킬이 아니면 무조건 끔
+            gameManager.board.ClearHoverHighlight();
         }
     }
 
@@ -146,6 +168,9 @@ public class InputManager : MonoBehaviour
         gameManager.currentState = GameState.Playing;
         skillManager.selectedSkillSlot = -1;
         gameManager.board.HideSkillTargetMarkers(); // 하이라이트 끄기
+
+        // 호버 하이라이트도 끔
+        gameManager.board.ClearHoverHighlight();
     }
 
     // 외부에서 강제로 호버를 숨겨야 할 때 사용할 함수
@@ -154,5 +179,8 @@ public class InputManager : MonoBehaviour
     public void HideHover()
     {
         if (hoverIndicator != null && hoverIndicator.activeSelf) hoverIndicator.SetActive(false);
+
+        // 보드 밖으로 나가면 켜져있던 테두리도 끔
+        if (gameManager.board != null) gameManager.board.ClearHoverHighlight();
     }
 }

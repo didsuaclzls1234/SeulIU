@@ -7,6 +7,8 @@ public class BoardManager : MonoBehaviour
     public RuleManager ruleManager;
     public GameManager gameManager;
 
+    private GameObject currentHoveredStone = null; // 현재 마우스가 올라가 있는 돌 기억용 (스킬 관련)
+
     [Header("Board Settings")]
     public int boardSize = 19;  // 19x19 격자
     public float gridSize = 1f; // -> InputManager의 gridSize와 동일해야 함!
@@ -18,6 +20,10 @@ public class BoardManager : MonoBehaviour
     [Header("Skill Visuals")]
     private List<GameObject> skillTargetMarkers = new List<GameObject>();
 
+    [Header("Normal Stone Materials")] // '제거' 스킬 적용 시 사라질 때 사용
+    public Material normalBlackMat; // 일반 흑돌 머티리얼 연결
+    public Material normalWhiteMat; // 일반 백돌 머티리얼 연결 
+
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
 
@@ -28,6 +34,7 @@ public class BoardManager : MonoBehaviour
     // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패) 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
     private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
+
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
     public struct SealInfo
@@ -39,6 +46,13 @@ public class BoardManager : MonoBehaviour
     public SealInfo[,] sealedGrid;
     // 보호막 여부를 저장하는 배열 (true면 보호받음)
     public bool[,] shieldGrid;
+
+    [Header("Invisibility Settings")] // 스킬용
+    public Material blackGhostMat; // 반투명 검은돌 연결
+    public Material whiteGhostMat; // 반투명 하얀돌 연결
+
+    // 원래 머티리얼을 기억해둘 딕셔너리 (투명화 풀렸을 때 원상복구용)
+    private Dictionary<GameObject, Material> originalMats = new Dictionary<GameObject, Material>();
 
     void Awake()
     {
@@ -511,6 +525,72 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 특정 돌 1개의 렌더링 상태를 바꾸는 코어 함수
+    public void ApplyVisibilityToSingleStone(GameObject stone, StoneColor stoneColor, bool isVisible, bool isMyStone)
+    {
+        MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+        if (mr == null) return;
+
+        // 처음 건드리는 돌이면 원래 머티리얼 저장
+        if (!originalMats.ContainsKey(stone))
+        {
+            originalMats[stone] = mr.sharedMaterial;
+        }
+
+        // 좌표 역계산
+        int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+        int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
+        Vector2Int posKey = new Vector2Int(x, y);
+
+        if (isVisible)
+        {
+            // 1. 투명화 해제 (정상 복구)
+            mr.enabled = true;
+            mr.material = originalMats[stone];
+            // 방패 마커 복구
+            if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+        }
+        else
+        {
+            // 2. 투명화 적용 중!
+            if (isMyStone)
+            {
+                // 내 돌이면 반투명(Ghost) 머티리얼 씌우기
+                mr.enabled = true;
+                mr.material = (stoneColor == StoneColor.Black) ? blackGhostMat : whiteGhostMat;
+                // 내 화면의 내 돌이면 방패도 반투명하게 보이게 (필요시 머티리얼 변경, 일단은 켜둠)
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+            }
+            else
+            {
+                // 상대방 돌이면 렌더러 자체를 꺼서 100% 안 보이게 만듦! (최고의 투명화)
+                mr.enabled = false;
+                // 상대방 화면에서 내 돌이 투명해지면 방패 마커도 같이 끔!
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
+            }
+        }
+    }
+
+    // 바둑판에 깔려있는 특정 플레이어의 모든 돌을 한 번에 업데이트하는 함수
+    public void SetStoneInvisibility(StoneColor casterColor, bool isVisible, bool isMyStone)
+    {
+        int colorInt = (int)casterColor;
+        foreach (GameObject stone in activeStones)
+        {
+            if (!stone.activeSelf) continue;
+
+            // 돌의 실제 위치로 grid 배열 좌표 역계산
+            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
+
+            // 시전자의 돌만 골라서 렌더링 변경
+            if (grid[x, y] == colorInt)
+            {
+                ApplyVisibilityToSingleStone(stone, casterColor, isVisible, isMyStone);
+            }
+        }
+    }
+
     // UX/UI 요소 ---------------------------------------------------------
     // 1. 돌이 생성될 때 깜빡임 ('3번' 이중 착수 등)
     public void BlinkStoneEffect(GameObject stoneObj, Color blinkColor)
@@ -522,14 +602,21 @@ public class BoardManager : MonoBehaviour
     }
 
     // 2. 빈 자리가 깜빡임 ('5번' 제거 스킬 등 - 바닥의 하이라이트 마커를 잠시 켰다 끄기)
-    public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor)
+    public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor, StoneColor originalColor)
     {
-        Vector3 pos = new Vector3(x * gridSize, 0.15f, y * gridSize);
-        GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.Euler(90, 0, 0));
+        Vector3 pos = new Vector3(x * gridSize, 0.2f, y * gridSize);
+        GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.identity);
 
         if (marker != null)
         {
-            StartCoroutine(BlinkRoutine(marker.GetComponent<MeshRenderer>(), blinkColor, true, marker));
+            MeshRenderer mr = marker.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                // 깜빡이기 전에, 마커를 방금 죽은 돌과 똑같은 머티리얼(흑/백)로 위장시킵니다!
+                mr.material = (originalColor == StoneColor.Black) ? normalBlackMat : normalWhiteMat;
+            }
+
+            StartCoroutine(BlinkRoutine(mr, blinkColor, true, marker));
         }
     }
 
@@ -558,6 +645,38 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 3-1. 단일 돌 하이라이트 기능 (마우스 호버용)
+    public void HighlightSingleStone(int x, int y, Color highlightColor)
+    {
+        GameObject stone = GetStoneObjectAt(x, y);
+
+        // 마우스가 다른 돌로 넘어갔다면, 이전 돌의 테두리를 끈다.
+        if (currentHoveredStone != stone)
+        {
+            ClearHoverHighlight();
+        }
+
+        // 새로운 돌 테두리 켜기
+        if (stone != null)
+        {
+            VisualOutline outline = stone.GetComponent<VisualOutline>();
+            if (outline != null) outline.EnableOutline(highlightColor);
+
+            currentHoveredStone = stone;
+        }
+    }
+
+    // 3-2. 단일 하이라이트 끄기
+    public void ClearHoverHighlight()
+    {
+        if (currentHoveredStone != null)
+        {
+            VisualOutline outline = currentHoveredStone.GetComponent<VisualOutline>();
+            if (outline != null) outline.DisableOutline();
+
+            currentHoveredStone = null;
+        }
+    }
 
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()

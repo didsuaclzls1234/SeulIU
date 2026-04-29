@@ -1476,6 +1476,22 @@ PrefabInstance:
       propertyPath: gameManager
       value: 
       objectReference: {fileID: 1945295697}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: blackGhostMat
+      value: 
+      objectReference: {fileID: 2100000, guid: d5dad9a8b6e206349a9b28d1944f65b6, type: 2}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: whiteGhostMat
+      value: 
+      objectReference: {fileID: 2100000, guid: 2b4140a6f38c348409edce31f7f2445e, type: 2}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: normalBlackMat
+      value: 
+      objectReference: {fileID: 2100000, guid: d2a576658de76c74d9673f263d6e031c, type: 2}
+    - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
+      propertyPath: normalWhiteMat
+      value: 
+      objectReference: {fileID: 2100000, guid: efe1d9216a3f6a74b9f6ca8e69cbf22e, type: 2}
     - target: {fileID: 1314095100817575299, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: gameHUD
       value: 

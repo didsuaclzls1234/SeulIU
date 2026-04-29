@@ -234,6 +234,19 @@ public class GameManager : MonoBehaviour
         //     skillManager.AddSPOnTurnEnd(playerColor);
         // }
 
+        // 방금 돌을 둔 사람이 투명화 상태라면, 방금 둔 돌도 즉시 투명화 적용!
+        if (skillManager != null)
+        {
+            if (playerColor == localPlayerColor && skillManager.myInvisibilityTurns > 0)
+            {
+                board.ApplyVisibilityToSingleStone(placedStone, playerColor, false, true);
+            }
+            else if (playerColor != localPlayerColor && skillManager.oppInvisibilityTurns > 0)
+            {
+                board.ApplyVisibilityToSingleStone(placedStone, playerColor, false, false);
+            }
+        }
+
         // 턴 넘기기 직전에 봉인 턴 수 감소 (코어 시스템)
         for (int i = 0; i < board.boardSize; i++)
         {
@@ -256,8 +269,10 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        skillManager?.DecreaseInvisibilityTurns(playerColor);
+
         // 5. extraPlacementCount가 있으면 랜덤 착수만 하고 턴 넘기기 없이 return
-        
+
         // if (extraPlacementCount > 0)
         // {
         //     extraPlacementCount--;

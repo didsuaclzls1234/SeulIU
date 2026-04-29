@@ -48,6 +48,10 @@ public class SkillManager : MonoBehaviour
     [Header("Targeting State")]
     public int selectedSkillSlot = -1; // 현재 타겟팅 중인 스킬 슬롯
 
+    [Header("Invisibility State")]
+    public int myInvisibilityTurns = 0;
+    public int oppInvisibilityTurns = 0;
+
     // -------------------------------------------------------
     // 현재 적용된 스킬(내가 적용한 & 남이 적용한) 리스트 -> 턴이 끝날 때마다 이 리스트를 순회하며 remainingTurns를 1씩 깎고, 0이 되면 리스트에서 제거한 뒤 UI에 "아이콘 지워!"라고 알려줍니다.
     public List<ActiveEffect> activeEffects = new List<ActiveEffect>();
@@ -81,6 +85,8 @@ public class SkillManager : MonoBehaviour
                 return new Skill_5_Erase(data);
             case 6:
                 return new Skill_6_Bladefall(data);
+            case 7:
+                return new Skill_7_Invisibility(data);
             case 8:
                 return new Skill_8_GodBless(data);
             case 9:
@@ -245,6 +251,7 @@ public class SkillManager : MonoBehaviour
             case 4: ReceiveSkill_AntiMagic(xs, ys); break;
             case 5: ReceiveSkill_Erase(xs, ys);      break;
             case 6: ReceiveSkill_Bladefall(xs, ys); break;
+            case 7: ReceiveSkill_Invisibility(xs, ys); break;
             case 8: ReceiveSkill_GodBless(xs, ys); break;
             case 9: ReceiveSkill_Destruction(); break;
             default:
@@ -307,19 +314,26 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    //  5번스킬 분리
+    // 5번스킬 분리
     private void ReceiveSkill_Erase(int[] xs, int[] ys)
     {
         for (int i = 0; i < xs.Length; i++)
         {
             if (xs[i] != -1 && ys[i] != -1)
             {
+                // 지우기 전에 무슨 색 돌이었는지 킵하기
+                StoneColor deadStoneColor = (StoneColor)gameManager.board.grid[xs[i], ys[i]];
+
                 gameManager.board.grid[xs[i], ys[i]] = 0;
                 gameManager.board.RemoveStoneObjectAt(xs[i], ys[i]);
+
+                // 수신자(돌 주인)의 화면에서는 무조건 빨간색 깜빡임 연출
+                gameManager.board.BlinkEmptySpaceEffect(xs[i], ys[i], Color.red, deadStoneColor);
             }
         }
     }
-    //6번스킬
+
+    // 6번스킬
     private void ReceiveSkill_Bladefall(int[] xs, int[] ys)
     {
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
@@ -336,7 +350,21 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.ShowSystemMessage("상대방이 칼날비를 사용했습니다. 빈 교차점이 봉인됩니다!");
 
         Debug.Log("[Network] 칼날비 수신 — 봉인 적용 완료!");
-    }   
+    }
+
+    // 7번 스킬
+    private void ReceiveSkill_Invisibility(int[] xs, int[] ys)
+    {
+        oppInvisibilityTurns = skillDatabase[7].durationTurn; // 7턴
+        StoneColor oppColor = gameManager.localPlayerColor.Opponent();
+
+        // 상대방이 투명화 썼으니, 내 화면의 상대 돌을 100% 투명하게(isVisible=false, isMyStone=false) 변경
+        gameManager.board.SetStoneInvisibility(oppColor, false, false);
+
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.ShowSystemMessage("상대방이 투명화를 사용했습니다!");
+    }
+
     // 8번 스킬
     private void ReceiveSkill_GodBless(int[] xs, int[] ys)
     {
@@ -406,6 +434,33 @@ public class SkillManager : MonoBehaviour
             {
                 gameManager.gameHUD.SetOpponentSilencedUI(false);
                 gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
+            }
+        }
+    }
+
+    // 매 턴 종료 시 턴을 깎고, 0이 되면 투명화 해제
+    // GameManager의 ExecutePlaceStone 에서 턴 넘기기 직전에 이 함수를 호출해주세요.
+    public void DecreaseInvisibilityTurns(StoneColor turnColor)
+    {
+        // 내가 턴을 마칠 때 내 투명화 턴 감소
+        if (turnColor == gameManager.localPlayerColor && myInvisibilityTurns > 0)
+        {
+            myInvisibilityTurns--;
+            if (myInvisibilityTurns == 0)
+            {
+                gameManager.board.SetStoneInvisibility(gameManager.localPlayerColor, true, true);
+                gameManager.gameHUD.ShowSystemMessage("내 투명화 효과가 해제되었습니다.");
+            }
+        }
+        // 상대가 턴을 마칠 때 상대 투명화 턴 감소
+        else if (turnColor != gameManager.localPlayerColor && oppInvisibilityTurns > 0)
+        {
+            oppInvisibilityTurns--;
+            if (oppInvisibilityTurns == 0)
+            {
+                StoneColor oppColor = gameManager.localPlayerColor.Opponent();
+                gameManager.board.SetStoneInvisibility(oppColor, true, false);
+                gameManager.gameHUD.ShowSystemMessage("상대방의 투명화 효과가 해제되었습니다.");
             }
         }
     }
@@ -570,8 +625,8 @@ public class SkillManager : MonoBehaviour
         if (selectedSkill.data.targetType == "none")
         {
             selectedSkillSlot = slotIndex;
-            // 칼날비(6번)는 최대 10칸 좌표가 필요
-            int arraySize = (selectedSkill.data.skillId == 6) ? 10 : 2;
+            // 칼날비(6번)는 최대 20칸 좌표가 필요
+            int arraySize = (selectedSkill.data.skillId == 6) ? 20 : 2;
             int[] targetX = new int[arraySize];
             int[] targetY = new int[arraySize];
             for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
@@ -600,9 +655,19 @@ public class SkillManager : MonoBehaviour
             gameManager.board.ShowSkillTargetMarkers_My(gameManager.localPlayerColor);
         }
         else if (selectedSkill.data.targetType == "enemy") 
-        { 
-            gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
-            //gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+        {
+            // 5번(제거) 스킬이면 전체 하이라이트를 하지 않고 메시지만 띄움    // ** 나중에 좀 더 보완할 예정
+            if (selectedSkill.data.skillId == 5)
+            {
+                if (gameManager.gameHUD != null)
+                    gameManager.gameHUD.ShowSystemMessage("제거 스킬 사용! 삭제할 상대방 돌을 클릭하세요.");
+
+                gameManager.board.HideSkillTargetMarkers();
+            }
+            else
+            {
+                gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
+            }
         }
         else if (selectedSkill.data.targetType == "cell")
         {
@@ -674,5 +739,15 @@ public class SkillManager : MonoBehaviour
 
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
             gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 });
+    }
+
+    // InputManager에서 현재 무슨 스킬을 들고 있는지 확인하기 위한 함수
+    public int GetSelectedSkillId()
+    {
+        if (selectedSkillSlot >= 0 && selectedSkillSlot < mySkills.Count)
+        {
+            return mySkills[selectedSkillSlot].data.skillId;
+        }
+        return -1;
     }
 }
