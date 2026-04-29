@@ -13,7 +13,7 @@ public class ActiveEffect
     public bool isBuff;           // true면 내 버프(파란 테두리), false면 디버프(빨간 테두리)
     public string effectName;     // 툴팁용 이름
     public string description;    // 툴팁용 설명
-
+    public StoneColor casterColor; // 효과를 건 플레이어의 색깔 (피드백용)
 }
 
 public class SkillManager : MonoBehaviour
@@ -222,6 +222,16 @@ public class SkillManager : MonoBehaviour
                 cdText.text = (!isPassive && onCooldown) ? targetSkills[i].currentCooldown.ToString() : "";
             }
         }
+
+        for (int i = activeEffects.Count - 1; i >= 0; i--)
+        {
+            activeEffects[i].remainingTurns--;
+            if (activeEffects[i].remainingTurns <= 0)
+                activeEffects.RemoveAt(i);
+        }
+
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
     }
 
     // (네트워크 수신용) 상대방이 스킬을 썼을 때
@@ -265,7 +275,19 @@ public class SkillManager : MonoBehaviour
         //         gameManager.board.RemoveStoneObjectAt(tx, ty);
         //     }
         // }
-
+        if (skillObj.data.durationTurn > 0)
+        {
+            activeEffects.Add(new ActiveEffect
+            {
+                skillId = skillId,
+                remainingTurns = skillObj.data.durationTurn,
+                isBuff = false,
+                effectName = skillObj.data.skillName,
+                description = skillObj.data.description,
+                casterColor = gameManager.localPlayerColor.Opponent()
+            });
+            gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
+        }
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
     }
     //  1번스킬 추가
@@ -636,6 +658,21 @@ public class SkillManager : MonoBehaviour
         {
             mySP -= skillToUse.data.spCost;
             skillToUse.currentCooldown = skillToUse.data.cooldown;
+
+            // durationTurn이 있는 스킬만 activeEffects에 추가
+            if (skillToUse.data.durationTurn > 0)
+            {
+                ActiveEffect effect = new ActiveEffect
+                {
+                    skillId = skillToUse.data.skillId,
+                    remainingTurns = skillToUse.data.durationTurn,
+                    isBuff = true,
+                    effectName = skillToUse.data.skillName,
+                    description = skillToUse.data.description
+                };
+                activeEffects.Add(effect);
+                gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
+            }
 
             if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
