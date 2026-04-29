@@ -19,6 +19,8 @@ public class CameraSwitcher : MonoBehaviour
         topCameraFixedPos = topCamera.transform.position;
         topCameraFixedRot = topCamera.transform.rotation;
 
+        ApplyColorBasedRotation();
+
         SetTopView(true);
     }
 
@@ -56,5 +58,13 @@ public class CameraSwitcher : MonoBehaviour
         // 탑뷰일 때만 입력 허용
         if (value) inputManager.UnblockInput();
         else       inputManager.BlockInput();
+    }
+
+    public void ApplyColorBasedRotation()
+    {
+        float zRotation = (gameManager.localPlayerColor == StoneColor.Black) ? 90f : -90f;
+        topCamera.transform.rotation = Quaternion.Euler(90f, 0f, zRotation);
+        topCameraFixedPos = topCamera.transform.position;
+        topCameraFixedRot = topCamera.transform.rotation;
     }
 }
