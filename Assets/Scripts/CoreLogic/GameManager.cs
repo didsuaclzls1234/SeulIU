@@ -34,7 +34,8 @@ public class GameManager : MonoBehaviour
     public GameHUD gameHUD;
     public TimerManager timerManager;
     public SkillManager skillManager;
-
+    public CameraSwitcher cameraSwitcher;
+    
     [Header("Skill State")]
     public int extraPlacementCount = 0; // 돌 여러번 놓는 스킬(예: 3번 스킬) 사용 시, 남은 추가 착수 횟수 저장용 변수
     public bool pendingExtraPlacement = false; // 추가 착수 대기 상태 플래그 (네트워크에서 랜덤 착수 패킷을 기다리는 중인지)
@@ -64,6 +65,9 @@ public class GameManager : MonoBehaviour
             _localPlayerColor = value;
             // 서버가 내 색깔을 정해주면 알아서 텍스트 갱신
             RefreshHUD();
+             // 색상 확정 시점에 카메라 회전 적용
+            if (cameraSwitcher != null)
+                cameraSwitcher.ApplyColorBasedRotation();
         }
     }
 

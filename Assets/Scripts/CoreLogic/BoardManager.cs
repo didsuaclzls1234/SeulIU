@@ -23,6 +23,17 @@ public class BoardManager : MonoBehaviour
     [Header("Normal Stone Materials")] // '제거' 스킬 적용 시 사라질 때 사용
     public Material normalBlackMat; // 일반 흑돌 머티리얼 연결
     public Material normalWhiteMat; // 일반 백돌 머티리얼 연결 
+    
+    [Header("Y 오프셋.조절 완료 후 코드 기본값도 동일하게 수정 필요")]
+    public float stoneYOffset = 0.4f;       // 바둑돌 높이
+    public float forbiddenYOffset = 0.1f;   // 금수(❌) 마커 높이
+    public float sealYOffset = 0.15f;       // 봉인(자물쇠) 마커 높이
+    public float shieldYOffset = 0.6f;      // 보호막(신의 가호) 마커 높이
+    public float blinkYOffset = 0.15f;      // 제거 스킬 빈자리 깜빡임 높이
+
+    [Header("Stone Rotation")]
+    public float blackStoneYRotation = 0f; // 흑돌 Y 회전
+    public float whiteStoneYRotation = 0f; // 백돌 Y 회전
 
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
@@ -125,11 +136,13 @@ public class BoardManager : MonoBehaviour
                 poolTag = "BlackStone";
             }
 
-            // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: 0.2f)
-            Vector3 spawnPos = new Vector3(x * gridSize, 0.2f, y * gridSize);
+            // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: stoneYOffset)
+            Vector3 spawnPos = new Vector3(x * gridSize, stoneYOffset, y * gridSize);
 
             // 2-4. 실제로 씬에 3D 모델 생성
-            GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.identity);  // 생성한 돌을 변수에 담고            
+            // 돌의 Y 회전값 결정 (인스펙터에서 조절 가능하도록 public 변수로 노출)
+            float yRotation = (playerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
+            GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.Euler(0, yRotation, 0));// 생성한 돌을 변수에 담고            
             activeStones.Add(newStone); // 리스트에 추가해서 기억해둠
 
             // ** 10번(신성화) 스킬 시전자(백돌 플레이어)의 화면에서만 피아 식별용 아웃라인 켜기
@@ -180,7 +193,7 @@ public class BoardManager : MonoBehaviour
                 if (ruleManager.IsForbiddenMove(x, y, (int)currentPlayerColor, grid, boardSize, true))
                 {
                     // 금수 자리라면 ❌ 프리팹 생성 (바닥에 안 파묻히게 높이를 0.1f로 띄움)
-                    Vector3 pos = new Vector3(x * gridSize, 0.1f, y * gridSize);
+                    Vector3 pos = new Vector3(x * gridSize, forbiddenYOffset, y * gridSize);
                     GameObject newMark = ObjectPooler.Instance.SpawnFromPool("ForbiddenMark", pos, Quaternion.Euler(90, 0, 0));
                     forbiddenMarks.Add(newMark);
                 }
@@ -414,7 +427,7 @@ public class BoardManager : MonoBehaviour
         if (!activeSealMarkers.ContainsKey(posKey))
         {
             // 바둑판 바닥보다 살짝 위(0.15f)에 띄움
-            Vector3 spawnPos = new Vector3(x * gridSize, 0.15f, y * gridSize);
+            Vector3 spawnPos = new Vector3(x * gridSize, sealYOffset, y * gridSize);
             GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(90, 0, 0));
 
             if (marker == null)
@@ -483,7 +496,7 @@ public class BoardManager : MonoBehaviour
         if (!activeShieldMarkers.ContainsKey(posKey))
         {
             // 바둑돌 위에 예쁘게 씌워지도록 높이 조절
-            Vector3 spawnPos = new Vector3(x * gridSize, 0.6f, y * gridSize);
+            Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
             GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
 
             if (marker != null)
@@ -639,8 +652,8 @@ public class BoardManager : MonoBehaviour
     // 2. 빈 자리가 깜빡임 ('5번' 제거 스킬 등 - 바닥의 하이라이트 마커를 잠시 켰다 끄기)
     public void BlinkEmptySpaceEffect(int x, int y, Color blinkColor, StoneColor originalColor)
     {
-        Vector3 pos = new Vector3(x * gridSize, 0.2f, y * gridSize);
-        GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.identity);
+        Vector3 pos = new Vector3(x * gridSize, blinkYOffset, y * gridSize);
+        GameObject marker = ObjectPooler.Instance.SpawnFromPool("TargetHighlight", pos, Quaternion.Euler(90, 0, 0));
 
         if (marker != null)
         {
