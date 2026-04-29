@@ -1479,11 +1479,11 @@ PrefabInstance:
     - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: blackGhostMat
       value: 
-      objectReference: {fileID: 2100000, guid: d5dad9a8b6e206349a9b28d1944f65b6, type: 2}
+      objectReference: {fileID: 2100000, guid: a27b4e26cf4a1a644ade007c4ac0d233, type: 2}
     - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: whiteGhostMat
       value: 
-      objectReference: {fileID: 2100000, guid: 2b4140a6f38c348409edce31f7f2445e, type: 2}
+      objectReference: {fileID: 2100000, guid: 714b5fafb4e3a6b43903f193710a7fb1, type: 2}
     - target: {fileID: 778389589125318722, guid: f5a67e3e781f3b1489fc4da27aab95a1, type: 3}
       propertyPath: normalBlackMat
       value: 

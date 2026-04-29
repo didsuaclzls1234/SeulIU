@@ -146,8 +146,8 @@ public class GameHUD : MonoBehaviour
         {
             if (skillSelectTimerText) skillSelectTimerText.text = timeStr;
         }
-        // 2. 인게임 중일 때는 상단 타이머에 표시
-        else if (gameManager.currentState == GameState.Playing)
+        // 2. Playing, SkillTargeting 상태일 때 타이머 글씨 업데이트
+        else if (gameManager.currentState == GameState.Playing || gameManager.currentState == GameState.SkillTargeting)
         {
             if (turnTimerText) turnTimerText.text = timeStr;
         }

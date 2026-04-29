@@ -54,6 +54,10 @@ public class BoardManager : MonoBehaviour
     // 원래 머티리얼을 기억해둘 딕셔너리 (투명화 풀렸을 때 원상복구용)
     private Dictionary<GameObject, Material> originalMats = new Dictionary<GameObject, Material>();
 
+    // 신성화(10번) 스킬 전용
+    [Header("Sanctification State")]
+    public bool isSanctificationActive = false;
+
     void Awake()
     {
         // 게임 시작과 동시에 15x15 짜리 빈 배열 생성
@@ -72,14 +76,14 @@ public class BoardManager : MonoBehaviour
         // 1-1. 바둑판 범위를 벗어났는가? (IndexOutOfRange 에러 방어)
         if (x < 0 || x >= boardSize || y < 0 || y >= boardSize)
         {
-            //Debug.LogWarning("[BoardManager] 바둑판 범위를 벗어났습니다!");
+            //if (!silent) Debug.LogWarning("[BoardManager] 바둑판 범위를 벗어났습니다!");
             return false;
         }
 
         // 1-2. 이미 돌이 놓여져 있는가? (0이어야 빈칸)
         if (grid[x, y] != 0)
         {
-            Debug.LogWarning("[BoardManager] 이미 돌이 있는 자리입니다!");
+            if (!silent) Debug.LogWarning("[BoardManager] 이미 돌이 있는 자리입니다!");
             return false;
         }
 
@@ -114,7 +118,12 @@ public class BoardManager : MonoBehaviour
             grid[x, y] = (int)playerColor;
 
             // 2-2. 어떤 돌을 생성할지 결정
-            string poolTag = (playerColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
+            // (10번 스킬 발동 중이면 무조건 백돌 프리팹만 꺼냄)
+            string poolTag = "WhiteStone";
+            if (!isSanctificationActive && playerColor == StoneColor.Black)
+            {
+                poolTag = "BlackStone";
+            }
 
             // 2-3. 돌이 나타날 실제 3D 위치 (바닥 파묻힘 방지용 Y: 0.2f)
             Vector3 spawnPos = new Vector3(x * gridSize, 0.2f, y * gridSize);
@@ -122,6 +131,17 @@ public class BoardManager : MonoBehaviour
             // 2-4. 실제로 씬에 3D 모델 생성
             GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.identity);  // 생성한 돌을 변수에 담고            
             activeStones.Add(newStone); // 리스트에 추가해서 기억해둠
+
+            // ** 10번(신성화) 스킬 시전자(백돌 플레이어)의 화면에서만 피아 식별용 아웃라인 켜기
+            if (isSanctificationActive && gameManager.localPlayerColor == StoneColor.White)
+            {
+                VisualOutline outline = newStone.GetComponent<VisualOutline>();
+                if (outline != null)
+                {
+                    // 내 돌(백돌)은 파란색 테두리, 상대 돌(흑돌)은 노란색 테두리로 구분
+                    if (playerColor == StoneColor.White) outline.EnableOutline(Color.yellow);
+                }
+            }
 
             Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
 
@@ -190,7 +210,10 @@ public class BoardManager : MonoBehaviour
         // 2차원 배열 데이터 초기화 (0으로 덮어쓰기)
         System.Array.Clear(grid, 0, grid.Length);
         System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
-        
+
+        // 신성화 스킬적용 여부 false로
+        isSanctificationActive = false;
+
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }
 
@@ -466,6 +489,18 @@ public class BoardManager : MonoBehaviour
             if (marker != null)
             {
                 activeShieldMarkers.Add(posKey, marker);
+
+                // 방패를 씌운 돌이 현재 내 눈에 보이는지 검사
+                GameObject stone = GetStoneObjectAt(x, y);
+                if (stone != null)
+                {
+                    MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+                    // 내 화면에서 이 돌이 렌더링 오프(투명화) 상태라면 방패도 같이 끔
+                    if (mr != null && !mr.enabled)
+                    {
+                        marker.SetActive(false);
+                    }
+                }
             }
         }
         Debug.Log($"({x}, {y}) 좌표 돌에 신의 가호(보호막)가 부여되었습니다!");
@@ -520,7 +555,7 @@ public class BoardManager : MonoBehaviour
             if (stoneObj != null)
             {
                 VisualOutline outline = stoneObj.GetComponent<VisualOutline>();
-                if (outline != null) outline.DisableOutline();
+                if (outline != null) RestoreSanctificationOutline(stoneObj, outline); // 수정됨!
             }
         }
     }
@@ -672,12 +707,38 @@ public class BoardManager : MonoBehaviour
         if (currentHoveredStone != null)
         {
             VisualOutline outline = currentHoveredStone.GetComponent<VisualOutline>();
-            if (outline != null) outline.DisableOutline();
-
+            if (outline != null) RestoreSanctificationOutline(currentHoveredStone, outline); 
             currentHoveredStone = null;
         }
     }
 
+    // 신성화(10번) 스킬 적용
+    public void ActivateSanctification()
+    {
+        isSanctificationActive = true;
+    }
+
+    // 아웃라인을 완전히 끄는 대신, 신성화 상태면 파랑/빨강으로 되돌리는 헬퍼 함수
+    public void RestoreSanctificationOutline(GameObject stoneObj, VisualOutline outline)
+    {
+        // 백돌 플레이어(시전자)의 화면에서만 작동
+        if (isSanctificationActive && gameManager.localPlayerColor == StoneColor.White)
+        {
+            int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
+
+            if (grid[x, y] == (int)StoneColor.White) 
+                outline.EnableOutline(Color.yellow);
+            else 
+                outline.DisableOutline(); // 상대방 돌(흑돌)은 아웃라인 무조건 끔
+        }
+        else
+        {
+            outline.DisableOutline(); // 신성화가 아니면 그냥 끔
+        }
+    }
+
+    // ------------------------------------------------------------------------
     // ** 개발자용 격자 그리기 (유니티 에디터 화면에만 보이는 선)
     void OnDrawGizmos()
     {

@@ -123,25 +123,34 @@ public class InputManager : MonoBehaviour
             }
         }
 
-        // 2. 5번 스킬(제거) 돌 호버링 아웃라인(테두리) 처리
-        if (gameManager.currentState == GameState.SkillTargeting && skillManager != null && skillManager.GetSelectedSkillId() == 5)
+        // 🚨 2. 타겟팅 호버링 아웃라인(테두리) 처리
+        if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
         {
+            int skillId = skillManager.GetSelectedSkillId();
+            int myColorInt = (int)gameManager.localPlayerColor;
             int enemyColorInt = (gameManager.localPlayerColor == StoneColor.Black) ? 2 : 1;
 
-            // 마우스가 가리킨 곳이 적의 돌이고, 신의 가호(shieldGrid)가 없다면
-            if (gameManager.board.grid[x, y] == enemyColorInt && !gameManager.board.shieldGrid[x, y])
+            // * 5번(제거) - 상대 돌 호버 (기존 코드)
+            if (skillId == 5)
             {
-                gameManager.board.HighlightSingleStone(x, y, Color.green);
+                if (gameManager.board.grid[x, y] == enemyColorInt && !gameManager.board.shieldGrid[x, y])
+                    gameManager.board.HighlightSingleStone(x, y, Color.green);
+                else
+                    gameManager.board.ClearHoverHighlight();
+            }
+            // * 1번(돌 이동), 8번(신의 가호) - 내 돌 호버
+            else if (skillId == 1 || skillId == 8)
+            {
+                // 마우스 올린 곳이 내 돌이면 파란색 테두리 켜기
+                if (gameManager.board.grid[x, y] == myColorInt)
+                    gameManager.board.HighlightSingleStone(x, y, Color.blue);
+                else
+                    gameManager.board.ClearHoverHighlight();
             }
             else
             {
-                gameManager.board.ClearHoverHighlight(); // 타겟이 아니면 끔
+                gameManager.board.ClearHoverHighlight();
             }
-        }
-        else
-        {
-            // 타겟팅 모드가 아니거나 5번 스킬이 아니면 무조건 끔
-            gameManager.board.ClearHoverHighlight();
         }
     }
 

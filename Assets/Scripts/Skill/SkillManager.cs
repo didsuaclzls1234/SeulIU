@@ -91,7 +91,8 @@ public class SkillManager : MonoBehaviour
                 return new Skill_8_GodBless(data);
             case 9:
                 return new Skill_9_Destruction(data);
-
+            case 10: 
+                return new Skill_10_Sanctification(data);
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
                 Debug.Log($"[SkillManager] ID {id} 스킬은 아직 미구현! 빈 껍데기 반환.");
@@ -184,8 +185,9 @@ public class SkillManager : MonoBehaviour
             oppSP = Mathf.Min(oppSP + 1, MAX_SP);
         }
 
-        // 쿨타임 & 지속 턴 감소 로직
-        UpdateSkillDurations(placedColor);
+        // 쿨타임은 방금 턴을 마친 사람이 아니라, '이제 턴을 시작할 사람' 것을 깎습니다!
+        StoneColor nextTurnColor = placedColor.Opponent();
+        UpdateSkillDurations(nextTurnColor);
 
         // SP가 바뀌었으니 HUD에 즉시 양쪽 SP 최신화
         if (gameManager.gameHUD != null)
@@ -194,7 +196,7 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    private void UpdateSkillDurations(StoneColor turnColor)
+    private void UpdateSkillDurations(StoneColor nextTurnColor)
     {
         //// 턴이 지날 때마다 스킬들의 OnTurnPassed()를 호출하여 쿨다운 감소
         //if (turnColor == gameManager.localPlayerColor)
@@ -205,13 +207,14 @@ public class SkillManager : MonoBehaviour
         //{
         //    foreach (var skill in oppSkills) skill.OnTurnPassed();
         //}
-        List<SkillBase> targetSkills = (turnColor == gameManager.localPlayerColor) ? mySkills : oppSkills;
+        List<SkillBase> targetSkills = (nextTurnColor == gameManager.localPlayerColor) ? mySkills : oppSkills;
 
         for (int i = 0; i < targetSkills.Count; i++)
         {
             targetSkills[i].OnTurnPassed(); // 내부 쿨타임 감소 로직 호출
 
-            if (turnColor == gameManager.localPlayerColor && gameManager.gameHUD != null)
+            // UI 텍스트 갱신은 '내 턴'이 돌아왔을 때 내 화면에서만 해주면 됩니다.
+            if (nextTurnColor == gameManager.localPlayerColor && gameManager.gameHUD != null)
             {
                 Button btn = gameManager.gameHUD.activeSkillButtons[i];
                 TMP_Text cdText = gameManager.gameHUD.cooldownTexts[i];
@@ -219,10 +222,13 @@ public class SkillManager : MonoBehaviour
                 bool isPassive = targetSkills[i].data.type == "전용";
                 bool isSilenced = sealedTurnsRemaining > 0; // 안티매직 걸렸는지
                 bool onCooldown = targetSkills[i].currentCooldown > 0;
-                bool notEnoughSP = mySP < targetSkills[i].data.spCost;
+                bool notEnoughSP = mySP < targetSkills[i].data.spCost; // ** (나중에 사용될 듯)
 
                 // 버튼 잠금 처리
                 btn.interactable = !isPassive;
+
+                // ** 패시브거나, 쿨타임이거나, SP가 부족하거나, 안티매직에 걸렸다면 버튼 강제 잠금 (** 이 부분은 추후 기획의도 맞춰서 해야 할 듯)
+                btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced;
 
                 // 쿨타임 텍스트 표시
                 cdText.text = (!isPassive && onCooldown) ? targetSkills[i].currentCooldown.ToString() : "";
@@ -254,6 +260,7 @@ public class SkillManager : MonoBehaviour
             case 7: ReceiveSkill_Invisibility(xs, ys); break;
             case 8: ReceiveSkill_GodBless(xs, ys); break;
             case 9: ReceiveSkill_Destruction(); break;
+            case 10: ReceiveSkill_Sanctification(); break;
             default:
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
@@ -284,7 +291,13 @@ public class SkillManager : MonoBehaviour
 
         // xs[1], ys[1] = 이동 후 좌표 배치
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
-        gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
+        GameObject newStone = gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
+
+        // ** 상대방이 투명화 상태라면, 방금 옮긴 돌을 내 화면에서 100% 안 보이게 숨김
+        if (oppInvisibilityTurns > 0 && newStone != null)
+        {
+            gameManager.board.ApplyVisibilityToSingleStone(newStone, opponentColor, false, false);
+        }
     }
     //  2번스킬 추가
     private void ReceiveSkill_Seal(int[] xs, int[] ys)
@@ -380,12 +393,18 @@ public class SkillManager : MonoBehaviour
                 GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
                 if (stone != null)
                 {
-                    gameManager.board.BlinkStoneEffect(stone, Color.cyan);
+                    MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+
+                    // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
+                    if (mr != null && mr.enabled)
+                    {
+                        gameManager.board.BlinkStoneEffect(stone, Color.cyan);
+                    }
                 }
             }
         }
     }
-    //9번 스킬
+    // 9번 스킬
     private void ReceiveSkill_Destruction()
     {
         // 상대방(흑돌)이 룰 파괴를 썼으니, 내 화면의 RuleManager에도 동일하게 적용
@@ -398,6 +417,18 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.ShowSystemMessage("상대방이 룰 파괴를 사용했습니다. 흑돌의 금수가 해제됩니다.");
 
         Debug.Log("[Network] 룰 파괴 수신 — 흑돌 금수 해제 적용!");
+    }
+
+    // 10번 스킬
+    private void ReceiveSkill_Sanctification()
+    {
+        // 상대방(백돌)이 10번 패시브를 가지고 있으면 내 화면(흑돌)의 보드도 신성화 모드로 변경
+        gameManager.board.ActivateSanctification();
+
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.ShowSystemMessage("상대방이 신성화를 장착했습니다. 모든 돌이 백돌로 보입니다!");
+
+        Debug.Log("[Network] 신성화 수신 — 렌더링 방해 적용!");
     }
 
     // 스킬 선택창 관련 --------------------------------------------------
@@ -585,6 +616,15 @@ public class SkillManager : MonoBehaviour
     // 인게임 스킬 버튼을 눌렀을 때
     private void OnActiveSkillButtonClicked(int slotIndex)
     {
+        // 이미 이번 턴에 스킬을 썼다면 막기
+        if (gameManager.hasUsedSkillThisTurn)
+        {
+            Debug.LogWarning("한 턴에 하나의 스킬만 사용할 수 있습니다!");
+            if (gameManager.gameHUD != null)
+                gameManager.gameHUD.ShowSystemMessage("이번 턴에는 이미 스킬을 사용했습니다!");
+            return;
+        }
+
         // 방어 로직: 내 턴이 아니거나, 게임 중이 아니면 무시
         if (gameManager.currentState != GameState.Playing) return;
         if (gameManager.currentTurnColor != gameManager.localPlayerColor)
@@ -633,6 +673,7 @@ public class SkillManager : MonoBehaviour
 
             if (selectedSkill.Execute(targetX, targetY, gameManager, gameManager.board))
             {
+                gameManager.hasUsedSkillThisTurn = true; // ** 스킬 사용 완료!
                 mySP -= selectedSkill.data.spCost;
                 selectedSkill.currentCooldown = selectedSkill.data.cooldown;
                 if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
@@ -652,7 +693,9 @@ public class SkillManager : MonoBehaviour
         // targetType 기준으로 하이라이트 분기
         if (selectedSkill.data.targetType == "my")
         {
-            gameManager.board.ShowSkillTargetMarkers_My(gameManager.localPlayerColor);
+            gameManager.board.HideSkillTargetMarkers();
+            if (gameManager.gameHUD != null)
+                gameManager.gameHUD.ShowSystemMessage($"{selectedSkill.data.skillName} 사용! 대상이 될 내 돌을 클릭하세요.");
         }
         else if (selectedSkill.data.targetType == "enemy") 
         {
@@ -699,6 +742,7 @@ public class SkillManager : MonoBehaviour
         // Execute 내부에서 targetX[1], targetY[1]의 값을 랜덤 좌표로 채워줍니다.
         if (skillToUse.Execute(targetX, targetY, gameManager, gameManager.board))
         {
+            gameManager.hasUsedSkillThisTurn = true;
             mySP -= skillToUse.data.spCost;
             skillToUse.currentCooldown = skillToUse.data.cooldown;
 
