@@ -80,6 +80,9 @@ public class GameHUD : MonoBehaviour
     public Transform whiteBuffContainer;          
     public GameObject buffIconPrefab;        // 아이콘 하나하나의 프리팹
 
+    [Header("툴팁")]
+    public SkillManager skillManager;
+
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
@@ -358,6 +361,13 @@ public class GameHUD : MonoBehaviour
                             || (skillId == 10 && myColor != StoneColor.White);
 
             skillSelectButtons[i].interactable = !isRestricted;
+
+            if (skillManager != null && skillManager.skillDatabase.TryGetValue(skillId, out SkillData data))
+{
+        SkillTooltipTrigger trigger = skillSelectButtons[i].GetComponent<SkillTooltipTrigger>();
+        if (trigger == null) trigger = skillSelectButtons[i].gameObject.AddComponent<SkillTooltipTrigger>();
+        trigger.SetData(data);
+    }
         }
     }
     // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
@@ -381,6 +391,10 @@ public class GameHUD : MonoBehaviour
 
             if (nameText) nameText.text = effect.effectName;
             if (turnsText) turnsText.text = $"남은 턴: {effect.remainingTurns}";
+
+            SkillTooltipTrigger trigger = icon.GetComponent<SkillTooltipTrigger>();
+            if (trigger == null) trigger = icon.AddComponent<SkillTooltipTrigger>();
+            trigger.SetEffect(effect);
         }
     }
 
