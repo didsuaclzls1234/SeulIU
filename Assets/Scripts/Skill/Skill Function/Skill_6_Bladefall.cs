@@ -28,7 +28,7 @@ public class Skill_6_Bladefall : SkillBase
         // 선택한 칸에 봉인 적용 + 좌표 배열에 기록 (네트워크 전송용)
         for (int i = 0; i < targets.Count; i++)
         {
-            board.ApplySeal(targets[i].x, targets[i].y, 1, casterColor);//data.durationTurn 이 0으로 되어있어서 일단 1로 고정 csv 수정하면 다시 고쳐야할듯
+            board.ApplySeal(targets[i].x, targets[i].y, data.durationTurn, casterColor);
             targetX[i] = targets[i].x;
             targetY[i] = targets[i].y;
         }

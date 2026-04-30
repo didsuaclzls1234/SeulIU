@@ -8,7 +8,7 @@ public class Skill_10_Sanctification : SkillBase
     {
         if (myColor != StoneColor.White)
         {
-            Debug.LogWarning("[Sanctification] ¹éµ¹ Àü¿ë ½ºÅ³ÀÔ´Ï´Ù!");
+            Debug.LogWarning("[Sanctification] ë°±ëŒ ì „ìš© ìŠ¤í‚¬ì…ë‹ˆë‹¤!");
             return SkillUseResult.NoValidTarget;
         }
         return SkillUseResult.Success;
@@ -16,13 +16,13 @@ public class Skill_10_Sanctification : SkillBase
 
     public override bool Execute(int[] targetX, int[] targetY, GameManager gm, BoardManager board)
     {
-        // º¸µå ¸Å´ÏÀú¿¡ ½Å¼ºÈ­ ¸ğµå ON!
+        // ë³´ë“œ ë§¤ë‹ˆì €ì— ì‹ ì„±í™” ëª¨ë“œ ON!
         board.ActivateSanctification();
 
         if (gm.gameHUD != null)
-            gm.gameHUD.ShowSystemMessage("½Å¼ºÈ­ ¹ßµ¿! ¸ğµç µ¹ÀÌ ¹éµ¹ÀÇ ¸ğ½ÀÀ¸·Î ³ªÅ¸³³´Ï´Ù.");
+            gm.gameHUD.ShowSystemMessage("ì‹ ì„±í™” ë°œë™! ëª¨ë“  ëŒì´ ë°±ëŒì˜ ëª¨ìŠµìœ¼ë¡œ ë‚˜íƒ€ë‚©ë‹ˆë‹¤.");
 
-        Debug.Log("[Sanctification] ¹éµ¹ ½Å¼ºÈ­ ·»´õ¸µ ¸ğµå È°¼ºÈ­ ¿Ï·á!");
+        Debug.Log("[Sanctification] ë°±ëŒ ì‹ ì„±í™” ë Œë”ë§ ëª¨ë“œ í™œì„±í™” ì™„ë£Œ!");
         return true;
     }
 }

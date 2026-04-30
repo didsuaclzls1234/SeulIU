@@ -377,7 +377,7 @@ public class SkillManager : MonoBehaviour
         {
             if (xs[i] != -1 && ys[i] != -1)
             {
-                gameManager.board.ApplySeal(xs[i], ys[i], 1, opponentColor);//skillDatabase[6].durationTurn에 duration이 0으로 되어있어서 일단 1로 고정
+                gameManager.board.ApplySeal(xs[i], ys[i], skillDatabase[6].durationTurn, opponentColor);
             }
         }
 
@@ -545,6 +545,11 @@ public class SkillManager : MonoBehaviour
 
                     // 패시브 스킬은 클릭 불가
                     gameManager.gameHUD.activeSkillButtons[i].interactable = !isPassive;
+
+                    Button btn = gameManager.gameHUD.activeSkillButtons[i];
+                    SkillTooltipTrigger trigger = btn.GetComponent<SkillTooltipTrigger>();
+                    if (trigger == null) trigger = btn.gameObject.AddComponent<SkillTooltipTrigger>();
+                    trigger.SetData(newSkill.data);
                 }
             }
         }
