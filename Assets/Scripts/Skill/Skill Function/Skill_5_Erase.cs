@@ -58,9 +58,8 @@ public class Skill_5_Erase : SkillBase
 
         if (targetObj1 != null)
         {
-            // 자식들에 있는 렌더러들을 다 가져와서 첫 번째 놈의 상태를 확인
-            Renderer[] renderers1 = targetObj1.GetComponentsInChildren<Renderer>();
-            if (renderers1.Length > 0) isVisibleToCaster1 = renderers1[0].enabled;
+            StoneVisualController svc = targetObj1.GetComponent<StoneVisualController>();
+            if (svc != null) isVisibleToCaster1 = svc.IsVisible;
         }
 
         // 데이터 및 오브젝트 삭제
@@ -68,10 +67,7 @@ public class Skill_5_Erase : SkillBase
         board.RemoveStoneObjectAt(tx, ty);
 
         // 보일 때만 깜빡임 (투명한 돌을 찍었다면 아무 연출 없이 사라짐)
-        if (isVisibleToCaster1)
-        {
-            board.BlinkEmptySpaceEffect(tx, ty, Color.red, target1Color);
-        }
+        if (isVisibleToCaster1) board.BlinkEmptySpaceEffect(tx, ty, Color.red, target1Color);
 
         // -------------------------------------------------------------------------------
         // 2. 두 번째 돌(랜덤 돌) 찾기
@@ -104,8 +100,8 @@ public class Skill_5_Erase : SkillBase
 
             if (targetObj2 != null)
             {
-                Renderer[] renderers2 = targetObj2.GetComponentsInChildren<Renderer>();
-                if (renderers2.Length > 0) isVisibleToCaster2 = renderers2[0].enabled;
+                StoneVisualController svc2 = targetObj2.GetComponent<StoneVisualController>();
+                if (svc2 != null) isVisibleToCaster2 = svc2.IsVisible;
             }
 
             // 데이터 및 오브젝트 삭제
@@ -113,10 +109,7 @@ public class Skill_5_Erase : SkillBase
             board.RemoveStoneObjectAt(randomPos.x, randomPos.y);
 
             // 랜덤 돌도 보일 때만 깜빡임!
-            if (isVisibleToCaster2)
-            {
-                board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red, target2Color);
-            }
+            if (isVisibleToCaster2) board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red, target2Color);
 
             // 랜덤으로 고른 좌표를 배열의 1번 인덱스에 저장 (네트워크 전송용)
             // 호출부인 SkillManager에서 이 배열을 그대로 가져다 씁니다.

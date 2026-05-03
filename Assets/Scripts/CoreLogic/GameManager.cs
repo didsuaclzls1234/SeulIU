@@ -302,13 +302,13 @@ public class GameManager : MonoBehaviour
         bool isOpponentInvisible = (skillManager != null && skillManager.oppInvisibilityTurns > 0);
         if (isOpponentInvisible)
         {
-            // 투명화라면 돌을 숨기고, 노란색 깜빡임 효과를 생략!
+            // 투명화라면 돌을 숨기고, 노란색 깜빡임 효과를 생략
             board.ApplyVisibilityToSingleStone(placedStone, color, false, false);
         }
         else
         {
             // 안 투명하면 정상적으로 노란색 깜빡임
-            board.BlinkStoneEffect(placedStone, Color.yellow);
+            board.BlinkStoneEffect(placedStone, board.visualSettings.extraPlaceBlinkColor);
         }
 
         if (board.CheckWin(x, y, color))
