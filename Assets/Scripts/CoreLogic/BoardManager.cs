@@ -62,8 +62,8 @@ public class BoardManager : MonoBehaviour
     public Material blackGhostMat; // 반투명 검은돌 연결
     public Material whiteGhostMat; // 반투명 하얀돌 연결
 
-    // 원래 머티리얼을 기억해둘 딕셔너리 (투명화 풀렸을 때 원상복구용)
-    private Dictionary<GameObject, Material> originalMats = new Dictionary<GameObject, Material>();
+    // 원래 머티리얼을 기억해둘 딕셔너리 (투명화 풀렸을 때 원상복구용) - 렌더러별로 원래 머티리얼 배열을 기억하도록
+    private Dictionary<Renderer, Material[]> originalMats = new Dictionary<Renderer, Material[]>();
 
     // 신성화(10번) 스킬 전용
     [Header("Sanctification State")]
@@ -576,46 +576,58 @@ public class BoardManager : MonoBehaviour
     // 특정 돌 1개의 렌더링 상태를 바꾸는 코어 함수
     public void ApplyVisibilityToSingleStone(GameObject stone, StoneColor stoneColor, bool isVisible, bool isMyStone)
     {
-        MeshRenderer mr = stone.GetComponent<MeshRenderer>();
-        if (mr == null) return;
+        // 자식 객체들에 있는 모든 렌더러를 다 가져옵니다.
+        Renderer[] renderers = stone.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
 
-        // 처음 건드리는 돌이면 원래 머티리얼 저장
-        if (!originalMats.ContainsKey(stone))
-        {
-            originalMats[stone] = mr.sharedMaterial;
-        }
-
-        // 좌표 역계산
         int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
         int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
         Vector2Int posKey = new Vector2Int(x, y);
 
+        foreach (Renderer r in renderers)
+        {
+            // 처음 건드리는 파츠면 원래 머티리얼 싹 다 저장
+            if (!originalMats.ContainsKey(r))
+            {
+                originalMats[r] = r.sharedMaterials;
+            }
+
+            if (isVisible)
+            {
+                // 1. 투명화 해제 (정상 복구)
+                r.enabled = true;
+                r.materials = originalMats[r];
+            }
+            else
+            {
+                // 2. 투명화 적용 중!
+                if (isMyStone)
+                {
+                    r.enabled = true;
+                    // 파츠의 머티리얼 개수만큼 유령 머티리얼로 덮어씌우기
+                    Material[] ghostMats = new Material[r.materials.Length];
+                    Material targetGhostMat = (stoneColor == StoneColor.Black) ? blackGhostMat : whiteGhostMat;
+                    for (int i = 0; i < ghostMats.Length; i++) ghostMats[i] = targetGhostMat;
+
+                    r.materials = ghostMats;
+                }
+                else
+                {
+                    // 상대방 돌이면 렌더러 끄기 (100% 투명)
+                    r.enabled = false;
+                }
+            }
+        }
+
+        // 방패 마커 처리 (기존 로직 유지)
         if (isVisible)
         {
-            // 1. 투명화 해제 (정상 복구)
-            mr.enabled = true;
-            mr.material = originalMats[stone];
-            // 방패 마커 복구
             if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
         }
         else
         {
-            // 2. 투명화 적용 중!
-            if (isMyStone)
-            {
-                // 내 돌이면 반투명(Ghost) 머티리얼 씌우기
-                mr.enabled = true;
-                mr.material = (stoneColor == StoneColor.Black) ? blackGhostMat : whiteGhostMat;
-                // 내 화면의 내 돌이면 방패도 반투명하게 보이게 (필요시 머티리얼 변경, 일단은 켜둠)
-                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
-            }
-            else
-            {
-                // 상대방 돌이면 렌더러 자체를 꺼서 100% 안 보이게 만듦! (최고의 투명화)
-                mr.enabled = false;
-                // 상대방 화면에서 내 돌이 투명해지면 방패 마커도 같이 끔!
-                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
-            }
+            if (isMyStone) { if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true); }
+            else { if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false); }
         }
     }
 

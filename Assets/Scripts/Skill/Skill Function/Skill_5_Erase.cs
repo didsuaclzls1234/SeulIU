@@ -53,8 +53,15 @@ public class Skill_5_Erase : SkillBase
 
         // 시전자의 화면에서 이 돌이 투명(MeshRenderer.enabled == false)인지 확인
         GameObject targetObj1 = board.GetStoneObjectAt(tx, ty);
-        StoneColor target1Color = (StoneColor)board.grid[tx, ty]; // 지우기 전에 색상 기억
-        bool isVisibleToCaster1 = targetObj1 != null && targetObj1.GetComponent<MeshRenderer>().enabled;
+        StoneColor target1Color = (StoneColor)board.grid[tx, ty];
+        bool isVisibleToCaster1 = false;
+
+        if (targetObj1 != null)
+        {
+            // 자식들에 있는 렌더러들을 다 가져와서 첫 번째 놈의 상태를 확인
+            Renderer[] renderers1 = targetObj1.GetComponentsInChildren<Renderer>();
+            if (renderers1.Length > 0) isVisibleToCaster1 = renderers1[0].enabled;
+        }
 
         // 데이터 및 오브젝트 삭제
         board.grid[tx, ty] = 0;
@@ -90,9 +97,16 @@ public class Skill_5_Erase : SkillBase
             Vector2Int randomPos = otherEnemyStones[randomIndex];
 
             // 랜덤으로 뽑힌 두 번째 돌도 투명 상태인지 확인
+            // --- [2. 두 번째(랜덤) 돌 투명 상태 확인 수정] ---
             GameObject targetObj2 = board.GetStoneObjectAt(randomPos.x, randomPos.y);
-            StoneColor target2Color = (StoneColor)board.grid[randomPos.x, randomPos.y]; // 지우기 전에 색상 기억
-            bool isVisibleToCaster2 = targetObj2 != null && targetObj2.GetComponent<MeshRenderer>().enabled;
+            StoneColor target2Color = (StoneColor)board.grid[randomPos.x, randomPos.y];
+            bool isVisibleToCaster2 = false;
+
+            if (targetObj2 != null)
+            {
+                Renderer[] renderers2 = targetObj2.GetComponentsInChildren<Renderer>();
+                if (renderers2.Length > 0) isVisibleToCaster2 = renderers2[0].enabled;
+            }
 
             // 데이터 및 오브젝트 삭제
             board.grid[randomPos.x, randomPos.y] = 0;

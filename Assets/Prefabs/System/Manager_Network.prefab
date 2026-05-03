@@ -1,0 +1,178 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6869827060460748142
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1619512343961550780}
+  - component: {fileID: 1780991742913023864}
+  - component: {fileID: 239151593489867026}
+  - component: {fileID: 5994289456563125330}
+  - component: {fileID: 7284364969166313689}
+  - component: {fileID: 5585080955155539591}
+  - component: {fileID: 8794119294472458415}
+  m_Layer: 0
+  m_Name: Manager_Network
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1619512343961550780
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1780991742913023864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 784c64bcf41b53447aa06ac9475e8635, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoardManager
+  ruleManager: {fileID: 7284364969166313689}
+  gameManager: {fileID: 239151593489867026}
+  boardSize: 19
+  gridSize: 1
+  mainCamera: {fileID: 0}
+  cameraPadding: 2
+  normalBlackMat: {fileID: 2100000, guid: d2a576658de76c74d9673f263d6e031c, type: 2}
+  normalWhiteMat: {fileID: 2100000, guid: efe1d9216a3f6a74b9f6ca8e69cbf22e, type: 2}
+  stoneYOffset: 0.4
+  forbiddenYOffset: 0.1
+  sealYOffset: 0.15
+  shieldYOffset: 0.6
+  blinkYOffset: 0.15
+  blackStoneYRotation: -90
+  whiteStoneYRotation: 90
+  blackGhostMat: {fileID: 2100000, guid: a27b4e26cf4a1a644ade007c4ac0d233, type: 2}
+  whiteGhostMat: {fileID: 2100000, guid: 714b5fafb4e3a6b43903f193710a7fb1, type: 2}
+  isSanctificationActive: 0
+--- !u!114 &239151593489867026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3c2d6cdd0d0af64a9af987f877f95d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  board: {fileID: 1780991742913023864}
+  gameHUD: {fileID: 0}
+  timerManager: {fileID: 8794119294472458415}
+  skillManager: {fileID: 5585080955155539591}
+  cameraSwitcher: {fileID: 0}
+  extraPlacementCount: 0
+  pendingExtraPlacement: 0
+  hasUsedSkillThisTurn: 0
+  currentState: 0
+  currentMode: 2
+  localPlayerName: "\uB098(Player)"
+  remotePlayerName: "\uC0C1\uB300\uBC29(Opponent)"
+  aiDifficulty: 3
+--- !u!114 &5994289456563125330
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 053f6eebeb2bc5545bdd1972a0fd71cc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InputManager
+  gameManager: {fileID: 239151593489867026}
+  skillManager: {fileID: 5585080955155539591}
+  gridSize: 1
+  blackHoverPrefab: {fileID: 4198048179304034673, guid: 76f052f86850d094683a83724b81d2e0, type: 3}
+  whiteHoverPrefab: {fileID: 375456540994023728, guid: 971c5c9b54a3dc144a5a87b75b938a1e, type: 3}
+  hoverYOffset: 0.1
+  hoverAlpha: 0.5
+  targetingMat: {fileID: 2100000, guid: 8f0cb74d7cd95e94c88586f0992dc054, type: 2}
+--- !u!114 &7284364969166313689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc87f2342f8e6d247a1b022da55db11c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RuleManager
+  blackRules:
+    ban33: 0
+    ban44: 0
+    banOverline: 0
+    winCondition: 5
+  whiteRules:
+    ban33: 0
+    ban44: 0
+    banOverline: 0
+    winCondition: 5
+--- !u!114 &5585080955155539591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33459648f5566fb46b5306440a8edb73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillManager
+  gameManager: {fileID: 239151593489867026}
+  gameSession: {fileID: 0}
+  timerManager: {fileID: 8794119294472458415}
+  isLocalPlayerReady: 0
+  isRemotePlayerReady: 0
+  mySP: 0
+  oppSP: 0
+  mySkillsID: ffffffffffffffffffffffff
+  oppSkillsID: ffffffffffffffffffffffff
+  selectedSkillSlot: -1
+  myInvisibilityTurns: 0
+  oppInvisibilityTurns: 0
+  activeEffects: []
+  sealedTurnsRemaining: 0
+--- !u!114 &8794119294472458415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6869827060460748142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c44d0db3edb3a3642b8f599bffd325fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TimerManager
+  gameManager: {fileID: 239151593489867026}
+  gameHUD: {fileID: 0}
+  skillSelectLimit: 60
+  turnLimit: 30

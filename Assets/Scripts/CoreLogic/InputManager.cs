@@ -36,44 +36,77 @@ public class InputManager : MonoBehaviour
         if (gameManager == null) gameManager = FindFirstObjectByType<GameManager>();
         if (skillManager == null) skillManager = FindFirstObjectByType<SkillManager>();
 
-        // 1. 프리팹이 연결되어 있다면, 코드로 직접 Instantiate 해서 생성합니다.
-        // if (hoverIndicatorPrefab != null)
-        // {
-        //     hoverIndicator = Instantiate(hoverIndicatorPrefab);
-        //     hoverIndicator.name = "HoverIndicator_Dynamic"; // 하이어라키에서 보기 편하게 이름 변경
-        //     hoverIndicator.SetActive(false); // 처음엔 숨겨둡니다.
-
-        //     hoverRenderer = hoverIndicator.GetComponent<MeshRenderer>();
-        // }
-
-        // 두 프리팹 미리 생성 후 숨김
+        // ==========================================
+        // 1. 흑돌 호버 세팅
+        // ==========================================
         if (blackHoverPrefab != null)
         {
             blackHoverIndicator = Instantiate(blackHoverPrefab);
             blackHoverIndicator.name = "BlackHoverIndicator_Dynamic";
             blackHoverIndicator.SetActive(false);
-            // 반투명 처리
-            MeshRenderer blackMr = blackHoverIndicator.GetComponent<MeshRenderer>();
-            if (blackMr != null)
+
+            // 🚨 모든 자식 렌더러를 가져옴
+            Renderer[] renderers = blackHoverIndicator.GetComponentsInChildren<Renderer>();
+            foreach (Renderer r in renderers)
             {
-                Color c = blackMr.material.color;
-                c.a = hoverAlpha;
-                blackMr.material.color = c;
+                Material[] mats = r.materials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue; // 빈 머티리얼(Null) 에러 방어!
+
+                    if (mats[i].HasProperty("_BaseColor"))
+                    {
+                        // 1) 알파값 깎기
+                        Color c = mats[i].GetColor("_BaseColor");
+                        c.a = hoverAlpha;
+                        mats[i].SetColor("_BaseColor", c);
+
+                        // 2) URP 머티리얼을 '투명(Transparent)' 모드로 강제 개조
+                        mats[i].SetFloat("_Surface", 1); // Surface Type: Transparent
+                        mats[i].SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                        mats[i].SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                        mats[i].SetInt("_ZWrite", 0); // ZWrite Off
+                        mats[i].renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    }
+                }
+                r.materials = mats;
             }
         }
 
+        // ==========================================
+        // 2. 백돌 호버 세팅 (흑돌과 동일한 구조)
+        // ==========================================
         if (whiteHoverPrefab != null)
         {
             whiteHoverIndicator = Instantiate(whiteHoverPrefab);
             whiteHoverIndicator.name = "WhiteHoverIndicator_Dynamic";
             whiteHoverIndicator.SetActive(false);
-            // 반투명 처리
-            MeshRenderer whiteMr = whiteHoverIndicator.GetComponent<MeshRenderer>();
-            if (whiteMr != null)
+
+            // 🚨 백돌도 똑같이 모든 자식 렌더러를 가져옴
+            Renderer[] renderers = whiteHoverIndicator.GetComponentsInChildren<Renderer>();
+            foreach (Renderer r in renderers)
             {
-                Color c = whiteMr.material.color;
-                c.a = hoverAlpha;
-                whiteMr.material.color = c;
+                Material[] mats = r.materials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue; // 빈 머티리얼(Null) 에러 방어!
+
+                    if (mats[i].HasProperty("_BaseColor"))
+                    {
+                        // 1) 알파값 깎기
+                        Color c = mats[i].GetColor("_BaseColor");
+                        c.a = hoverAlpha;
+                        mats[i].SetColor("_BaseColor", c);
+
+                        // 2) URP 머티리얼을 '투명(Transparent)' 모드로 강제 개조
+                        mats[i].SetFloat("_Surface", 1);
+                        mats[i].SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                        mats[i].SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                        mats[i].SetInt("_ZWrite", 0);
+                        mats[i].renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    }
+                }
+                r.materials = mats;
             }
         }
     }
