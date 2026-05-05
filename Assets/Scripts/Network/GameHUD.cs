@@ -151,7 +151,7 @@ public class GameHUD : MonoBehaviour
             if (skillSelectTimerText) skillSelectTimerText.text = timeStr;
         }
         // 2. Playing, SkillTargeting 상태일 때 타이머 글씨 업데이트
-        else if (gameManager.currentState == GameState.Playing || gameManager.currentState == GameState.SkillTargeting)
+        else if (gameManager.currentState == GameState.Playing || gameManager.currentState == GameState.SkillTargeting|| gameManager.currentState == GameState.SkillPreview)
         {
             if (turnTimerText) turnTimerText.text = timeStr;
         }
@@ -318,21 +318,33 @@ public class GameHUD : MonoBehaviour
     }
 
     // 시스템 로그 띄우는 텍스트
+    // public void ShowSystemMessage(string message)
+    // {
+    //     if (systemMessageText == null) return;
+
+    //     systemMessageText.text = message;
+    //     systemMessageText.gameObject.SetActive(true);
+
+    //     StopAllCoroutines(); // 기존에 떠있던 메시지가 있다면 취소하고 새로 시작
+    //     StartCoroutine(FadeOutMessage());
+    // }
+
+    // private IEnumerator FadeOutMessage()
+    // {
+    //     // 2초 대기 후 서서히 사라짐
+    //     yield return new WaitForSeconds(2.0f);
+    //     systemMessageText.gameObject.SetActive(false);
+    // }
     public void ShowSystemMessage(string message)
     {
         if (systemMessageText == null) return;
-
         systemMessageText.text = message;
         systemMessageText.gameObject.SetActive(true);
-
-        StopAllCoroutines(); // 기존에 떠있던 메시지가 있다면 취소하고 새로 시작
-        StartCoroutine(FadeOutMessage());
     }
 
-    private IEnumerator FadeOutMessage()
+    public void HideSystemMessage()
     {
-        // 2초 대기 후 서서히 사라짐
-        yield return new WaitForSeconds(2.0f);
+        if (systemMessageText == null) return;
         systemMessageText.gameObject.SetActive(false);
     }
 

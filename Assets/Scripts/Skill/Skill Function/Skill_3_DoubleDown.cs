@@ -22,8 +22,9 @@ public class Skill_3_DoubleDown : SkillBase
 
     public override bool Execute(int[] targetX, int[] targetY, GameManager gm, BoardManager board)
     {
-        // extraPlacementCount를 1로 설정 → GameManager가 다음 착수 시 랜덤위치에 자동 착수
-        gm.extraPlacementCount = 1;
+        // [수정] extraPlacementCount 방식 제거
+        //        pendingSkillId를 3으로 세팅 → 플레이어 착수 후 SkillManager.ExecutePendingSkill(3, x, y)에서 처리
+        gm.pendingSkillId = 3;
 
         // 네트워크 수신을 위해 배열 세팅 (특별한 좌표가 필요 없으므로 -1)
         targetX[1] = -1;

@@ -23,25 +23,60 @@ public class Skill_6_Bladefall : SkillBase
     public override bool Execute(int[] targetX, int[] targetY, GameManager gm, BoardManager board)
     {
         StoneColor casterColor = gm.currentTurnColor;
-        List<Vector2Int> targets = SelectSealTargets(board,casterColor);
+        // List<Vector2Int> targets = SelectSealTargets(board,casterColor);
 
-        // 선택한 칸에 봉인 적용 + 좌표 배열에 기록 (네트워크 전송용)
+        // // 선택한 칸에 봉인 적용 + 좌표 배열에 기록 (네트워크 전송용)
+        // for (int i = 0; i < targets.Count; i++)
+        // {
+        //     board.ApplySeal(targets[i].x, targets[i].y, data.durationTurn, casterColor);
+        //     targetX[i] = targets[i].x;
+        //     targetY[i] = targets[i].y;
+        // }
+
+        // if (gm.gameHUD != null)
+        //     gm.gameHUD.ShowSystemMessage($"칼날비 발동! 빈 교차점 {targets.Count}칸이 봉인됩니다.");
+
+        // Debug.Log($"[Bladefall] {targets.Count}칸 봉인 완료!");
+        //return true;
+        // ExecutePendingSkill에서 호출 시 배열 크기가 20, ConfirmSkill에서 호출 시 2
+        bool isFromPending = (targetX.Length >= 20);
+ 
+        if (!isFromPending)
+        {
+            // [수정] SkillPreview 확정 시 — pendingSkillId만 세팅, 실제 봉인은 착수 후
+            gm.pendingSkillId = 6;
+ 
+            if (gm.gameHUD != null)
+                gm.gameHUD.ShowSystemMessage("칼날비 발동! 착수 후 빈 교차점이 봉인됩니다.");
+ 
+            Debug.Log("[Bladefall] pendingSkillId = 6 세팅. 착수 후 봉인 발동 예약!");
+            return true;
+        }
+ 
+        // ExecutePendingSkill에서 호출 — 실제 봉인 적용
+        // targetX[0], targetY[0] = 방금 착수한 좌표 (제외 대상)
+        int excludeX = targetX[0];
+        int excludeY = targetY[0];
+ 
+        List<Vector2Int> targets = SelectSealTargets(board, casterColor, excludeX, excludeY);
+ 
         for (int i = 0; i < targets.Count; i++)
         {
+            // [수정] 하드코딩 1 제거 → data.durationTurn 사용
             board.ApplySeal(targets[i].x, targets[i].y, data.durationTurn, casterColor);
-            targetX[i] = targets[i].x;
-            targetY[i] = targets[i].y;
+            if (i < targetX.Length) { targetX[i] = targets[i].x; targetY[i] = targets[i].y; }
         }
-
+ 
         if (gm.gameHUD != null)
             gm.gameHUD.ShowSystemMessage($"칼날비 발동! 빈 교차점 {targets.Count}칸이 봉인됩니다.");
-
+ 
         Debug.Log($"[Bladefall] {targets.Count}칸 봉인 완료!");
         return true;
     }
 
     // 봉인 대상 선정 — 돌 인접 칸 우선, 최대 10칸
-    private List<Vector2Int> SelectSealTargets(BoardManager board, StoneColor casterColor, int count = 20)
+    // [수정] excludeX, excludeY 파라미터 추가 — 착수한 좌표 봉인 제외
+    private List<Vector2Int> SelectSealTargets(BoardManager board, StoneColor casterColor,  int excludeX = -1, int excludeY = -1, int count = 20)
     {
         List<Vector2Int> adjacent = new List<Vector2Int>();
         List<Vector2Int> others   = new List<Vector2Int>();
@@ -56,7 +91,8 @@ public class Skill_6_Bladefall : SkillBase
             {
                 if (board.grid[x, y] != 0) continue;           // 이미 돌이 있음
                 if (board.sealedGrid[x, y].turns > 0) continue; // 이미 봉인됨
-
+                if (x == excludeX && y == excludeY) continue; // [추가] 착수 좌표 제외
+                
                 bool isAdjacent = false;
                 for (int d = 0; d < 8; d++)
                 {

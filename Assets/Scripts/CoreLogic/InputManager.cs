@@ -82,8 +82,12 @@ public class InputManager : MonoBehaviour
             return;
         }
 
-        if (Input.GetMouseButtonDown(1) && gameManager.currentState == GameState.SkillTargeting)
+        // [수정] 우클릭 — 메시지 숨김 + 취소 기능 추가
+        if (Input.GetMouseButtonDown(1) &&
+            (gameManager.currentState == GameState.SkillTargeting ||
+             gameManager.currentState == GameState.SkillPreview))
         {
+            gameManager.gameHUD?.HideSystemMessage();
             CancelSkillTargeting();
             return;
         }
@@ -109,6 +113,8 @@ public class InputManager : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0))
         {
+            // [추가] 좌클릭 시 메시지 숨김
+            gameManager.gameHUD?.HideSystemMessage();
             ProcessClick(x, y);
         }
     }
@@ -116,7 +122,7 @@ public class InputManager : MonoBehaviour
     private bool ShouldBlockInput()
     {
         bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-        bool isInvalidState = gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting;
+        bool isInvalidState = gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting && gameManager.currentState != GameState.SkillPreview;
         bool isNotMyTurn = gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor;
 
         return isPointerOverUI || isInvalidState || isNotMyTurn || isProcessingClick || _isInputBlocked;
@@ -205,6 +211,11 @@ public class InputManager : MonoBehaviour
         {
             skillManager.ExecuteSkillAt(x, y);
         }
+        // [추가] SkillPreview 상태에서 좌클릭 → 스킬 확정
+        else if (gameManager.currentState == GameState.SkillPreview)
+        {
+            skillManager.ConfirmSkill(x, y);
+        }
 
         isProcessingClick = false;
     }
@@ -214,6 +225,7 @@ public class InputManager : MonoBehaviour
         Debug.Log("스킬 사용 취소");
         gameManager.currentState = GameState.Playing;
         skillManager.selectedSkillSlot = -1;
+        gameManager.pendingSkillId        = -1; // [추가] 예약된 스킬도 초기화
         gameManager.board.HideSkillTargetMarkers();
         gameManager.board.ClearHoverHighlight();
     }

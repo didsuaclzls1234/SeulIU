@@ -6,8 +6,10 @@ using System.Threading.Tasks; // Stack 사용
 
 
 // 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
-public enum GameState { WaitingForSkillSelect, Playing, SkillTargeting, GameOver }
+public enum GameState { WaitingForSkillSelect, Playing, SkillPreview, SkillTargeting, GameOver }
 public enum PlayMode { Solo, AI, Multiplayer } // 플레이 모드 
+// [추가] 착수 종류 구분 — PlayerManual은 턴 카운트 감소, SkillInduced는 감소 없음
+public enum PlacementType { PlayerManual, SkillInduced }
 
 // 방금 둔 돌의 정보를 기억할 구조체
 public struct MoveRecord
@@ -27,7 +29,7 @@ public class GameManager : MonoBehaviour
     public event Action<bool> OnUndoReplyLocally;       // 내가 상대방의 무르기를 수락/거절했을 때 발송
     public event Action OnRestartRequestedLocally;      // 내가 재시작 버튼 눌렀을 때
     //public event Action<int> OnSkillUsedLocally;      // 스킬 썼을 때 (나중에 확장)
-    public event Action<int, int, int> OnDoubleDownExtraPlaced; // Double Down 스킬로 랜덤 착수했을 때 (x, y, seq)
+    //public event Action<int, int, int> OnDoubleDownExtraPlaced; // Double Down 스킬로 랜덤 착수했을 때 (x, y, seq)
     // -----------------------------------------------------------------------------
 
     public BoardManager board;
@@ -37,9 +39,12 @@ public class GameManager : MonoBehaviour
     public CameraSwitcher cameraSwitcher;
     
     [Header("Skill State")]
-    public int extraPlacementCount = 0; // 돌 여러번 놓는 스킬(예: 3번 스킬) 사용 시, 남은 추가 착수 횟수 저장용 변수
-    public bool pendingExtraPlacement = false; // 추가 착수 대기 상태 플래그 (네트워크에서 랜덤 착수 패킷을 기다리는 중인지)
-    public bool hasUsedSkillThisTurn = false; // 이번 턴 스킬 사용 여부 (스킬은 한 턴 당 하나만)
+    // public int extraPlacementCount = 0; // 돌 여러번 놓는 스킬(예: 3번 스킬) 사용 시, 남은 추가 착수 횟수 저장용 변수
+    // public bool pendingExtraPlacement = false; // 추가 착수 대기 상태 플래그 (네트워크에서 랜덤 착수 패킷을 기다리는 중인지)
+    // public bool hasUsedSkillThisTurn = false; // 이번 턴 스킬 사용 여부 (스킬은 한 턴 당 하나만)
+    // [제거] extraPlacementCount, pendingExtraPlacement
+    public bool hasUsedSkillThisTurn = false;
+    public int pendingSkillId = -1; // [추가] B타입 스킬(바로 발동하지 않고, 착수 후 발동 하는 스킬 예약용)
 
     private StoneColor _currentTurnColor = StoneColor.Black;    // 1: 흑돌(선공), 2: 백돌
     public StoneColor currentTurnColor
@@ -125,7 +130,7 @@ public class GameManager : MonoBehaviour
     // (InputManager가 마우스를 클릭하면 이 함수를 호출함)
     public void TryPlaceStone(int x, int y)
     {
-        Debug.Log($"[TryPlaceStone 시작] extraPlacementCount: {extraPlacementCount}");
+        //Debug.Log($"[TryPlaceStone 시작] extraPlacementCount: {extraPlacementCount}");
         if (currentState != GameState.Playing)
         {
             // (선택) 로그로 확인하고 싶으시면 켜두세요
@@ -144,43 +149,53 @@ public class GameManager : MonoBehaviour
         if (board.IsValidMove(x, y, currentTurnColor)
             && !board.ruleManager.IsForbiddenMove(x, y, (int)currentTurnColor, board.grid, board.boardSize, false))
         {
-            bool hasExtraPlacement = extraPlacementCount > 0;
-            // 실제 돌 놓는 코어 로직 실행
-            ExecutePlaceStone(x, y, currentTurnColor);
+            // bool hasExtraPlacement = extraPlacementCount > 0;
+            // // 실제 돌 놓는 코어 로직 실행
+            // ExecutePlaceStone(x, y, currentTurnColor);
 
-            // 1. 승리 여부와 상관없이 '마지막 돌' 패킷은 무조건 먼저 보냅니다!
+            // // 1. 승리 여부와 상관없이 '마지막 돌' 패킷은 무조건 먼저 보냅니다!
+            // if (currentMode == PlayMode.Multiplayer)
+            //     OnStonePlacedLocally?.Invoke(x, y, moveHistory.Count - 1);
+
+            // // 2. 상대방에게 돌을 보냈으니, 이제 게임이 끝났다면 여기서 중단합니다.
+            // if (currentState == GameState.GameOver) return;
+
+            // // 3. 추가 착수 체크 + 4. 랜덤 착수 + 5. 패킷 전송
+            // if (hasExtraPlacement)
+            // {
+            //     extraPlacementCount--;
+            //     Vector2Int randomMove = board.GetRandomValidMove(currentTurnColor);
+            //     if (randomMove.x != -1)
+            //     {
+            //         // * 새로 추가 착수되는 돌을 받아서 깜빡임 이펙트 적용!
+            //         ExecutePlaceStone(randomMove.x, randomMove.y, currentTurnColor);
+
+            //         // 스택의 맨 위에 방금 놓은 돌이 있으므로 가져옴
+            //         MoveRecord extraRec = moveHistory.Peek();
+            //         board.BlinkStoneEffect(extraRec.stoneObj, Color.yellow); // 추가된 돌 노란색 깜빡임
+
+            //         if (currentMode == PlayMode.Multiplayer)
+            //             OnDoubleDownExtraPlaced?.Invoke(randomMove.x, randomMove.y, moveHistory.Count - 1);
+
+            //         if (currentState == GameState.GameOver) return;
+            //     }
+            // }
+
+            // // 6. 턴 넘기기
+            // if (currentState != GameState.GameOver)
+            // {
+            //     PassTurn(currentTurnColor);
+            // }
+
+             // [수정] PlacementType.PlayerManual 명시, extraPlacementCount 분기 제거
+            ExecutePlaceStone(x, y, currentTurnColor, PlacementType.PlayerManual);
+ 
             if (currentMode == PlayMode.Multiplayer)
                 OnStonePlacedLocally?.Invoke(x, y, moveHistory.Count - 1);
-
-            // 2. 상대방에게 돌을 보냈으니, 이제 게임이 끝났다면 여기서 중단합니다.
+ 
             if (currentState == GameState.GameOver) return;
-
-            // 3. 추가 착수 체크 + 4. 랜덤 착수 + 5. 패킷 전송
-            if (hasExtraPlacement)
-            {
-                extraPlacementCount--;
-                Vector2Int randomMove = board.GetRandomValidMove(currentTurnColor);
-                if (randomMove.x != -1)
-                {
-                    // * 새로 추가 착수되는 돌을 받아서 깜빡임 이펙트 적용!
-                    ExecutePlaceStone(randomMove.x, randomMove.y, currentTurnColor);
-
-                    // 스택의 맨 위에 방금 놓은 돌이 있으므로 가져옴
-                    MoveRecord extraRec = moveHistory.Peek();
-                    board.BlinkStoneEffect(extraRec.stoneObj, Color.yellow); // 추가된 돌 노란색 깜빡임
-
-                    if (currentMode == PlayMode.Multiplayer)
-                        OnDoubleDownExtraPlaced?.Invoke(randomMove.x, randomMove.y, moveHistory.Count - 1);
-
-                    if (currentState == GameState.GameOver) return;
-                }
-            }
-
-            // 6. 턴 넘기기
-            if (currentState != GameState.GameOver)
-            {
-                PassTurn(currentTurnColor);
-            }
+ 
+            PassTurn(currentTurnColor);
         }
     }
 
@@ -196,18 +211,19 @@ public class GameManager : MonoBehaviour
         }
 
         // 실제 돌을 놓고 여기서 스스로 승리 판정을 하도록 유도 (동기화 핵심)
-        ExecutePlaceStone(x, y, receivedColor);
+        ExecutePlaceStone(x, y, receivedColor,PlacementType.PlayerManual);
 
         if (currentState == GameState.GameOver) return;
 
         // ExtraPlacement가 올 예정이면 턴 넘기기 보류
-        if (!pendingExtraPlacement)
-        {
-            PassTurn(receivedColor);
-        }
+        // if (!pendingExtraPlacement)
+        // {
+        //     PassTurn(receivedColor);
+        // }
+        PassTurn(receivedColor);
     }
-
-    private void ExecutePlaceStone(int x, int y, StoneColor playerColor)
+     // [수정] PlacementType 파라미터 추가 / pendingSkillId 처리 / skillManager.OnStonePlaced 호출
+    private void ExecutePlaceStone(int x, int y, StoneColor playerColor, PlacementType type = PlacementType.PlayerManual)
     {
         // 1. 돌 생성 및 데이터 저장
         GameObject placedStone = board.PlaceStone(x, y, playerColor);
@@ -230,12 +246,6 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // 턴을 넘기기 직전에 방금 돌을 둔 사람의 SP를 올려주고 쿨타임 깎기
-        // if (skillManager != null)
-        // {
-        //     skillManager.AddSPOnTurnEnd(playerColor);
-        // }
-
         // 방금 돌을 둔 사람이 투명화 상태라면, 방금 둔 돌도 즉시 투명화 적용!
         if (skillManager != null)
         {
@@ -248,79 +258,61 @@ public class GameManager : MonoBehaviour
                 board.ApplyVisibilityToSingleStone(placedStone, playerColor, false, false);
             }
         }
-
-        // 5. extraPlacementCount가 있으면 랜덤 착수만 하고 턴 넘기기 없이 return
-
-        // if (extraPlacementCount > 0)
-        // {
-        //     extraPlacementCount--;
-        //     Vector2Int randomMove = board.GetRandomValidMove(currentTurnColor);
-        //     if (randomMove.x != -1)
-        //     {
-        //         GameObject extraStone = board.PlaceStone(randomMove.x, randomMove.y, currentTurnColor);
-        //         moveHistory.Push(new MoveRecord { x = randomMove.x, y = randomMove.y, playerColor = currentTurnColor, stoneObj = extraStone });
-
-        //         if (board.CheckWin(randomMove.x, randomMove.y, currentTurnColor))
-        //         {
-        //             EndGame(currentTurnColor);
-        //             return;
-        //         }
-
-        //         lastExtraPlacement = randomMove; //  저장만, 전송은 TryPlaceStone에서
-        //     }
-        //     return; // 턴을 넘기지 않고 함수 종료
-        // }
-
-        // 6. 일반적인 턴 넘기기
-
-        // currentTurnColor = currentTurnColor.Opponent();
-
-        // // 다음 사람의 턴으로 바뀌었으니 ❌ 마커 갱신
-        // board.UpdateForbiddenMarks(currentTurnColor);
-
-        // // 6. 만약 AI 모드이고, 방금 턴을 넘겨받은 게 AI라면 AI 연산 시작
-        // if (currentState == GameState.Playing && currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
-        // {
-        //     ExecuteAITurn();
-        // }
+         // 5. [추가] B타입 스킬 예약 처리 (PlayerManual 착수 시에만)
+        if (type == PlacementType.PlayerManual && pendingSkillId != -1)
+        {
+            skillManager?.ExecutePendingSkill(pendingSkillId, x, y);
+            pendingSkillId = -1;
+        }
+ 
+        // 6. [추가] 턴 감소를 SkillManager에 위임
+        skillManager?.OnStonePlaced(playerColor, type);
+       
     }
 
-    public void ReceiveExtraPlacement(int x, int y, StoneColor color)
+    // [추가] SkillManager에서 SkillInduced 착수 시 호출할 public 래퍼
+    public void ExecutePlaceStonePublic(int x, int y, StoneColor playerColor, PlacementType type)
     {
-        Debug.Log($"[ReceiveExtraPlacement] 호출됨 - x:{x}, y:{y}, color:{color}, currentTurnColor:{currentTurnColor}");
-    
-        GameObject placedStone = board.PlaceStone(x, y, color);
-        if (placedStone == null)
-        {
-            Debug.LogWarning("[ReceiveExtraPlacement] PlaceStone 실패 - null 반환");
-            return;
-        }
-
-        moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = color, stoneObj = placedStone });
-
-        // ** 상대방이 투명화 상태인지 확인
-        bool isOpponentInvisible = (skillManager != null && skillManager.oppInvisibilityTurns > 0);
-        if (isOpponentInvisible)
-        {
-            // 투명화라면 돌을 숨기고, 노란색 깜빡임 효과를 생략
-            board.ApplyVisibilityToSingleStone(placedStone, color, false, false);
-        }
-        else
-        {
-            // 안 투명하면 정상적으로 노란색 깜빡임
-            board.BlinkStoneEffect(placedStone, board.visualSettings.extraPlaceBlinkColor);
-        }
-
-        if (board.CheckWin(x, y, color))
-        {
-            EndGame(color);
-            return;
-        }
-
-        //  플래그 해제 후 턴 넘기기
-        pendingExtraPlacement = false;
-        PassTurn(color);
+        ExecutePlaceStone(x, y, playerColor, type);
     }
+
+    // public void ReceiveExtraPlacement(int x, int y, StoneColor color)
+    // {
+    //     Debug.Log($"[ReceiveExtraPlacement] 호출됨 - x:{x}, y:{y}, color:{color}, currentTurnColor:{currentTurnColor}");
+    
+    //     GameObject placedStone = board.PlaceStone(x, y, color);
+    //     if (placedStone == null)
+    //     {
+    //         Debug.LogWarning("[ReceiveExtraPlacement] PlaceStone 실패 - null 반환");
+    //         return;
+    //     }
+
+    //     moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = color, stoneObj = placedStone });
+
+    //     // ** 상대방이 투명화 상태인지 확인
+    //     bool isOpponentInvisible = (skillManager != null && skillManager.oppInvisibilityTurns > 0);
+    //     if (isOpponentInvisible)
+    //     {
+    //         // 투명화라면 돌을 숨기고, 노란색 깜빡임 효과를 생략
+    //         board.ApplyVisibilityToSingleStone(placedStone, color, false, false);
+    //     }
+    //     else
+    //     {
+    //         // 안 투명하면 정상적으로 노란색 깜빡임
+    //         board.BlinkStoneEffect(placedStone, board.visualSettings.extraPlaceBlinkColor);
+    //     }
+
+    //     if (board.CheckWin(x, y, color))
+    //     {
+    //         EndGame(color);
+    //         return;
+    //     }
+
+    //     //  플래그 해제 후 턴 넘기기
+    //     pendingExtraPlacement = false;
+    //     PassTurn(color);
+    // }
+
     // =========================================================
     // AI 턴 처리 로직
     // =========================================================
@@ -356,7 +348,7 @@ public class GameManager : MonoBehaviour
     private void EndGame(StoneColor winner)
     {
         currentState = GameState.GameOver;
-        extraPlacementCount = 0;
+        // extraPlacementCount = 0;
 
         // UI는 무조건 GameHUD가 처리하도록 위임
         if (gameHUD != null) gameHUD.ShowGameOver(winner, localPlayerColor);
@@ -504,7 +496,7 @@ public class GameManager : MonoBehaviour
         // 1. 보드 매니저에게 판을 치우라고 지시 (SRP 분리)
         board.ClearBoard();
         moveHistory.Clear(); // 재시작 시 스택 비우기
-        extraPlacementCount = 0;
+        pendingSkillId = -1; // [수정] extraPlacementCount 대신 pendingSkillId 초기화
         
         // 2. 게임 상태와 턴을 흑돌로 초기화
         currentTurnColor = StoneColor.Black;
@@ -562,7 +554,8 @@ public class GameManager : MonoBehaviour
     public void OnTurnTimeOut()
     {
         // ** 스킬 조준(타겟팅) 중에 시간이 다 되었다면 강제 취소 처리
-        if (currentState == GameState.SkillTargeting)
+        // [수정] SkillPreview 상태도 취소 대상 추가
+        if (currentState == GameState.SkillTargeting || currentState == GameState.SkillPreview)
         {
             Debug.Log("[GameManager] 타임아웃! 스킬 시전이 취소됩니다.");
             if (skillManager != null)
@@ -574,6 +567,7 @@ public class GameManager : MonoBehaviour
                 board.HideSkillTargetMarkers();
                 board.ClearHoverHighlight(); // 조준점 지우기
             }
+            pendingSkillId = -1;
             currentState = GameState.Playing; // 다시 플레이 상태로 복구
         }
 
@@ -597,37 +591,42 @@ public class GameManager : MonoBehaviour
     }
 
     // 돌을 몇 번 뒀든, 진짜로 턴이 넘어갈 때 딱 1번만 호출되는 턴 통합 관리 함수
+     // [수정] PassTurn — SP/투명화/AntiMagic/봉인 감소 로직 제거
+    //        모든 감소 처리는 ExecutePlaceStone → skillManager.OnStonePlaced로 이관
     private void PassTurn(StoneColor placedColor)
     {
-        // 1. 봉인 턴 수 감소 (원래 ExecutePlaceStone에 있던 녀석)
-        for (int i = 0; i < board.boardSize; i++)
-        {
-            for (int j = 0; j < board.boardSize; j++)
-            {
-                if (board.sealedGrid[i, j].turns > 0 && board.sealedGrid[i, j].owner != placedColor)
-                {
-                    board.sealedGrid[i, j].turns--;
-                    if (board.sealedGrid[i, j].turns == 0)
-                    {
-                        board.RemoveSealEffect(i, j);
-                        Debug.Log($"({i}, {j}) 봉인이 해제되었습니다.");
-                    }
-                }
-            }
-        }
+        // // 1. 봉인 턴 수 감소 (원래 ExecutePlaceStone에 있던 녀석)
+        // for (int i = 0; i < board.boardSize; i++)
+        // {
+        //     for (int j = 0; j < board.boardSize; j++)
+        //     {
+        //         if (board.sealedGrid[i, j].turns > 0 && board.sealedGrid[i, j].owner != placedColor)
+        //         {
+        //             board.sealedGrid[i, j].turns--;
+        //             if (board.sealedGrid[i, j].turns == 0)
+        //             {
+        //                 board.RemoveSealEffect(i, j);
+        //                 Debug.Log($"({i}, {j}) 봉인이 해제되었습니다.");
+        //             }
+        //         }
+        //     }
+        // }
 
-        // 2. 투명화 턴 감소 (가장 중요! 여기서 딱 1번만 깎음)
-        skillManager?.DecreaseInvisibilityTurns(placedColor);
+        // // 2. 투명화 턴 감소 (가장 중요! 여기서 딱 1번만 깎음)
+        // skillManager?.DecreaseInvisibilityTurns(placedColor);
 
-        // 3. SP 증가 및 스킬 쿨타임/안티매직 감소
-        skillManager?.AddSPOnTurnEnd(placedColor);
-        skillManager?.DecreaseSealedTurns();
+        // // 3. SP 증가 및 스킬 쿨타임/안티매직 감소
+        // skillManager?.AddSPOnTurnEnd(placedColor);
+        // skillManager?.DecreaseSealedTurns();
 
-        // 4. 진짜로 턴 색상 바꾸고 다음 사람 마커 갱신
-        currentTurnColor = currentTurnColor.Opponent();
+        // // 4. 진짜로 턴 색상 바꾸고 다음 사람 마커 갱신
+        // currentTurnColor = currentTurnColor.Opponent();
+        // board.UpdateForbiddenMarks(currentTurnColor);
+        // hasUsedSkillThisTurn = false;
+        currentTurnColor     = currentTurnColor.Opponent();
         board.UpdateForbiddenMarks(currentTurnColor);
         hasUsedSkillThisTurn = false;
-
+        
         // 5. AI 모드라면 AI에게 턴 넘김
         if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
         {
