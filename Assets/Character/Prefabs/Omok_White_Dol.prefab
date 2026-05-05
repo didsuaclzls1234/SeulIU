@@ -79,5 +79,25 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b9d919843dc559345ac873165db17d3c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -40331361042051885}
   m_SourcePrefab: {fileID: 100100000, guid: b9d919843dc559345ac873165db17d3c, type: 3}
+--- !u!1 &375456540994023728 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b9d919843dc559345ac873165db17d3c, type: 3}
+  m_PrefabInstance: {fileID: 717350445685050465}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &-40331361042051885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 375456540994023728}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4575ed82c8ea3e143840fc755e422e85, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StoneVisualController

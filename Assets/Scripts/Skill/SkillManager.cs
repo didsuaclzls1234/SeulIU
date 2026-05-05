@@ -41,7 +41,7 @@ public class SkillManager : MonoBehaviour
     private List<SkillBase> oppSkills = new List<SkillBase>();
 
     [Header("Skill Decks (Network IDs)")]
-    // ** 네트워크 담당자가 방 입장 시 세팅해 줄 '스킬 번호' 배열 (데이터용)
+    // 방 입장 시 세팅해 줄 '스킬 번호' 배열 (데이터용) - 네트워크 관련
     public int[] mySkillsID = new int[] { -1, -1, -1 };
     public int[] oppSkillsID = new int[] { -1, -1, -1 };
 
@@ -92,7 +92,7 @@ public class SkillManager : MonoBehaviour
             case 9:
                 return new Skill_9_Destruction(data);
             case 10: 
-                return new Skill_10_Sanctification(data);
+                return new Skill_10_Consecration(data);
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
                 Debug.Log($"[SkillManager] ID {id} 스킬은 아직 미구현! 빈 껍데기 반환.");
@@ -270,7 +270,7 @@ public class SkillManager : MonoBehaviour
             case 7: ReceiveSkill_Invisibility(xs, ys); break;
             case 8: ReceiveSkill_GodBless(xs, ys); break;
             case 9: ReceiveSkill_Destruction(); break;
-            case 10: ReceiveSkill_Sanctification(); break;
+            case 10: ReceiveSkill_Consecration(); break;
             default:
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
@@ -363,7 +363,7 @@ public class SkillManager : MonoBehaviour
                 gameManager.board.RemoveStoneObjectAt(xs[i], ys[i]);
 
                 // 수신자(돌 주인)의 화면에서는 무조건 빨간색 깜빡임 연출
-                gameManager.board.BlinkEmptySpaceEffect(xs[i], ys[i], Color.red, deadStoneColor);
+                gameManager.board.BlinkEmptySpaceEffect(xs[i], ys[i], gameManager.board.visualSettings.removeBlinkColor, deadStoneColor);
             }
         }
     }
@@ -420,7 +420,7 @@ public class SkillManager : MonoBehaviour
                     // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
                     if (mr != null && mr.enabled)
                     {
-                        gameManager.board.BlinkStoneEffect(stone, Color.cyan);
+                        gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
                     }
                 }
             }
@@ -442,10 +442,10 @@ public class SkillManager : MonoBehaviour
     }
 
     // 10번 스킬
-    private void ReceiveSkill_Sanctification()
+    private void ReceiveSkill_Consecration()
     {
         // 상대방(백돌)이 10번 패시브를 가지고 있으면 내 화면(흑돌)의 보드도 신성화 모드로 변경
-        gameManager.board.ActivateSanctification();
+        gameManager.board.ActivateConsecration();
 
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.ShowSystemMessage("상대방이 신성화를 장착했습니다. 모든 돌이 백돌로 보입니다!");

@@ -53,18 +53,21 @@ public class Skill_5_Erase : SkillBase
 
         // 시전자의 화면에서 이 돌이 투명(MeshRenderer.enabled == false)인지 확인
         GameObject targetObj1 = board.GetStoneObjectAt(tx, ty);
-        StoneColor target1Color = (StoneColor)board.grid[tx, ty]; // 지우기 전에 색상 기억
-        bool isVisibleToCaster1 = targetObj1 != null && targetObj1.GetComponent<MeshRenderer>().enabled;
+        StoneColor target1Color = (StoneColor)board.grid[tx, ty];
+        bool isVisibleToCaster1 = false;
+
+        if (targetObj1 != null)
+        {
+            StoneVisualController svc = targetObj1.GetComponent<StoneVisualController>();
+            if (svc != null) isVisibleToCaster1 = svc.IsVisible;
+        }
 
         // 데이터 및 오브젝트 삭제
         board.grid[tx, ty] = 0;
         board.RemoveStoneObjectAt(tx, ty);
 
         // 보일 때만 깜빡임 (투명한 돌을 찍었다면 아무 연출 없이 사라짐)
-        if (isVisibleToCaster1)
-        {
-            board.BlinkEmptySpaceEffect(tx, ty, Color.red, target1Color);
-        }
+        if (isVisibleToCaster1) board.BlinkEmptySpaceEffect(tx, ty, Color.red, target1Color);
 
         // -------------------------------------------------------------------------------
         // 2. 두 번째 돌(랜덤 돌) 찾기
@@ -90,19 +93,23 @@ public class Skill_5_Erase : SkillBase
             Vector2Int randomPos = otherEnemyStones[randomIndex];
 
             // 랜덤으로 뽑힌 두 번째 돌도 투명 상태인지 확인
+            // --- [2. 두 번째(랜덤) 돌 투명 상태 확인 수정] ---
             GameObject targetObj2 = board.GetStoneObjectAt(randomPos.x, randomPos.y);
-            StoneColor target2Color = (StoneColor)board.grid[randomPos.x, randomPos.y]; // 지우기 전에 색상 기억
-            bool isVisibleToCaster2 = targetObj2 != null && targetObj2.GetComponent<MeshRenderer>().enabled;
+            StoneColor target2Color = (StoneColor)board.grid[randomPos.x, randomPos.y];
+            bool isVisibleToCaster2 = false;
+
+            if (targetObj2 != null)
+            {
+                StoneVisualController svc2 = targetObj2.GetComponent<StoneVisualController>();
+                if (svc2 != null) isVisibleToCaster2 = svc2.IsVisible;
+            }
 
             // 데이터 및 오브젝트 삭제
             board.grid[randomPos.x, randomPos.y] = 0;
             board.RemoveStoneObjectAt(randomPos.x, randomPos.y);
 
             // 랜덤 돌도 보일 때만 깜빡임!
-            if (isVisibleToCaster2)
-            {
-                board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red, target2Color);
-            }
+            if (isVisibleToCaster2) board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red, target2Color);
 
             // 랜덤으로 고른 좌표를 배열의 1번 인덱스에 저장 (네트워크 전송용)
             // 호출부인 SkillManager에서 이 배열을 그대로 가져다 씁니다.
