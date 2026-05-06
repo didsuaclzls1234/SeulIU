@@ -525,6 +525,9 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
          Debug.Log($"[GameSession] {otherPlayer.NickName} 나감 / 현재 상태: {gameManager.currentState}");
+        // [추가] 재도전 대기 중이었다면 패널 닫기
+        if (gameHUD != null) gameHUD.HideRematchPanel();
+        
         if (gameManager.currentState != GameState.GameOver)
         {
             gameManager.currentState = GameState.GameOver;
