@@ -93,10 +93,9 @@ public class GameHUD : MonoBehaviour
     public GameSession gameSession;
 
     [Header("스킬 로그")]
-    public Transform skillLogContent;   // ScrollRect의 Content
-    public GameObject skillLogEntryPrefab; // TextMeshProUGUI만 있는 단순 프리팹
+    public TextMeshProUGUI skillLogText;      // Content 오브젝트의 TMP
     public ScrollRect skillLogScrollRect;
-    private int _turnCount = 0; // 턴 카운터 (별도 관리 or GameManager에서 받기)
+    private List<string> _logEntries = new List<string>();
 
     private void Start()
     {
@@ -479,20 +478,17 @@ public class GameHUD : MonoBehaviour
 
     public void AddSkillLog(string userName, string skillName, int turnCount)
     {
-        if (skillLogContent == null || skillLogEntryPrefab == null) return;
+        if (skillLogText == null) return;
 
-        // 최대 20개 유지 — 넘으면 가장 오래된 항목 삭제
-        if (skillLogContent.childCount >= 20)
-            Destroy(skillLogContent.GetChild(0).gameObject);
+        _logEntries.Add($"[{turnCount}턴] {userName} — {skillName}");
+        skillLogText.text = string.Join("\n", _logEntries);
 
-        GameObject entry = Instantiate(skillLogEntryPrefab, skillLogContent);
-        TextMeshProUGUI text = entry.GetComponent<TextMeshProUGUI>();
-        if (text != null)
-            text.text = $"[{turnCount}턴] {userName} — {skillName}";
-
-        // 최신 로그로 자동 스크롤
-        Canvas.ForceUpdateCanvases();
-        if (skillLogScrollRect != null)
-            skillLogScrollRect.verticalNormalizedPosition = 0f;
+        // 최신 로그로 스크롤
+        StartCoroutine(ScrollToBottom());
+    }
+    private IEnumerator ScrollToBottom()
+    {
+        yield return new WaitForEndOfFrame();
+        skillLogScrollRect.verticalNormalizedPosition = 0f;
     }
 }
