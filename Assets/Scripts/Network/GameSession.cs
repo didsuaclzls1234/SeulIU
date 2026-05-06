@@ -24,6 +24,10 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     public SkillManager skillManager;
     public TimerManager timerManager;
     
+
+    // 재도전 요청을 내가 보냈는지 여부 (중복 요청 방지)
+    private bool _isRematchRequested = false;
+
     #region 생명주기
     
     private void Start()
@@ -374,6 +378,99 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     // RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
     // PhotonNetwork.RaiseEvent(PhotonEventCodes.ExtraPlacement, data, opts, SendOptions.SendReliable);
     // }
+
+    // ── 재도전(Rematch) ──────────────────────────────────────
+
+/// <summary>결과 화면에서 "다시하기" 누르면 GameHUD → 여기로 옴</summary>
+    public void RequestRematch()
+    {
+        if (_isRematchRequested) return;
+        _isRematchRequested = true;
+
+        // 요청 패킷 전송
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.RematchRequest, null, opts, SendOptions.SendReliable);
+
+        // 요청자 화면: 대기 패널 표시
+        if (gameHUD != null) gameHUD.ShowRematchWaitingPanel();
+
+        Debug.Log("[GameSession] 재도전 요청 전송");
+    }
+
+    /// <summary>수신자가 수락 버튼 눌렀을 때 — 인스펙터에서 버튼에 연결</summary>
+    public void OnRematchAccepted()
+    {
+        SendRematchReply(true);
+        ExecuteFullReset();
+    }
+
+    /// <summary>수신자가 거절 버튼 눌렀을 때 — 인스펙터에서 버튼에 연결</summary>
+    public void OnRematchDeclined()
+    {
+        SendRematchReply(false);
+        if (gameHUD != null) gameHUD.HideRematchPanel();
+    }
+
+    private void SendRematchReply(bool isAccepted)
+    {
+        object[] data = new object[] { isAccepted };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(PhotonEventCodes.RematchReply, data, opts, SendOptions.SendReliable);
+    }
+
+    /// <summary>상대방이 재도전 요청을 보내왔을 때</summary>
+    private void HandleRematchRequest()
+    {
+        if (gameHUD != null) gameHUD.ShowRematchReceivedPanel();
+        Debug.Log("[GameSession] 재도전 요청 수신");
+    }
+
+    /// <summary>내가 보낸 재도전 요청에 대한 응답 수신</summary>
+    private void HandleRematchReply(object[] data)
+    {
+        bool isAccepted = (bool)data[0];
+        _isRematchRequested = false;
+
+        if (isAccepted)
+        {
+            ExecuteFullReset();
+        }
+        else
+        {
+            // 거절 메시지 표시 (resultPanel은 유지)
+            if (gameHUD != null) gameHUD.ShowRematchDeclinedMessage();
+            Debug.Log("[GameSession] 재도전 거절 수신");
+        }
+    }
+
+    /// <summary>
+    /// 재도전 수락 시 양쪽 모두 호출되는 전체 리셋.
+    /// 리셋 후 Master Client가 역할 재배정을 브로드캐스트.
+    /// </summary>
+    private void ExecuteFullReset()
+    {
+        // 패널/플래그 초기화
+        if (gameHUD != null) gameHUD.HideRematchPanel();
+        _isReadySent        = false;
+        _selectedSkillIDs   = new int[] { -1, -1, -1 };
+        _isRematchRequested = false;
+
+        // 게임 로직 초기화
+        skillManager.ResetForRematch();
+        gameManager.ResetForRematch();
+
+        // 스킬 선택창 UI 리셋 (버튼 선택 상태 등)
+        if (gameHUD != null)
+            gameHUD.skillSelectPanel?.SetActive(false); // HandleAssignRoles에서 다시 열림
+
+        // Master Client가 역할 재배정 → 양쪽 모두 HandleAssignRoles 수신 후 스킬 선택 시작
+        if (PhotonNetwork.IsMasterClient)
+        {
+            RoleAssigner.AssignAndBroadcast();
+        }
+
+        Debug.Log("[GameSession] ExecuteFullReset 완료 — 역할 재배정 대기");
+    }
     #endregion
     
     #region Photon 이벤트 수신
@@ -413,8 +510,14 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             // case PhotonEventCodes.ExtraPlacement:
             //     HandleExtraPlacement((object[])photonEvent.CustomData); // 착수 처리 로직 재활용
             //     break;
+            case PhotonEventCodes.RematchRequest:
+                HandleRematchRequest();
+                break;
+            case PhotonEventCodes.RematchReply:
+                HandleRematchReply((object[])photonEvent.CustomData);
+                break;
+            }
         }
-    }
     #endregion  
 
     #region Photon 콜백

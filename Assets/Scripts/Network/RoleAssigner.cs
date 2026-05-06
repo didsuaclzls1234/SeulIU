@@ -27,6 +27,14 @@ public static class RoleAssigner
             Debug.LogError($"[RoleAssigner] 플레이어 수 오류: {players.Length}명");
             return;
         }
+        
+        // [추가] 재도전 시 이전 캐시 제거 (초기 게임엔 no-op)
+        RaiseEventOptions clearOpts = new RaiseEventOptions
+        {
+            CachingOption = EventCaching.RemoveFromRoomCache
+        };
+        PhotonNetwork.RaiseEvent(
+            PhotonEventCodes.AssignRoles, null, clearOpts, SendOptions.SendReliable);
 
         // 랜덤으로 흑 담당 ActorNumber 결정
         int blackActorNumber = Random.value < 0.5f

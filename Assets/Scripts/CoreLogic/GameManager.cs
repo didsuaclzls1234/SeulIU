@@ -483,6 +483,24 @@ public class GameManager : MonoBehaviour
             OnRestartRequestedLocally?.Invoke();
         }
     }
+    public void ResetForRematch()
+    {
+        // 보드 초기화
+        board.ClearBoard();
+        moveHistory.Clear();
+        pendingSkillId       = -1;
+        hasUsedSkillThisTurn = false;
+
+        // 게임 상태 초기화 (스킬 선택 대기로 복귀)
+        _currentTurnColor = StoneColor.Black;
+        currentState      = GameState.WaitingForSkillSelect;
+
+        // 결과 패널 숨기기
+        if (gameHUD != null) gameHUD.resultPanel.SetActive(false);
+
+        board.UpdateForbiddenMarks(StoneColor.Black);
+        Debug.Log("[GameManager] ResetForRematch 완료 — 스킬 선택 대기 상태로 복귀");
+    }
 
     // 포톤이 상대방의 재시작 신호를 받았을 때 찌를 함수
     public void ReceiveNetworkRestart()
