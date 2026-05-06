@@ -411,6 +411,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
+        gameManager.gameHUD?.AddSkillLog("상대방", skillObj.data.skillName, gameManager.CurrentMoveCount);
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
@@ -630,7 +631,7 @@ public class SkillManager : MonoBehaviour
             }
         }
     }
-    
+
     public void ResetForRematch()
     {
         // 인스턴스/덱 초기화
@@ -965,6 +966,7 @@ public class SkillManager : MonoBehaviour
                 mySP -= skill.data.spCost;
                 skill.currentCooldown        = skill.data.cooldown;
                 gameManager.hasUsedSkillThisTurn = true;
+                gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
                 gameManager.currentState     = GameState.Playing;
  
                 if (gameManager.gameHUD != null)
@@ -982,7 +984,9 @@ public class SkillManager : MonoBehaviour
                 mySP -= skill.data.spCost;
                 skill.currentCooldown        = skill.data.cooldown;
                 gameManager.hasUsedSkillThisTurn = true;
- 
+                // [추가]
+                gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
+
                 if (skill.data.durationTurn > 0)
                 {
                     activeEffects.Add(new ActiveEffect

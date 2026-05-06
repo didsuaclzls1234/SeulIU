@@ -92,6 +92,12 @@ public class GameHUD : MonoBehaviour
     // [추가] GameSession 참조 (Rematch 버튼 콜백용)
     public GameSession gameSession;
 
+    [Header("스킬 로그")]
+    public Transform skillLogContent;   // ScrollRect의 Content
+    public GameObject skillLogEntryPrefab; // TextMeshProUGUI만 있는 단순 프리팹
+    public ScrollRect skillLogScrollRect;
+    private int _turnCount = 0; // 턴 카운터 (별도 관리 or GameManager에서 받기)
+
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
@@ -468,5 +474,25 @@ public class GameHUD : MonoBehaviour
         if (resultText) resultText.text = "상대방이 재도전 요청을 거절했습니다.";
         // 거절 후엔 리매치 버튼 클릭 막기 (더 이상 요청 못 하게)
         if (rematchButton) rematchButton.interactable = false;
+    }
+    // ── 스킬 로그 ─────────────────────────────────────────
+
+    public void AddSkillLog(string userName, string skillName, int turnCount)
+    {
+        if (skillLogContent == null || skillLogEntryPrefab == null) return;
+
+        // 최대 20개 유지 — 넘으면 가장 오래된 항목 삭제
+        if (skillLogContent.childCount >= 20)
+            Destroy(skillLogContent.GetChild(0).gameObject);
+
+        GameObject entry = Instantiate(skillLogEntryPrefab, skillLogContent);
+        TextMeshProUGUI text = entry.GetComponent<TextMeshProUGUI>();
+        if (text != null)
+            text.text = $"[{turnCount}턴] {userName} — {skillName}";
+
+        // 최신 로그로 자동 스크롤
+        Canvas.ForceUpdateCanvases();
+        if (skillLogScrollRect != null)
+            skillLogScrollRect.verticalNormalizedPosition = 0f;
     }
 }

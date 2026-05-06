@@ -81,7 +81,8 @@ public class GameManager : MonoBehaviour
     public string remotePlayerName = "상대방(Opponent)";
 
     private Stack<MoveRecord> moveHistory = new Stack<MoveRecord>(); // 기보(히스토리)를 저장할 스택
-
+    // [추가] 스킬 로그용 현재 착수 횟수 (읽기 전용)
+    public int CurrentMoveCount => moveHistory.Count;
     // 오목 AI 인스턴스
     private GomokuAI aiPlayer;
     private bool isAITurnProcessing = false; // AI가 중복으로 수 연산하는 것을 방지
