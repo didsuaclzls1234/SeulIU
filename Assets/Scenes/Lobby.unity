@@ -2064,7 +2064,9 @@ MonoBehaviour:
   masterMixer: {fileID: 24100000, guid: e7c0bb49717b39647889d0bc1652bdcc, type: 2}
   bgmSource: {fileID: 2042852663}
   sfxSource: {fileID: 2042852662}
-  bgmList: []
+  bgmList:
+  - soundName: Example
+    clip: {fileID: 8300000, guid: 33f336343445c204ca9c60939ed0f043, type: 3}
   sfxList: []
 --- !u!4 &2042852665
 Transform:
