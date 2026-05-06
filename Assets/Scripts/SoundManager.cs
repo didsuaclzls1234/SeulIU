@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Audio;
 
 // 인스펙터에서 이름과 오디오 클립을 넣기 위한 클래스
 [System.Serializable]
@@ -11,6 +12,8 @@ public class Sound
 
 public class SoundManager : Singleton<SoundManager>
 {
+    [Header("오디오 믹서")]
+    public AudioMixer masterMixer; 
 
     [Header("오디오 소스 (재생기)")]
     public AudioSource bgmSource;
@@ -90,7 +93,31 @@ public class SoundManager : Singleton<SoundManager>
         bgmSource.Stop();
     }
 
-    // 볼륨 조절 기능 (옵션 창 등에서 슬라이더와 연결할 때 사용)
-    public void SetBGMVolume(float volume) { bgmSource.volume = volume; }
-    public void SetSFXVolume(float volume) { sfxSource.volume = volume; }
+
+    // ==========================================
+    // 볼륨 조절 함수 업데이트 (데시벨 변환 적용)
+    // ==========================================
+
+    /// <summary>
+    /// BGM 볼륨 조절 (UI 슬라이더의 0.0001 ~ 1.0 값을 받아서 데시벨로 변환)
+    /// ex) 
+    ///     bgmSlider.minValue = 0.0001f;
+    ///     bgmSlider.maxValue = 1f;
+    ///     bgmSlider.onValueChanged.AddListener(SoundManager.Instance.SetBGMVolume);
+    /// </summary>
+    public void SetBGMVolume(float sliderValue)
+    {
+        // 슬라이더 최소값을 0으로 하면 Log 연산 시 에러(-Infinity)가 나므로 0.0001 같은 0에 가까운 값을 줍니다.
+        float volume = Mathf.Log10(sliderValue) * 20;
+        masterMixer.SetFloat("BGMVolume", volume);
+    }
+
+    /// <summary>
+    /// SFX 볼륨 조절
+    /// </summary>
+    public void SetSFXVolume(float sliderValue)
+    {
+        float volume = Mathf.Log10(sliderValue) * 20;
+        masterMixer.SetFloat("SFXVolume", volume);
+    }
 }
