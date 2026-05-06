@@ -38,8 +38,13 @@ public class VisualSettings
     [Header("Blink Effect (제거 스킬 등 깜빡임)")]
     public Color removeBlinkColor = Color.red; // 제거 시 깜빡이는 색
     public Color extraPlaceBlinkColor = Color.yellow; // 추가 착수(3번 스킬) 깜빡이는 색
-    public Color godBlessBlinkColor = Color.cyan; // 신의 가호(8번 스킬) 깜빡이는 색
+    //public Color godBlessBlinkColor = Color.cyan; // 신의 가호(8번 스킬) 깜빡이는 색
     [Range(0f, 1f)] public float blinkOverlayBlend = 0.7f; // 깜빡일 때 색상이 덮어씌워지는 강도
+
+    [Header("Board Skill Overlay (전체 타겟 스킬용)")]
+    public Color boardReadyTint = new Color(0.9f, 0.9f, 0.9f, 1f);
+    public Color boardHoverTint = new Color(0.8f, 0.8f, 1f, 1f); // 살짝 푸른빛이 도는 밝은 색
+    public Color boardClickTint = new Color(0.5f, 0.5f, 0.8f, 1f); // 클릭 시 확 짙어지는 색
 }
 
 // -------------------------------------------------------------------------------------
@@ -58,6 +63,11 @@ public class BoardManager : MonoBehaviour
     [Header("Visual Settings (기획자 튜닝용)")]
     public VisualSettings visualSettings; // 인스펙터에 노출
 
+    [Header("Board Visuals")]
+    public MeshRenderer boardRenderer; // 인스펙터에서 바둑판 3D 모델을 꼭 드래그해서 넣어주세요!
+    private Material boardMaterial;
+    private Color originalBoardColor;
+
     [Header("Camera Auto Setup")]
     public Camera mainCamera; // 인스펙터에서 MainCamera 연결
     public float cameraPadding = 2f; // 화면 가장자리 여백
@@ -66,7 +76,7 @@ public class BoardManager : MonoBehaviour
     public float stoneYOffset = 0.4f;       // 바둑돌 높이
     public float forbiddenYOffset = 0.1f;   // 금수(❌) 마커 높이
     public float sealYOffset = 0.15f;       // 봉인(자물쇠) 마커 높이
-    public float shieldYOffset = 0.6f;      // 보호막(신의 가호) 마커 높이
+    //public float shieldYOffset = 0.6f;      // 보호막(신의 가호) 마커 높이
     public float blinkYOffset = 0.15f;      // 제거 스킬 빈자리 깜빡임 높이
 
     [Header("Stone Rotation")]
@@ -82,7 +92,7 @@ public class BoardManager : MonoBehaviour
 
     // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패) 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
-    private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
+    //private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
 
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
@@ -94,7 +104,7 @@ public class BoardManager : MonoBehaviour
     // 봉인 스킬 관련: 0이면 정상, 1 이상이면 남은 봉인 턴 수
     public SealInfo[,] sealedGrid;
     // 보호막 여부를 저장하는 배열 (true면 보호받음)
-    public bool[,] shieldGrid;
+    //public bool[,] shieldGrid;
 
     // 신성화(10번) 스킬 전용
     [Header("Consecration State")]
@@ -105,9 +115,21 @@ public class BoardManager : MonoBehaviour
         // 게임 시작과 동시에 빈 배열 생성
         grid = new int[boardSize, boardSize];
         sealedGrid = new SealInfo[boardSize, boardSize];
-        shieldGrid = new bool[boardSize, boardSize];
+        //shieldGrid = new bool[boardSize, boardSize];
 
         AdjustCameraToBoardSize(); // 시작 시 카메라 자동 세팅
+
+        // 바둑판 머티리얼 및 원본 색상 백업
+        if (boardRenderer != null)
+        {
+            boardMaterial = boardRenderer.material; // 인스턴스화 됨
+            if (boardMaterial.HasProperty("_BaseColor")) // URP 기준
+                originalBoardColor = boardMaterial.GetColor("_BaseColor");
+            else if (boardMaterial.HasProperty("_Color")) // 레거시 기준
+                originalBoardColor = boardMaterial.GetColor("_Color");
+            else
+                originalBoardColor = Color.white;
+        }
     }
 
     // 1: 돌을 둘 수 있는 정상적인 위치인지 검사
@@ -215,11 +237,11 @@ public class BoardManager : MonoBehaviour
         foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
         activeSealMarkers.Clear();
 
-        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
-        activeShieldMarkers.Clear();
+        //foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        //activeShieldMarkers.Clear();
 
         System.Array.Clear(grid, 0, grid.Length);
-        System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
+        //System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
 
         isConsecrationActive = false;
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
@@ -411,29 +433,29 @@ public class BoardManager : MonoBehaviour
     }
 
     // 보호막 씌우는 핵심 API
-    public void ApplyShield(int x, int y)
-    {
-        shieldGrid[x, y] = true;
-        Vector2Int posKey = new Vector2Int(x, y);
+    //public void ApplyShield(int x, int y)
+    //{
+    //    shieldGrid[x, y] = true;
+    //    Vector2Int posKey = new Vector2Int(x, y);
 
-        if (!activeShieldMarkers.ContainsKey(posKey))
-        {
-            Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
-            GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+    //    if (!activeShieldMarkers.ContainsKey(posKey))
+    //    {
+    //        Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
+    //        GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
 
-            if (marker != null)
-            {
-                activeShieldMarkers.Add(posKey, marker);
+    //        if (marker != null)
+    //        {
+    //            activeShieldMarkers.Add(posKey, marker);
 
-                GameObject stone = GetStoneObjectAt(x, y);
-                if (stone != null)
-                {
-                    StoneVisualController svc = stone.GetComponent<StoneVisualController>();
-                    if (svc != null && !svc.IsVisible) marker.SetActive(false);
-                }
-            }
-        }
-    }
+    //            GameObject stone = GetStoneObjectAt(x, y);
+    //            if (stone != null)
+    //            {
+    //                StoneVisualController svc = stone.GetComponent<StoneVisualController>();
+    //                if (svc != null && !svc.IsVisible) marker.SetActive(false);
+    //            }
+    //        }
+    //    }
+    //}
 
     // 해당 스킬이 어떤 돌(내 돌 or 상대 돌)을 수정하는가?
     public void ShowSkillTargetMarkers_My(StoneColor myColor)
@@ -509,7 +531,7 @@ public class BoardManager : MonoBehaviour
         if (isVisible)
         {
             svc.SetVisibility(true, false);
-            if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+            //if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
         }
         else
         {
@@ -517,12 +539,12 @@ public class BoardManager : MonoBehaviour
             {
                 // 인스펙터 연동
                 svc.SetVisibility(true, true, gAlpha, gMet, gSmo);
-                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+                //if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
             }
             else
             {
                 svc.SetVisibility(false, false); // 완전 숨김
-                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
+                //if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
             }
         }
     }
@@ -685,6 +707,41 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    // 투명화 상태라도 착수 시 0.6초간 보여준 뒤 숨기는 헬퍼 코루틴
+    public IEnumerator BlinkAndHideRoutine(GameObject stone, StoneColor color, bool isMyStone)
+    {
+        StoneVisualController svc = stone.GetComponent<StoneVisualController>();
+        if (svc == null) yield break;
+
+        // 1. 일단 완전 보이게 설정 (기본 착수)
+        svc.SetVisibility(true, false);
+
+        // 필요하다면 여기서 BlinkStoneEffect를 호출해 깜빡임 연출을 추가해도 좋습니다.
+        // PlayBlinkEffect(visualSettings.extraPlaceBlinkColor, 0.7f);
+
+        // 2. 원하는 시간만큼 대기 (예: 0.6초)
+        yield return new WaitForSeconds(0.6f);
+
+        // 3. 시간이 지나면 투명 상태로 덮어씌우기
+        ApplyVisibilityToSingleStone(stone, color, false, isMyStone);
+    }
+
+    // 바둑판 전체 색상 변경 (0: 원상복구, 1: 호버, 2: 클릭)
+    public void SetBoardOverlayState(int state)
+    {
+        if (boardMaterial == null) return;
+
+        Color targetColor = originalBoardColor; // state == 0
+        if (state == 1) targetColor = visualSettings.boardReadyTint;       // 대기 (하얗게)
+        else if (state == 2) targetColor = visualSettings.boardHoverTint;  // 호버
+        else if (state == 3) targetColor = visualSettings.boardClickTint;  // 클릭
+
+        if (boardMaterial.HasProperty("_BaseColor"))
+            boardMaterial.SetColor("_BaseColor", targetColor);
+        else if (boardMaterial.HasProperty("_Color"))
+            boardMaterial.SetColor("_Color", targetColor);
+    }
+    // ------------------------------------------------------------
     // ** 개발자용 격자 그리기
     void OnDrawGizmos()
     {

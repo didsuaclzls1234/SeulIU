@@ -88,7 +88,7 @@ public class SkillManager : MonoBehaviour
             case 7:
                 return new Skill_7_Invisibility(data);
             case 8:
-                return new Skill_8_GodBless(data);
+                return new Skill_8_SevenSins(data);   // return new Skill_8_GodBless(data);
             case 9:
                 return new Skill_9_Destruction(data);
             case 10: 
@@ -376,7 +376,7 @@ public class SkillManager : MonoBehaviour
             case 5: ReceiveSkill_Erase(xs, ys);      break;
             case 6: ReceiveSkill_Bladefall(xs, ys); break;
             case 7: ReceiveSkill_Invisibility(xs, ys); break;
-            case 8: ReceiveSkill_GodBless(xs, ys); break;
+            case 8: ReceiveSkill_SevenSins(); break; //ReceiveSkill_GodBless(xs, ys); break;
             case 9: ReceiveSkill_Destruction(); break;
             case 10: ReceiveSkill_Consecration(); break;
             default:
@@ -515,31 +515,43 @@ public class SkillManager : MonoBehaviour
     }
 
     // 8번 스킬
-    private void ReceiveSkill_GodBless(int[] xs, int[] ys)
+    private void ReceiveSkill_SevenSins()
     {
-        // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
-        for (int i = 0; i < xs.Length; i++)
-        {
-            if (xs[i] != -1 && ys[i] != -1)
-            {
-                // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
-                gameManager.board.ApplyShield(xs[i], ys[i]);
+        // 상대방이 썼으니, 내(localPlayerColor) 승리 조건이 7로 바뀜!
+        RuleSettings myRules = (gameManager.localPlayerColor == StoneColor.Black) ? gameManager.board.ruleManager.blackRules : gameManager.board.ruleManager.whiteRules;
+        myRules.winCondition = 7;
 
-                // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
-                GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
-                if (stone != null)
-                {
-                    MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.ShowSystemMessage("상대방이 칠죄종을 사용했습니다. 나의 승리 조건이 7목으로 변경됩니다!");
 
-                    // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
-                    if (mr != null && mr.enabled)
-                    {
-                        gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
-                    }
-                }
-            }
-        }
+        Debug.Log("[Network] 칠죄종 수신 — 내 승리 조건 7목 강제 적용!");
     }
+    //private void ReceiveSkill_GodBless(int[] xs, int[] ys)
+    //{
+    //    // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
+    //    for (int i = 0; i < xs.Length; i++)
+    //    {
+    //        if (xs[i] != -1 && ys[i] != -1)
+    //        {
+    //            // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
+    //            gameManager.board.ApplyShield(xs[i], ys[i]);
+
+    //            // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
+    //            GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
+    //            if (stone != null)
+    //            {
+    //                MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+
+    //                // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
+    //                if (mr != null && mr.enabled)
+    //                {
+    //                    gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
+
     // 9번 스킬
     private void ReceiveSkill_Destruction()
     {
@@ -787,15 +799,15 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    // 인게임 스킬 버튼을 눌렀을 때
+    // =========================================================
+    // 스킬 버튼 클릭 시 타겟팅/프리뷰 상태로 진입
+    // =========================================================
     private void OnActiveSkillButtonClicked(int slotIndex)
     {
         // 이미 이번 턴에 스킬을 썼다면 막기
         if (gameManager.hasUsedSkillThisTurn)
         {
-            Debug.LogWarning("한 턴에 하나의 스킬만 사용할 수 있습니다!");
-            if (gameManager.gameHUD != null)
-                gameManager.gameHUD.ShowSystemMessage("이번 턴에는 이미 스킬을 사용했습니다!");
+            gameManager.gameHUD?.ShowSystemMessage("이번 턴에는 이미 스킬을 사용했습니다!");
             return;
         }
 
@@ -957,64 +969,58 @@ public class SkillManager : MonoBehaviour
         int[] targetY = new int[arraySize];
         for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
         targetX[0] = x; targetY[0] = y;
- 
-        if (isBType)
+
+        // 스킬 발동 시도
+        if (skill.Execute(targetX, targetY, gameManager, gameManager.board))
         {
-            // B타입: Execute()로 pendingSkillId만 세팅, 실제 효과는 착수 후 발동
-            if (skill.Execute(targetX, targetY, gameManager, gameManager.board))
-            {
-                mySP -= skill.data.spCost;
-                skill.currentCooldown        = skill.data.cooldown;
-                gameManager.hasUsedSkillThisTurn = true;
-                gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
-                gameManager.currentState     = GameState.Playing;
- 
-                if (gameManager.gameHUD != null)
-                    gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
- 
-                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    gameSession.SendUseSkill(skill.data.skillId, targetX, targetY);
-            }
+            // 성공 시 공통 로직 호출
+            OnSkillExecutionSuccess(skill, targetX, targetY);
         }
         else
         {
-            // A타입: Execute()로 즉시 효과 발동
-            if (skill.Execute(targetX, targetY, gameManager, gameManager.board))
-            {
-                mySP -= skill.data.spCost;
-                skill.currentCooldown        = skill.data.cooldown;
-                gameManager.hasUsedSkillThisTurn = true;
-                // [추가]
-                gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
-
-                if (skill.data.durationTurn > 0)
-                {
-                    activeEffects.Add(new ActiveEffect
-                    {
-                        skillId        = skill.data.skillId,
-                        remainingTurns = skill.data.durationTurn,
-                        isBuff         = true,
-                        effectName     = skill.data.skillName,
-                        description    = skill.data.description
-                    });
-                    gameManager.gameHUD?.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
-                }
- 
-                if (gameManager.gameHUD != null)
-                    gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
- 
-                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    gameSession.SendUseSkill(skill.data.skillId, targetX, targetY);
-            }
- 
-            gameManager.currentState = GameState.Playing;
+            // 실패 시 취소(Playing 상태로 돌아감) 시키지 않음! 우클릭할 때까지 무한 대기!
+            gameManager.gameHUD?.ShowSystemMessage("유효하지 않은 타겟입니다. 다시 선택하거나 우클릭으로 취소하세요.");
         }
- 
+    }
+
+    // =========================================================
+    //  공통 스킬 성공 처리 헬퍼 함수
+    // =========================================================
+    private void OnSkillExecutionSuccess(SkillBase skill, int[] targetX, int[] targetY)
+    {
+        mySP -= skill.data.spCost;
+        skill.currentCooldown = skill.data.cooldown;
+        gameManager.hasUsedSkillThisTurn = true;
+        gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
+
+        // 버프 리스트 등록
+        if (skill.data.durationTurn > 0)
+        {
+            activeEffects.Add(new ActiveEffect
+            {
+                skillId = skill.data.skillId,
+                remainingTurns = skill.data.durationTurn,
+                isBuff = true,
+                effectName = skill.data.skillName,
+                description = skill.data.description
+            });
+            gameManager.gameHUD?.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
+        }
+
+        if (gameManager.gameHUD != null)
+            gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
+
+        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY);
+
+        // 스킬 사용이 끝났으므로 상태 초기화
+        gameManager.currentState = GameState.Playing;
         selectedSkillSlot = -1;
         gameManager.board.HideSkillTargetMarkers();
         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
         RefreshSkillButtonStates();
     }
+
     // =========================================================
     // [추가] ExecutePendingSkill — B타입 착수 후 효과 처리
     //        placedX, placedY = 방금 착수한 좌표 (봉인/랜덤 착수 제외 대상)

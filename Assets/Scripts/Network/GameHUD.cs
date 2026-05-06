@@ -400,7 +400,7 @@ public class GameHUD : MonoBehaviour
     }
         }
     }
-    // 2. 버프/디버프 상태 전체 갱신 (시온님이 데이터 넘겨주면 상화님 UI가 그림)
+    // 2. 버프/디버프 상태 전체 갱신 
     public void RefreshBuffIcons(List<ActiveEffect> effects, StoneColor myColor)
     {
         // 기존 아이콘 전부 제거

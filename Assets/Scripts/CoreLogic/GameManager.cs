@@ -252,14 +252,15 @@ public class GameManager : MonoBehaviour
         {
             if (playerColor == localPlayerColor && skillManager.myInvisibilityTurns > 0)
             {
-                board.ApplyVisibilityToSingleStone(placedStone, playerColor, false, true);
+                StartCoroutine(board.BlinkAndHideRoutine(placedStone, playerColor, true));
             }
             else if (playerColor != localPlayerColor && skillManager.oppInvisibilityTurns > 0)
             {
-                board.ApplyVisibilityToSingleStone(placedStone, playerColor, false, false);
+                StartCoroutine(board.BlinkAndHideRoutine(placedStone, playerColor, false));
             }
         }
-         // 5. [추가] B타입 스킬 예약 처리 (PlayerManual 착수 시에만)
+
+        // 5. [추가] B타입 스킬 예약 처리 (PlayerManual 착수 시에만)
         if (type == PlacementType.PlayerManual && pendingSkillId != -1)
         {
             skillManager?.ExecutePendingSkill(pendingSkillId, x, y);
