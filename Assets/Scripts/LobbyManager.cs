@@ -48,6 +48,9 @@ public class LobbyManager : MonoBehaviourPunCallbacks
             if (Input.GetKeyDown(KeyCode.Return))
                 OnConfirmNickname();
         });
+
+        // (브금 테스트 예시)
+        //SoundManager.Instance.PlayBGM("Example");
     }
     private void Update()
     {
