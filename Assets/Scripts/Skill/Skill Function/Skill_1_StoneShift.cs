@@ -71,10 +71,10 @@ public class Skill_1_StoneShift : SkillBase
         // 5. 목적지에 배치 (데이터 + 3D 오브젝트)
         GameObject newStone = board.PlaceStone(destX, destY, casterColor);
 
-        // ** 투명화 상태라면 방금 옮긴 돌도 즉시 투명돌로 만듦
+        // ** 투명화 상태라면 이동된 돌도 잠깐 보였다가 사라지게
         if (gm.skillManager.myInvisibilityTurns > 0 && newStone != null)
         {
-            board.ApplyVisibilityToSingleStone(newStone, gm.localPlayerColor, false, true);
+            gm.StartCoroutine(board.BlinkAndHideRoutine(newStone, gm.localPlayerColor, true));
         }
 
         Debug.Log($"[StoneShift] ({tx},{ty}) → ({destX},{destY}) 이동 완료!");

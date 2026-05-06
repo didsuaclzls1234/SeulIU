@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class InputManager : MonoBehaviour
@@ -79,10 +80,16 @@ public class InputManager : MonoBehaviour
         if (ShouldBlockInput())
         {
             HideHover();
+            // UI(스킬 버튼) 위에 마우스가 있어도 스킬 대기 중이면 보드판을 하얗게(1번) 띄움
+            if (!isProcessingClick && gameManager.board != null)
+            {
+                if (IsGlobalTargetSkill()) gameManager.board.SetBoardOverlayState(1);
+                else gameManager.board.SetBoardOverlayState(0);
+            }
             return;
         }
 
-        // [수정] 우클릭 — 메시지 숨김 + 취소 기능 추가
+        // 우클릭 취소
         if (Input.GetMouseButtonDown(1) &&
             (gameManager.currentState == GameState.SkillTargeting ||
              gameManager.currentState == GameState.SkillPreview))
@@ -96,6 +103,12 @@ public class InputManager : MonoBehaviour
         if (!mathPlane.Raycast(ray, out float enter))
         {
             HideHover();
+            // 허공을 가리켜도 스킬 대기 중이면 하얗게(1번)
+            if (!isProcessingClick && gameManager.board != null)
+            {
+                if (IsGlobalTargetSkill()) gameManager.board.SetBoardOverlayState(1);
+                else gameManager.board.SetBoardOverlayState(0);
+            }
             return;
         }
 
@@ -103,20 +116,81 @@ public class InputManager : MonoBehaviour
         int x = Mathf.RoundToInt(hitPoint.x / gridSize);
         int y = Mathf.RoundToInt(hitPoint.z / gridSize);
 
-        if (gameManager.board == null || x < 0 || x >= gameManager.board.boardSize || y < 0 || y >= gameManager.board.boardSize)
+        // 마우스가 보드판 범위 안에 있는지 확인
+        bool isMouseOverBoard = (x >= 0 && x < gameManager.board.boardSize && y >= 0 && y < gameManager.board.boardSize);
+
+        if (!isMouseOverBoard)
         {
             HideHover();
+            // 보드판 밖으로 마우스가 나가면 보드판 색상 원상복구
+            // 보드판 밖이어도 스킬 대기 중이면 하얗게(1번)
+            if (!isProcessingClick && gameManager.board != null)
+            {
+                if (IsGlobalTargetSkill()) gameManager.board.SetBoardOverlayState(1);
+                else gameManager.board.SetBoardOverlayState(0);
+            }
             return;
         }
 
+        // -- 여기서부터는 마우스가 정확히 보드판 위에 올라온 상태
         UpdateHoverVisuals(x, y);
 
+        // 보드판 안에 마우스가 들어왔으므로 호버 색상(2번) 적용
+        if (!isProcessingClick && gameManager.board != null)
+        {
+            if (IsGlobalTargetSkill()) gameManager.board.SetBoardOverlayState(2);
+            else gameManager.board.SetBoardOverlayState(0);
+        }
+
+        // 스킬 타입에 따른 클릭(좌클릭) 분기 처리
         if (Input.GetMouseButtonDown(0))
         {
-            // [추가] 좌클릭 시 메시지 숨김
             gameManager.gameHUD?.HideSystemMessage();
-            ProcessClick(x, y);
+
+            // 즉발/전체 스킬(이중착수, 투명화 등)일 경우 보드판 클릭 피드백 띄우기
+            if (gameManager.currentState == GameState.SkillPreview && IsGlobalTargetSkill())
+            {
+                StartCoroutine(BoardClickFeedbackRoutine(x, y));
+            }
+            else
+            {
+                ProcessClick(x, y);
+            }
         }
+    }
+
+    // 헬퍼 함수: 현재 선택된 스킬이 전체 클릭(none) 타입인지 확인
+    private bool IsGlobalTargetSkill()
+    {
+        if (gameManager.currentState != GameState.SkillPreview) return false;
+
+        int skillId = skillManager.GetSelectedSkillId();
+        if (skillManager.skillDatabase.TryGetValue(skillId, out SkillData data))
+        {
+            return data.targetType == "none";
+        }
+        return false;
+    }
+
+    // ==========================================
+    // 보드판 클릭 시 0.1초 동안 색이 짙어졌다가 확정되는 코루틴
+    // ==========================================
+    private IEnumerator BoardClickFeedbackRoutine(int x, int y)
+    {
+        isProcessingClick = true;
+        HideHover();
+
+        // 1. 보드판을 '클릭된 색상'으로 변경
+        gameManager.board.SetBoardOverlayState(3);
+
+        // 2. 0.1초 대기 (유저가 버튼이 눌렸다는 타격감을 느끼는 시간)
+        yield return new WaitForSeconds(0.1f);
+
+        // 3. 스킬 확정 및 색상 원상복구
+        gameManager.board.SetBoardOverlayState(0);
+        skillManager.ConfirmSkill(x, y);
+
+        isProcessingClick = false;
     }
 
     private bool ShouldBlockInput()
@@ -130,23 +204,69 @@ public class InputManager : MonoBehaviour
 
     private void UpdateHoverVisuals(int x, int y)
     {
-        // 1. 상태에 따라 캐릭터 프리뷰 vs 빨간 점 스위칭
-        if (gameManager.currentState == GameState.SkillTargeting)
+        // 현재 상태가 스킬 시전 대기 중(Preview)이거나 타겟팅 중일 때
+        bool isSkillMode = (gameManager.currentState == GameState.SkillPreview || gameManager.currentState == GameState.SkillTargeting);
+
+        if (isSkillMode)
         {
-            // 스킬 조준 중: 일반 바둑돌 숨기고 빨간 점 켜기
+            // 1. 스킬 모드 진입 시: 일반 캐릭터 바둑돌 호버는 무조건 숨김!
             if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
             if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
 
-            if (targetingHoverIndicator != null)
+            int skillId = skillManager.GetSelectedSkillId();
+            bool showRedDot = false;
+
+            // 2. 스킬 타입(targetType)에 따라 빨간 점 표시 여부 결정
+            if (skillManager.skillDatabase.TryGetValue(skillId, out SkillData data))
             {
-                targetingHoverIndicator.SetActive(true);
-                // 마우스 위치(바둑판 교차점) 위로 띄워서 따라다니게 함
-                targetingHoverIndicator.transform.position = new Vector3(x * gridSize, targetingHoverYOffset, y * gridSize);
+                // 타겟팅이 필요한 스킬(돌이동, 봉인, 제거 등)만 빨간 점 표시
+                if (data.targetType == "my" || data.targetType == "enemy" || data.targetType == "cell")
+                {
+                    showRedDot = true;
+                }
+                // "none" (이중착수, 칼날비, 투명화, 칠죄종)은 빨간 점도 안 띄움
+            }
+
+            if (showRedDot)
+            {
+                if (targetingHoverIndicator != null)
+                {
+                    targetingHoverIndicator.SetActive(true);
+                    targetingHoverIndicator.transform.position = new Vector3(x * gridSize, targetingHoverYOffset, y * gridSize);
+                }
+            }
+            else
+            {
+                if (targetingHoverIndicator != null) targetingHoverIndicator.SetActive(false);
+            }
+
+            // 3. 타겟팅 호버링 아웃라인(테두리) 처리
+            int myColorInt = (int)gameManager.localPlayerColor;
+            int enemyColorInt = (gameManager.localPlayerColor == StoneColor.Black) ? 2 : 1;
+
+            if (skillId == 5) // 5번: 제거 (상대 돌 타겟팅)
+            {
+                if (gameManager.board.grid[x, y] == enemyColorInt)
+                    gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.enemyHoverHighlightColor);
+                else
+                    gameManager.board.ClearHoverHighlight();
+            }
+            else if (skillId == 1) // 1번: 돌 이동 (내 돌 타겟팅)
+            {
+                if (gameManager.board.grid[x, y] == myColorInt)
+                    gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.myHoverHighlightColor);
+                else
+                    gameManager.board.ClearHoverHighlight();
+            }
+            else
+            {
+                // 타겟팅 스킬이 아니면 아웃라인 끄기
+                gameManager.board.ClearHoverHighlight();
             }
         }
-        else
+        else // GameState.Playing (일반 착수 상태)
         {
-            // 일반 착수 중: 빨간 점 숨기고 캐릭터 바둑돌 켜기!
+            // 1. 일반 착수 모드: 빨간 점 숨기고 캐릭터 바둑돌 호버 켜기!
             if (targetingHoverIndicator != null) targetingHoverIndicator.SetActive(false);
 
             int displayColor = (gameManager.currentMode == PlayMode.Solo) ?
@@ -168,34 +288,15 @@ public class InputManager : MonoBehaviour
                                   gameManager.board.whiteStoneYRotation;
                 activeHover.transform.rotation = Quaternion.Euler(0, yRotation, 0);
             }
+
+            // 2. 일반 착수 중에는 아웃라인 무조건 끄기
+            gameManager.board.ClearHoverHighlight();
         }
 
-        // 2. 타겟팅 호버링 아웃라인(테두리) 처리
-        if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
-        {
-            int skillId = skillManager.GetSelectedSkillId();
-            int myColorInt = (int)gameManager.localPlayerColor;
-            int enemyColorInt = (gameManager.localPlayerColor == StoneColor.Black) ? 2 : 1;
-
-            if (skillId == 5) // 상대 돌 타겟팅 스킬 (제거 등)
-            {
-                if (gameManager.board.grid[x, y] == enemyColorInt && !gameManager.board.shieldGrid[x, y])
-                    gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.enemyHoverHighlightColor);
-                else
-                    gameManager.board.ClearHoverHighlight();
-            }
-            else if (skillId == 1 || skillId == 8) // 내 돌 타겟팅 스킬 (신의가호, 돌이동 등)
-            {
-                if (gameManager.board.grid[x, y] == myColorInt)
-                    gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.myHoverHighlightColor);
-                else
-                    gameManager.board.ClearHoverHighlight();
-            }
-            else
-            {
-                gameManager.board.ClearHoverHighlight();
-            }
-        }
+        if (IsGlobalTargetSkill())
+            gameManager.board.SetBoardOverlayState(1); // 호버 색상
+        else
+            gameManager.board.SetBoardOverlayState(0); // 원상 복구
     }
 
     private void ProcessClick(int x, int y)
@@ -225,9 +326,12 @@ public class InputManager : MonoBehaviour
         Debug.Log("스킬 사용 취소");
         gameManager.currentState = GameState.Playing;
         skillManager.selectedSkillSlot = -1;
-        gameManager.pendingSkillId        = -1; // [추가] 예약된 스킬도 초기화
+        gameManager.pendingSkillId        = -1; // 예약된 스킬도 초기화
         gameManager.board.HideSkillTargetMarkers();
         gameManager.board.ClearHoverHighlight();
+
+        // 취소 시 보드판 색상 원상복구
+        gameManager.board.SetBoardOverlayState(0);
     }
 
     public void BlockInput() => _isInputBlocked = true;
@@ -236,9 +340,13 @@ public class InputManager : MonoBehaviour
     {
         if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
         if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
-        if (targetingHoverIndicator != null) targetingHoverIndicator.SetActive(false); 
+        if (targetingHoverIndicator != null) targetingHoverIndicator.SetActive(false);
 
-        if (gameManager.board != null) gameManager.board.ClearHoverHighlight();
+        if (gameManager.board != null)
+        {
+            gameManager.board.ClearHoverHighlight();
+            if (IsGlobalTargetSkill()) gameManager.board.SetBoardOverlayState(0);
+        }
     }
 
 }

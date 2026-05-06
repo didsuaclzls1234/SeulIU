@@ -51,23 +51,24 @@ public class Skill_5_Erase : SkillBase
         // 1. 첫 번째 돌(선택한 돌) 검증 및 삭제
         if (!IsValidTarget(tx, ty, gameManager, board)) return false;
 
-        // 시전자의 화면에서 이 돌이 투명(MeshRenderer.enabled == false)인지 확인
-        GameObject targetObj1 = board.GetStoneObjectAt(tx, ty);
+        //// 시전자의 화면에서 이 돌이 투명(MeshRenderer.enabled == false)인지 확인
+        //GameObject targetObj1 = board.GetStoneObjectAt(tx, ty);
         StoneColor target1Color = (StoneColor)board.grid[tx, ty];
-        bool isVisibleToCaster1 = false;
+        //bool isVisibleToCaster1 = false;
 
-        if (targetObj1 != null)
-        {
-            StoneVisualController svc = targetObj1.GetComponent<StoneVisualController>();
-            if (svc != null) isVisibleToCaster1 = svc.IsVisible;
-        }
+        //if (targetObj1 != null)
+        //{
+        //    StoneVisualController svc = targetObj1.GetComponent<StoneVisualController>();
+        //    if (svc != null) isVisibleToCaster1 = svc.IsVisible;
+        //}
 
         // 데이터 및 오브젝트 삭제
         board.grid[tx, ty] = 0;
         board.RemoveStoneObjectAt(tx, ty);
 
         // 보일 때만 깜빡임 (투명한 돌을 찍었다면 아무 연출 없이 사라짐)
-        if (isVisibleToCaster1) board.BlinkEmptySpaceEffect(tx, ty, Color.red, target1Color);
+        //if (isVisibleToCaster1)
+        board.BlinkEmptySpaceEffect(tx, ty, Color.red, target1Color);
 
         // -------------------------------------------------------------------------------
         // 2. 두 번째 돌(랜덤 돌) 찾기
@@ -79,7 +80,7 @@ public class Skill_5_Erase : SkillBase
             for (int y = 0; y < board.boardSize; y++)
             {
                 // 상대방 돌이면서, 내가 방금 지운 좌표가 아닌 것, 보호막(shieldGrid)이 없는 돌만 수집
-                if (board.grid[x, y] == enemyColorInt && !(x == tx && y == ty) && !board.shieldGrid[x, y])
+                if (board.grid[x, y] == enemyColorInt && !(x == tx && y == ty)) // && !board.shieldGrid[x, y])
                 {
                     otherEnemyStones.Add(new Vector2Int(x, y));
                 }
@@ -94,22 +95,23 @@ public class Skill_5_Erase : SkillBase
 
             // 랜덤으로 뽑힌 두 번째 돌도 투명 상태인지 확인
             // --- [2. 두 번째(랜덤) 돌 투명 상태 확인 수정] ---
-            GameObject targetObj2 = board.GetStoneObjectAt(randomPos.x, randomPos.y);
+            //GameObject targetObj2 = board.GetStoneObjectAt(randomPos.x, randomPos.y);
             StoneColor target2Color = (StoneColor)board.grid[randomPos.x, randomPos.y];
-            bool isVisibleToCaster2 = false;
+            //bool isVisibleToCaster2 = false;
 
-            if (targetObj2 != null)
-            {
-                StoneVisualController svc2 = targetObj2.GetComponent<StoneVisualController>();
-                if (svc2 != null) isVisibleToCaster2 = svc2.IsVisible;
-            }
+            //if (targetObj2 != null)
+            //{
+            //    StoneVisualController svc2 = targetObj2.GetComponent<StoneVisualController>();
+            //    if (svc2 != null) isVisibleToCaster2 = svc2.IsVisible;
+            //}
 
             // 데이터 및 오브젝트 삭제
             board.grid[randomPos.x, randomPos.y] = 0;
             board.RemoveStoneObjectAt(randomPos.x, randomPos.y);
 
-            // 랜덤 돌도 보일 때만 깜빡임!
-            if (isVisibleToCaster2) board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red, target2Color);
+            // 랜덤 돌 깜빡임
+            //if (isVisibleToCaster2) 
+            board.BlinkEmptySpaceEffect(randomPos.x, randomPos.y, Color.red, target2Color);
 
             // 랜덤으로 고른 좌표를 배열의 1번 인덱스에 저장 (네트워크 전송용)
             // 호출부인 SkillManager에서 이 배열을 그대로 가져다 씁니다.
@@ -134,11 +136,11 @@ public class Skill_5_Erase : SkillBase
         if (x < 0 || x >= board.boardSize || y < 0 || y >= board.boardSize) return false;
         if (board.grid[x, y] == 0) return false; // 빈 칸
         if (board.grid[x, y] == (int)gm.currentTurnColor) return false; // 내 돌
-        if (board.shieldGrid[x, y])
-        {
-            Debug.LogWarning("[Erase] 신의 가호로 보호받는 돌은 제거할 수 없습니다!");
-            return false;
-        }
+        //if (board.shieldGrid[x, y])
+        //{
+        //    Debug.LogWarning("[Erase] 신의 가호로 보호받는 돌은 제거할 수 없습니다!");
+        //    return false;
+        //}
         return true;
     }
 
