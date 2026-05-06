@@ -26,4 +26,7 @@ public static class PhotonEventCodes
 
     public const byte PlayerReady = 9;  // 준비 완료 신호
     public const byte ExtraPlacement = 10; // 추가 착수 전용
+
+    public const byte RematchRequest = 11; // 재도전 요청 (요청자 → Others)
+    public const byte RematchReply   = 12; // 재도전 수락/거절 / Data: object[] { bool isAccepted }
 }

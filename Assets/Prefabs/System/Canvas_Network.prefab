@@ -4275,11 +4275,11 @@ RectTransform:
   - {fileID: 3300906164312138974}
   - {fileID: 9009940032962878562}
   - {fileID: 4133106553059291817}
-  - {fileID: 6316695452212372849}
   - {fileID: 5939936163874191179}
   - {fileID: 597652241209301712}
   - {fileID: 4583321825235438501}
   - {fileID: 8455971758692932952}
+  - {fileID: 6316695452212372849}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -4418,6 +4418,14 @@ MonoBehaviour:
   whiteBuffContainer: {fileID: 3235433235159205007}
   buffIconPrefab: {fileID: 6195513462806083368, guid: ddb5e1166f5bd2f45b3181ee4a49ffc5, type: 3}
   skillManager: {fileID: 0}
+  rematchPopupPanel: {fileID: 0}
+  rematchPopupText: {fileID: 0}
+  rematchAcceptButton: {fileID: 0}
+  rematchDeclineButton: {fileID: 0}
+  gameSession: {fileID: 0}
+  skillLogContent: {fileID: 0}
+  skillLogEntryPrefab: {fileID: 0}
+  skillLogScrollRect: {fileID: 0}
 --- !u!1 &4812853058288195880
 GameObject:
   m_ObjectHideFlags: 0

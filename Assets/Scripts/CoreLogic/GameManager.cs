@@ -81,7 +81,8 @@ public class GameManager : MonoBehaviour
     public string remotePlayerName = "상대방(Opponent)";
 
     private Stack<MoveRecord> moveHistory = new Stack<MoveRecord>(); // 기보(히스토리)를 저장할 스택
-
+    // [추가] 스킬 로그용 현재 착수 횟수 (읽기 전용)
+    public int CurrentMoveCount => moveHistory.Count;
     // 오목 AI 인스턴스
     private GomokuAI aiPlayer;
     private bool isAITurnProcessing = false; // AI가 중복으로 수 연산하는 것을 방지
@@ -482,6 +483,24 @@ public class GameManager : MonoBehaviour
         {
             OnRestartRequestedLocally?.Invoke();
         }
+    }
+    public void ResetForRematch()
+    {
+        // 보드 초기화
+        board.ClearBoard();
+        moveHistory.Clear();
+        pendingSkillId       = -1;
+        hasUsedSkillThisTurn = false;
+
+        // 게임 상태 초기화 (스킬 선택 대기로 복귀)
+        _currentTurnColor = StoneColor.Black;
+        currentState      = GameState.WaitingForSkillSelect;
+
+        // 결과 패널 숨기기
+        if (gameHUD != null) gameHUD.resultPanel.SetActive(false);
+
+        board.UpdateForbiddenMarks(StoneColor.Black);
+        Debug.Log("[GameManager] ResetForRematch 완료 — 스킬 선택 대기 상태로 복귀");
     }
 
     // 포톤이 상대방의 재시작 신호를 받았을 때 찌를 함수

@@ -83,11 +83,26 @@ public class GameHUD : MonoBehaviour
     [Header("툴팁")]
     public SkillManager skillManager;
 
+    [Header("재도전(Rematch) 팝업")]
+    public GameObject rematchPopupPanel;       // 요청자: 대기 / 수신자: 수락-거절 패널 (공용)
+    public TextMeshProUGUI rematchPopupText;   // 패널 안 메시지
+    public Button rematchAcceptButton;         // 수락 버튼 (수신자에게만 표시)
+    public Button rematchDeclineButton;        // 거절 버튼 (수신자에게만 표시)
+
+    // [추가] GameSession 참조 (Rematch 버튼 콜백용)
+    public GameSession gameSession;
+
+    [Header("스킬 로그")]
+    public TextMeshProUGUI skillLogText;      // Content 오브젝트의 TMP
+    public ScrollRect skillLogScrollRect;
+    private List<string> _logEntries = new List<string>();
+
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
         if (resultPanel) resultPanel.SetActive(false);
         if (undoPopupPanel) undoPopupPanel.SetActive(false);
+        if (rematchPopupPanel) rematchPopupPanel.SetActive(false);
 
         // 리매치 / 나가기 버튼은 여기서 코드로 연결
         if (rematchButton) rematchButton.onClick.AddListener(OnClickRematch);
@@ -290,8 +305,11 @@ public class GameHUD : MonoBehaviour
         // 1. 멀티플레이 모드일 때
         if (gameManager != null && gameManager.currentMode == PlayMode.Multiplayer)
         {
-            // 방을 나가면 GameSession.OnLeftRoom이 발동해서 로비 씬으로 자동 이동함
-            if (PhotonNetwork.IsConnected) PhotonNetwork.Disconnect();
+            // // 방을 나가면 GameSession.OnLeftRoom이 발동해서 로비 씬으로 자동 이동함
+            // if (PhotonNetwork.IsConnected) PhotonNetwork.Disconnect();
+            // [변경] 이제 바로 끊지 않고 GameSession에 재도전 요청 위임
+            if (gameSession != null)
+                gameSession.RequestRematch();
         }
         // 2. Solo / AI 모드일 때
         else
@@ -416,5 +434,61 @@ public class GameHUD : MonoBehaviour
     {
         if (restartButton != null) restartButton.interactable = isInteractable;
         if (undoButton != null) undoButton.interactable = isInteractable;
+    }
+
+    // ── Rematch 팝업 ─────────────────────────────────────────
+
+    /// <summary>재도전 요청을 보낸 쪽: "대기 중" 패널 표시</summary>
+    public void ShowRematchWaitingPanel()
+    {
+        if (rematchPopupPanel == null) return;
+        rematchPopupPanel.SetActive(true);
+        if (rematchPopupText)    rematchPopupText.text = "상대방의 재도전 수락을 기다리는 중...";
+        if (rematchAcceptButton)  rematchAcceptButton.gameObject.SetActive(false);
+        if (rematchDeclineButton) rematchDeclineButton.gameObject.SetActive(false);
+    }
+
+    /// <summary>재도전 요청을 받은 쪽: "수락/거절" 패널 표시</summary>
+    public void ShowRematchReceivedPanel()
+    {
+        if (rematchPopupPanel == null) return;
+        rematchPopupPanel.SetActive(true);
+        if (rematchPopupText)    rematchPopupText.text = "상대방이 재도전을 요청했습니다!";
+        if (rematchAcceptButton)  rematchAcceptButton.gameObject.SetActive(true);
+        if (rematchDeclineButton) rematchDeclineButton.gameObject.SetActive(true);
+    }
+
+    /// <summary>패널 닫기</summary>
+    public void HideRematchPanel()
+    {
+        if (rematchPopupPanel != null) rematchPopupPanel.SetActive(false);
+    }
+
+    /// <summary>재도전 거절당한 쪽에 메시지 표시</summary>
+    public void ShowRematchDeclinedMessage()
+    {
+        HideRematchPanel();
+        // resultPanel은 그대로 유지하고, 시스템 메시지만 띄움
+        // resultPanel은 이미 열려있으므로 텍스트만 교체
+        if (resultText) resultText.text = "상대방이 재도전 요청을 거절했습니다.";
+        // 거절 후엔 리매치 버튼 클릭 막기 (더 이상 요청 못 하게)
+        if (rematchButton) rematchButton.interactable = false;
+    }
+    // ── 스킬 로그 ─────────────────────────────────────────
+
+    public void AddSkillLog(string userName, string skillName, int turnCount)
+    {
+        if (skillLogText == null) return;
+
+        _logEntries.Add($"[{turnCount}턴] {userName} — {skillName}");
+        skillLogText.text = string.Join("\n", _logEntries);
+
+        // 최신 로그로 스크롤
+        StartCoroutine(ScrollToBottom());
+    }
+    private IEnumerator ScrollToBottom()
+    {
+        yield return new WaitForEndOfFrame();
+        skillLogScrollRect.verticalNormalizedPosition = 0f;
     }
 }
