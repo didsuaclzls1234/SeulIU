@@ -442,10 +442,20 @@ public class SkillManager : MonoBehaviour
     //  3번스킬 추가
     private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
     {
-        // gameManager.pendingExtraPlacement = true;
-        // Debug.Log("[Network] DoubleDown 수신 — 추가 착수 대기 중");
-         Debug.Log("[Network] DoubleDown 수신 — B타입 스킬, 착수 패킷 대기");
-        // 실제 추가 착수는 상대방이 PlaceStone 패킷을 별도로 보내므로 여기선 처리 없음
+            // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만 (기존)
+        // 두 번째 패킷: xs[0] != -1 → 랜덤 착수 좌표 수신
+        if (xs[0] != -1)
+        {
+            StoneColor casterColor = gameManager.localPlayerColor.Opponent();
+            gameManager.board.PlaceStone(xs[0], ys[0], casterColor);
+            // moveHistory는 안 건드림 (SkillInduced이므로)
+            Debug.Log($"[Network] DoubleDown 추가 착수 수신: ({xs[0]},{ys[0]})");
+        }
+        else
+        {
+            Debug.Log("[Network] DoubleDown 수신 — B타입 스킬, 착수 패킷 대기");
+        }
+        // gameManager.pendingExtraPlacement = true;       
         // pendingExtraPlacement 제거됨
     }
     //  4번스킬 추가
@@ -1045,7 +1055,13 @@ public class SkillManager : MonoBehaviour
                         rand.x, rand.y,
                         gameManager.currentTurnColor,
                         PlacementType.SkillInduced);
- 
+                    // 추가: 랜덤 착수 좌표를 별도 패킷으로 전송
+                    if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+                    {
+                        gameSession.SendUseSkill(3,
+                            new int[] { rand.x, -1 },
+                            new int[] { rand.y, -1 });
+                    }
                     Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
