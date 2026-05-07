@@ -1111,7 +1111,7 @@ public class SkillManager : MonoBehaviour
         bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
         if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
-            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY);
+            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
         }
 
         // 스킬 사용이 끝났으므로 상태 초기화
@@ -1154,9 +1154,9 @@ public class SkillManager : MonoBehaviour
                         if (extraStone != null) StartCoroutine(gameManager.board.BlinkAndHideRoutine(extraStone, gameManager.localPlayerColor, true));
                     }
 
-                    // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
-                    StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }));
-                    Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
+                        // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
+                        StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
+                        Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
             }
@@ -1174,7 +1174,7 @@ public class SkillManager : MonoBehaviour
                 bladefall.Execute(bx, by, gameManager, gameManager.board);
 
                 // 일반 착수 패킷 먼저 날아가도록 지연 전송
-                StartCoroutine(SendDeferredSkillPacket(6, bx, by));
+                StartCoroutine(SendDeferredSkillPacket(6, bx, by, gameManager.CurrentMoveCount));
 
                 Debug.Log("[Bladefall] 착수 후 봉인 발동 완료");
                 break;
@@ -1183,14 +1183,14 @@ public class SkillManager : MonoBehaviour
     }
 
     // 수동 착수 패킷을 추월하지 않도록 막아주는 지연 전송 코루틴
-    private System.Collections.IEnumerator SendDeferredSkillPacket(int skillId, int[] xs, int[] ys)
+    private System.Collections.IEnumerator SendDeferredSkillPacket(int skillId, int[] xs, int[] ys, int turnCount)
     {
         // GameManager의 수동 착수 처리가 완전히 끝날 때까지 프레임 끝에서 대기합니다.
         yield return new WaitForEndOfFrame();
 
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
-            gameSession.SendUseSkill(skillId, xs, ys);
+            gameSession.SendUseSkill(skillId, xs, ys, turnCount);
         }
     }
 
