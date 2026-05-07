@@ -591,11 +591,65 @@ public class SkillManager : MonoBehaviour
 
     // 스킬 선택창 관련 --------------------------------------------------
     // 1. UI에서 스킬을 고를 때마다 호출할 함수
-    public void OnSkillSelected(int slotIndex, int skillId)
+    public void OnSkillSelected(int skillId)
     {
         // slotIndex: 0~2번 자리, skillId: 선택한 스킬 번호
-        mySkillsID[slotIndex] = skillId;
-        Debug.Log($"{slotIndex}번 슬롯에 {skillId}번 스킬 장착");
+        // mySkillsID[slotIndex] = skillId;
+        // Debug.Log($"{slotIndex}번 슬롯에 {skillId}번 스킬 장착");
+        // [추가] 이미 선택된 스킬인지 확인
+        for (int i = 0; i < mySkillsID.Length; i++)
+        {
+            if (mySkillsID[i] == skillId)
+            {
+                gameManager.gameHUD?.ShowSkillSelectMessage("이미 선택된 스킬입니다.");
+                return;
+            }
+        }
+        // 빈 슬롯 찾아서 자동 배정
+        for (int i = 0; i < mySkillsID.Length; i++)
+        {
+            if (mySkillsID[i] == -1)
+            {
+                mySkillsID[i] = skillId;
+                SortDeckAndRefreshUI();
+                return;
+            }
+        }
+        // 꽉 찬 경우
+        gameManager.gameHUD?.ShowSkillSelectMessage("슬롯이 가득 찼습니다.");
+    }
+
+     private void SortDeckAndRefreshUI()
+    {
+        // ID 오름차순 정렬 (-1은 뒤로)
+        System.Array.Sort(mySkillsID, (a, b) =>
+        {
+            if (a == -1) return 1;
+            if (b == -1) return -1;
+            return a.CompareTo(b);
+        });
+ 
+        // 덱 슬롯 UI 갱신
+        gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
+ 
+        // 확정 버튼 활성화 — 3슬롯 모두 찼을 때만
+        bool isFull = System.Array.TrueForAll(mySkillsID, id => id != -1);
+        gameManager.gameHUD?.SetReadyButtonInteractable(isFull);
+    }
+
+    // 덱 슬롯 버튼 클릭 시 호출 — 인스펙터에서 각 슬롯 버튼에 연결
+    // DeckSlot_0 → OnDeckSlotClicked(0)
+    // DeckSlot_1 → OnDeckSlotClicked(1)
+    // DeckSlot_2 → OnDeckSlotClicked(2)
+    public void OnDeckSlotClicked(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= mySkillsID.Length) return;
+        if (mySkillsID[slotIndex] == -1) return; // 이미 비어있음
+ 
+        int removedId = mySkillsID[slotIndex];
+        mySkillsID[slotIndex] = -1;
+        SortDeckAndRefreshUI();
+        Debug.Log($"[SkillSelect] 슬롯{slotIndex} 스킬 {removedId}번 제거");
     }
 
     // 2. '준비 완료' 버튼 누르거나 패킷 받았을 때 호출
@@ -719,6 +773,8 @@ public class SkillManager : MonoBehaviour
                     SkillTooltipTrigger trigger = btn.GetComponent<SkillTooltipTrigger>();
                     if (trigger == null) trigger = btn.gameObject.AddComponent<SkillTooltipTrigger>();
                     trigger.SetData(newSkill.data);
+                    // [추가] 인게임 버튼에 아이콘 전달
+                    gameManager.gameHUD?.ApplySkillIconToActiveButton(i, mySkillsID[i]);
                 }
             }
         }
@@ -768,11 +824,11 @@ public class SkillManager : MonoBehaviour
                 int randomIndex = UnityEngine.Random.Range(0, availableSkills.Count);
                 int pickedId = availableSkills[randomIndex];
 
-                mySkillsID[i] = pickedId; // 슬롯에 장착
+                // mySkillsID[i] = pickedId; // 슬롯에 장착
                 availableSkills.RemoveAt(randomIndex); // 중복 방지를 위해 리스트에서 제거
 
                 // UI에 반영 
-                OnSkillSelected(i, pickedId);
+                OnSkillSelected(pickedId);
             }
         }
 

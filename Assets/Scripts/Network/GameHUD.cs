@@ -19,7 +19,10 @@ using UnityEngine.UI;
 ///   exitButton     — 나가기 버튼
 /// </summary>
 public class GameHUD : MonoBehaviour
-{
+{   
+    [Header("인게임 UI 묶음")]
+    public GameObject inGameUI;
+
     [Header("인게임 표시")]
     public TextMeshProUGUI turnText;
     public TextMeshProUGUI myColorText;
@@ -63,6 +66,21 @@ public class GameHUD : MonoBehaviour
     public Button[] skillSelectButtons;      // 선택 가능한 10개 버튼 (임시)
     public Button readyButton;               // 선택 완료 버튼
     public TextMeshProUGUI skillSelectRoleText;
+    public Image[] skillRowIcons;            // 각 행의 아이콘 Image 배열
+     public TextMeshProUGUI[] skillRowNameTexts;  // 각 행의 스킬명 TMP
+    public TextMeshProUGUI[] skillRowSPTexts;    // 각 행의 SP 비용 TMP
+    public TextMeshProUGUI[] skillRowDescTexts;  // 각 행의 설명 TMP
+    public TextMeshProUGUI skillSelectMessageText; // 스킬 선택창 전용 메시지
+
+    [Header("스킬 선택창 UI - 덱 슬롯")]
+    public Button[] deckSlotButtons;         // DeckSlot_0, 1, 2
+    public Image[] deckSlotIcons;            // 각 슬롯의 스킬 아이콘
+    public TextMeshProUGUI[] deckSlotNameTexts; // 각 슬롯의 스킬명 TMP(이름이 필요 없다면 삭제 가능)
+
+    [Header("스킬 아이콘 (Resources 폴더 없을 경우 null 허용)")]
+    // Resources/SkillIcons/skill_1.png ~ skill_10.png 로 관리
+    // 아직 이미지가 없으면 인스펙터에서 비워둬도 무관 — 예외처리로 막음
+    public Sprite[] skillIcons;              // 인덱스 0 = 스킬 1번, 9 = 스킬 10번
 
     [Header("인게임 스킬 UI(우측 하단 위치)")]
     public Button[] activeSkillButtons;      // 게임 중 누를 스킬 버튼 3개
@@ -107,6 +125,12 @@ public class GameHUD : MonoBehaviour
         // 리매치 / 나가기 버튼은 여기서 코드로 연결
         if (rematchButton) rematchButton.onClick.AddListener(OnClickRematch);
         if (exitButton) exitButton.onClick.AddListener(OnClickExit);
+         // [추가] 준비완료 버튼 초기 비활성화
+        if (readyButton) readyButton.interactable = false;
+        // [추가] 덱 슬롯 버튼 초기 비활성화
+        if (deckSlotButtons != null)
+        foreach (var btn in deckSlotButtons)
+            btn.interactable = false;
     }
 
     // ── GameSession에서 호출 ─────────────────────────────────────
@@ -391,13 +415,34 @@ public class GameHUD : MonoBehaviour
                             || (skillId == 10 && myColor != StoneColor.White);
 
             skillSelectButtons[i].interactable = !isRestricted;
+            SkillData data = default(SkillData);
+            if (skillManager != null && !skillManager.skillDatabase.TryGetValue(skillId, out data)) continue;
+            // {
+            //     SkillTooltipTrigger trigger = skillSelectButtons[i].GetComponent<SkillTooltipTrigger>();
+            //     if (trigger == null) trigger = skillSelectButtons[i].gameObject.AddComponent<SkillTooltipTrigger>();
+            //     trigger.SetData(data);
+            // }
 
-            if (skillManager != null && skillManager.skillDatabase.TryGetValue(skillId, out SkillData data))
-{
-        SkillTooltipTrigger trigger = skillSelectButtons[i].GetComponent<SkillTooltipTrigger>();
-        if (trigger == null) trigger = skillSelectButtons[i].gameObject.AddComponent<SkillTooltipTrigger>();
-        trigger.SetData(data);
-    }
+            // 3. 툴팁 연결 제거 → 표 데이터 채우기로 교체
+            // 아이콘
+            if (skillRowIcons != null && i < skillRowIcons.Length && skillRowIcons[i] != null)
+            {
+                Sprite icon = GetSkillIcon(skillId);
+                skillRowIcons[i].sprite = icon;
+                skillRowIcons[i].gameObject.SetActive(icon != null);
+            }
+
+            // 스킬명
+            if (skillRowNameTexts != null && i < skillRowNameTexts.Length && skillRowNameTexts[i] != null)
+                skillRowNameTexts[i].text = data.skillName;
+
+            // SP
+            if (skillRowSPTexts != null && i < skillRowSPTexts.Length && skillRowSPTexts[i] != null)
+                skillRowSPTexts[i].text = data.type == "전용" ? "패시브" : $"{data.spCost} SP";
+
+            // 설명
+            if (skillRowDescTexts != null && i < skillRowDescTexts.Length && skillRowDescTexts[i] != null)
+                skillRowDescTexts[i].text = data.description;
         }
     }
     // 2. 버프/디버프 상태 전체 갱신 
@@ -490,5 +535,114 @@ public class GameHUD : MonoBehaviour
     {
         yield return new WaitForEndOfFrame();
         skillLogScrollRect.verticalNormalizedPosition = 0f;
+    }
+
+     // ── 덱 슬롯 UI 갱신 ─────────────────────────────────────────────
+    // 스킬 추가/제거/정렬될 때마다 호출
+    public void RefreshDeckSlots(int[] mySkillsID, Dictionary<int, SkillData> skillDatabase)
+    {
+        if (deckSlotButtons == null) return;
+ 
+        for (int i = 0; i < deckSlotButtons.Length; i++)
+        {
+            int skillId = (i < mySkillsID.Length) ? mySkillsID[i] : -1;
+            bool hasSkill = skillId != -1;
+ 
+            // 스킬 없으면 슬롯 숨김
+            deckSlotButtons[i].gameObject.SetActive(hasSkill);
+
+            if (!hasSkill) continue;
+
+            // 아이콘 갱신
+            if (deckSlotIcons != null && i < deckSlotIcons.Length && deckSlotIcons[i] != null)
+            {
+                Sprite icon = GetSkillIcon(skillId);
+                deckSlotIcons[i].sprite = icon;
+                deckSlotIcons[i].gameObject.SetActive(icon != null);
+            }
+ 
+            // 스킬명 갱신
+            if (deckSlotNameTexts != null && i < deckSlotNameTexts.Length && deckSlotNameTexts[i] != null)
+            {
+                if (hasSkill && skillDatabase.TryGetValue(skillId, out SkillData data))
+                    deckSlotNameTexts[i].text = data.skillName;
+                else
+                    deckSlotNameTexts[i].text = "비어있음";
+            }
+        }
+    }
+
+    // ── 확정 버튼 활성화 제어 ───────────────────────────────────────
+    public void SetReadyButtonInteractable(bool interactable)
+    {
+        if (readyButton != null)
+            readyButton.interactable = interactable;
+    }
+ 
+    // ── 아이콘 안전 로드 (이미지 없어도 null 반환으로 예외 처리) ────
+    private Sprite GetSkillIcon(int skillId)
+    {
+        // 1순위: 인스펙터에서 직접 연결한 배열
+        int index = skillId - 1;
+        if (skillIcons != null && index >= 0 && index < skillIcons.Length && skillIcons[index] != null)
+            return skillIcons[index];
+ 
+        // 2순위: Resources 폴더에서 자동 로드
+        Sprite loaded = Resources.Load<Sprite>($"SkillIcons/skill_{skillId}");
+        if (loaded != null) return loaded;
+ 
+        // 아이콘 없음 — null 반환 (호출부에서 비활성화 처리)
+        Debug.LogWarning($"[GameHUD] 스킬 {skillId}번 아이콘 없음. SkillIcons/skill_{skillId} 확인 필요.");
+        return null;
+    }
+
+     // ── 인게임 스킬 버튼에 아이콘 적용 ─────────────────────────────
+    // GenerateSkillInstances() 완료 후 SkillManager가 호출
+    public void ApplySkillIconToActiveButton(int slotIndex, int skillId)
+    {
+        if (activeSkillButtons == null || slotIndex >= activeSkillButtons.Length) return;
+ 
+        // 인게임 버튼 안에 Image 컴포넌트가 있으면 아이콘 적용
+        Image iconImg = activeSkillButtons[slotIndex].GetComponentInChildren<Image>();
+        if (iconImg == null) return;
+ 
+        Sprite icon = GetSkillIcon(skillId);
+        if (icon != null)
+        {
+            iconImg.sprite = icon;
+            iconImg.gameObject.SetActive(true);
+        }
+        else
+        {
+             // 아이콘 없으면 기존 Image 그대로 유지 (건드리지 않음)
+        }
+    }
+    //스킬 선택창용 메시지.
+    public void ShowSkillSelectMessage(string message)
+    {
+         if (skillSelectMessageText == null) return;
+        skillSelectMessageText.text = message;
+        skillSelectMessageText.gameObject.SetActive(true);
+        StopCoroutine("HideSkillSelectMessageRoutine");
+        StartCoroutine("HideSkillSelectMessageRoutine");
+    }
+
+    private IEnumerator HideSkillSelectMessageRoutine()
+    {
+        yield return new WaitForSeconds(2f);
+        if (skillSelectMessageText != null)
+            skillSelectMessageText.gameObject.SetActive(false);
+    }
+    // 스킬 선택 패널 표시/숨김 함수(인게임 요소들과 상호 배타적으로 작동)
+    public void ShowSkillSelectPanel()
+    {
+        skillSelectPanel?.SetActive(true);
+        inGameUI?.SetActive(false);
+    }
+
+    public void HideSkillSelectPanel()
+    {
+        skillSelectPanel?.SetActive(false);
+        inGameUI?.SetActive(true);
     }
 }

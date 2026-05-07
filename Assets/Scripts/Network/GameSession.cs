@@ -79,43 +79,45 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
     #region 스킬 선택
 
-    private int[] _selectedSkillIDs = new int[] { -1, -1, -1 }; // -1 = 비어있음
+    //private int[] _selectedSkillIDs = new int[] { -1, -1, -1 }; // -1 = 비어있음
 
     private void InitSkillButtons()
     {
         for (int i = 0; i < gameHUD.skillSelectButtons.Length; i++)
         {
             int skillId = i + 1;
+            // 
+            gameHUD.skillSelectButtons[i].onClick.RemoveAllListeners();
             gameHUD.skillSelectButtons[i].onClick.AddListener(() =>
-                OnSkillButtonClicked(skillId));
+            skillManager.OnSkillSelected(skillId));
         }
     }
 
-    private void OnSkillButtonClicked(int skillId)
-    {
-        for (int slot = 0; slot < 3; slot++)
-        {
-            if (_selectedSkillIDs[slot] == skillId)
-            {
-                _selectedSkillIDs[slot] = -1;
-                skillManager.OnSkillSelected(slot, -1);
-                return;
-            }
-        }
+    // private void OnSkillButtonClicked(int skillId)
+    // {
+    //     for (int slot = 0; slot < 3; slot++)
+    //     {
+    //         if (_selectedSkillIDs[slot] == skillId)
+    //         {
+    //             _selectedSkillIDs[slot] = -1;
+    //             skillManager.OnSkillSelected(-1);
+    //             return;
+    //         }
+    //     }
 
-        for (int slot = 0; slot < 3; slot++)
-        {
-            if (_selectedSkillIDs[slot] == -1)
-            {
-                _selectedSkillIDs[slot] = skillId;
-                skillManager.OnSkillSelected(slot, skillId);
-                return;
-            }
-        }
+    //     for (int slot = 0; slot < 3; slot++)
+    //     {
+    //         if (_selectedSkillIDs[slot] == -1)
+    //         {
+    //             _selectedSkillIDs[slot] = skillId;
+    //             skillManager.OnSkillSelected(skillId);
+    //             return;
+    //         }
+    //     }
 
-        Debug.Log($"[GameSession] 스킬 3개 이미 선택됨 / 현재 선택: [{string.Join(", ", _selectedSkillIDs)}]");
-    }
-   
+    //     Debug.Log($"[GameSession] 스킬 3개 이미 선택됨 / 현재 선택: [{string.Join(", ", _selectedSkillIDs)}]");
+    // }
+    //스킬매니저에서 가져오기만 하도록
 
     #endregion
 
@@ -151,7 +153,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameHUD.ShowRoleAssigned(myColor);
             gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
             gameHUD.DisplayMyRole(myColor);
-            gameHUD.skillSelectPanel?.SetActive(true);
+            gameHUD.ShowSkillSelectPanel();
             timerManager.StartSkillSelectTimer();
         }
 
@@ -214,7 +216,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         // 내가 이미 Ready 상태면 게임 시작
         if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
         {   
-            gameHUD?.skillSelectPanel?.SetActive(false);
+            gameHUD?.HideSkillSelectPanel();
             gameManager.StartGameAfterSelection();
         }    
 
@@ -304,9 +306,9 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     public void SendSyncPlayerInfo()
     {   
          //  슬롯에 -1(선택X)이 하나라도 있으면 전송 차단
-        for (int i = 0; i < _selectedSkillIDs.Length; i++)
+        for (int i = 0; i < skillManager.mySkillsID.Length; i++)
         {
-            if (_selectedSkillIDs[i] == -1)
+            if (skillManager.mySkillsID[i] == -1)
             {
                 Debug.Log($"[GameSession] {i + 1}번 슬롯이 비어있습니다. 스킬을 3개 모두 선택해 주세요.");
                 return; // 전송 안 함
@@ -333,7 +335,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         // 상대방이 이미 Ready면 게임 시작
         if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
         {
-            gameHUD?.skillSelectPanel?.SetActive(false);
+            gameHUD?.HideSkillSelectPanel();
             gameManager.StartGameAfterSelection();
         }
     }
@@ -452,7 +454,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         // 패널/플래그 초기화
         if (gameHUD != null) gameHUD.HideRematchPanel();
         _isReadySent        = false;
-        _selectedSkillIDs   = new int[] { -1, -1, -1 };
+        //_selectedSkillIDs   = new int[] { -1, -1, -1 };
         _isRematchRequested = false;
 
         // 게임 로직 초기화
