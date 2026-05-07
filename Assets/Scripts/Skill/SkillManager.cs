@@ -355,8 +355,20 @@ public class SkillManager : MonoBehaviour
     }
 
     // (네트워크 수신용) 상대방이 스킬을 썼을 때
-    public void ReceiveOpponentSkill(int skillId, int[] xs, int[] ys)
-    {
+    public void ReceiveOpponentSkill(int skillId, int[] xs, int[] ys,int turnCount)
+    {   
+        // DoubleDown 두 번째 패킷 (랜덤 추가 착수) — SP/로그 없이 착수만
+        if (skillId == 3 && xs[0] != -1)
+        {
+            ReceiveSkill_DoubleDown(xs, ys);
+            return;
+        }
+        if (skillId == 6 && xs[0] != -1)
+        {
+            // 두 번째 패킷 — 실제 봉인 좌표, SP/로그 없이 처리
+            ReceiveSkill_Bladefall(xs, ys);
+            return;
+        }
         // 1. 어떤 스킬인지 찾음 (ID 기반)
         SkillBase skillObj = CreateSkillByID(skillId);
         if (skillObj == null) return;
@@ -411,7 +423,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
-        gameManager.gameHUD?.AddSkillLog("상대방", skillObj.data.skillName, gameManager.CurrentMoveCount);
+        gameManager.gameHUD?.AddSkillLog("상대방", skillObj.data.skillName, turnCount);
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
@@ -442,7 +454,7 @@ public class SkillManager : MonoBehaviour
     //  3번스킬 추가
     private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
     {
-            // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만 (기존)
+        // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만 (기존)
         // 두 번째 패킷: xs[0] != -1 → 랜덤 착수 좌표 수신
         if (xs[0] != -1)
         {
@@ -450,6 +462,7 @@ public class SkillManager : MonoBehaviour
             gameManager.board.PlaceStone(xs[0], ys[0], casterColor);
             // moveHistory는 안 건드림 (SkillInduced이므로)
             Debug.Log($"[Network] DoubleDown 추가 착수 수신: ({xs[0]},{ys[0]})");
+            return; // 
         }
         else
         {
@@ -1034,7 +1047,17 @@ public class SkillManager : MonoBehaviour
         int[] targetX = new int[arraySize];
         int[] targetY = new int[arraySize];
         for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
-        targetX[0] = x; targetY[0] = y;
+        // targetX[0] = x; targetY[0] = y; 대신
+        if (skill.data.targetType == "none")
+        {
+            targetX[0] = -1;
+            targetY[0] = -1;
+        }
+        else
+        {
+            targetX[0] = x;
+            targetY[0] = y;
+        }
 
         // 스킬 발동 시도
         if (skill.Execute(targetX, targetY, gameManager, gameManager.board))
@@ -1077,7 +1100,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY);
+            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
 
         // 스킬 사용이 끝났으므로 상태 초기화
         gameManager.currentState = GameState.Playing;
@@ -1111,13 +1134,9 @@ public class SkillManager : MonoBehaviour
                         rand.x, rand.y,
                         gameManager.currentTurnColor,
                         PlacementType.SkillInduced);
-                    // 추가: 랜덤 착수 좌표를 별도 패킷으로 전송
+                   
                     if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    {
-                        gameSession.SendUseSkill(3,
-                            new int[] { rand.x, -1 },
-                            new int[] { rand.y, -1 });
-                    }
+                        gameSession.SendUseSkill(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount);
                     Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
@@ -1137,7 +1156,7 @@ public class SkillManager : MonoBehaviour
  
                 // 네트워크 전송
                 if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    gameSession.SendUseSkill(6, bx, by);
+                    gameSession.SendUseSkill(6, bx, by, gameManager.CurrentMoveCount);
  
                 Debug.Log("[Bladefall] 착수 후 봉인 발동 완료");
                 break;
@@ -1194,7 +1213,7 @@ public class SkillManager : MonoBehaviour
             // 네트워크 담당자에게 전달할 패킷 (좌표 2개가 담긴 배열 전송)
             if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
             {
-                gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY);
+                gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY,gameManager.CurrentMoveCount);
             }
 
             selectedSkillSlot = -1;
@@ -1225,7 +1244,7 @@ public class SkillManager : MonoBehaviour
         passiveSkill.Execute(noTarget, noTarget, gameManager, gameManager.board);
 
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-            gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 });
+            gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
     }
 
     // InputManager에서 현재 무슨 스킬을 들고 있는지 확인하기 위한 함수

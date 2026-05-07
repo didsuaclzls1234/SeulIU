@@ -130,7 +130,7 @@ public class GameHUD : MonoBehaviour
         // [추가] 덱 슬롯 버튼 초기 비활성화
         if (deckSlotButtons != null)
         foreach (var btn in deckSlotButtons)
-            btn.interactable = false;
+            btn.gameObject.SetActive(false);
     }
 
     // ── GameSession에서 호출 ─────────────────────────────────────

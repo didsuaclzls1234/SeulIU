@@ -44,6 +44,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             //gameManager.OnUndoRequestedLocally += SendUndoRequestEvent;
             //gameManager.OnUndoReplyLocally += SendUndoReplyEvent;
             //gameManager.OnDoubleDownExtraPlaced += SendDoubleDownExtraEvent;
+            
         }
 
         // * 멀티플레이 세팅: GameHUD에 불필요한 버튼 끄라고 지시
@@ -254,11 +255,12 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         int   skillId = (int)data[0];
         int[] xs      = (int[])data[1];
         int[] ys      = (int[])data[2];
+        int   turnCount = (int)data[3]; // [추가]
 
         // SkillManager에게 넘겨서 상대방 화면에서도 똑같이 실행하게 함
         if (skillManager != null)
         {
-            skillManager.ReceiveOpponentSkill(skillId, xs, ys);
+            skillManager.ReceiveOpponentSkill(skillId, xs, ys, turnCount);
         }
     }
     
@@ -366,9 +368,9 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     }
 
     // 스킬 사용 - 발신자 측에서 좌표 미리 계산 후 전송
-    public void SendUseSkill(int skillId, int[] xs, int[] ys)
+    public void SendUseSkill(int skillId, int[] xs, int[] ys,int turnCount)
     {
-        object[] data = new object[] { skillId, xs, ys };
+        object[] data = new object[] { skillId, xs, ys, turnCount };
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(PhotonEventCodes.UseSkill, data, opts, SendOptions.SendReliable);
     }
