@@ -73,6 +73,9 @@ public class GameManager : MonoBehaviour
              // 색상 확정 시점에 카메라 회전 적용
             if (cameraSwitcher != null)
                 cameraSwitcher.ApplyColorBasedRotation();
+
+            // 색상이 정해질 때 보드판 글씨 방향도 맞춰서 돌려줌!
+            if (board != null) board.SetupBoardTextRotation(value);
         }
     }
 

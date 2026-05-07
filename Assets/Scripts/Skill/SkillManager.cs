@@ -255,9 +255,12 @@ public class SkillManager : MonoBehaviour
             bool isSilenced   = sealedTurnsRemaining > 0;
             bool onCooldown   = mySkills[i].currentCooldown > 0;
             bool notEnoughSP  = mySP < mySkills[i].data.spCost;
- 
-            btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced;
-            cdTxt.text       = (!isPassive && onCooldown) ? mySkills[i].currentCooldown.ToString() : "";
+
+            // 칠죄종(8번) 1회 영구 적용 방어 로직: 이미 승리 조건이 7이면 버튼 영구 잠금
+            bool isUsedSevenSins = (mySkills[i].data.skillId == 8 && gameManager.board.ruleManager.GetWinCondition((int)gameManager.localPlayerColor.Opponent()) == 7);
+
+            btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced && !isUsedSevenSins;
+            cdTxt.text = (!isPassive && onCooldown) ? mySkills[i].currentCooldown.ToString() : "";
         }
     }
 
@@ -436,10 +439,10 @@ public class SkillManager : MonoBehaviour
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
         GameObject newStone = gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
 
-        // ** 상대방이 투명화 상태라면, 방금 옮긴 돌을 내 화면에서 100% 안 보이게 숨김
+        // 상대 투명화 시전 중일 때는 코루틴으로 깜빡인 후 숨김!
         if (oppInvisibilityTurns > 0 && newStone != null)
         {
-            gameManager.board.ApplyVisibilityToSingleStone(newStone, opponentColor, false, false);
+            StartCoroutine(gameManager.board.BlinkAndHideRoutine(newStone, opponentColor, false));
         }
     }
     //  2번스킬 추가
@@ -458,8 +461,16 @@ public class SkillManager : MonoBehaviour
         // 두 번째 패킷: xs[0] != -1 → 랜덤 착수 좌표 수신
         if (xs[0] != -1)
         {
-            StoneColor casterColor = gameManager.localPlayerColor.Opponent();
-            gameManager.board.PlaceStone(xs[0], ys[0], casterColor);
+            StoneColor oppColor = gameManager.localPlayerColor.Opponent();
+            gameManager.ExecutePlaceStonePublic(xs[0], ys[0], oppColor, PlacementType.SkillInduced);
+
+            // 상대방이 투명화 상태라면 (그리고 이번이 마지막 턴이 아니라면) 깜빡인 후 숨김 처리
+            if (oppInvisibilityTurns > 0)
+            {
+                GameObject extraStone = gameManager.board.GetStoneObjectAt(xs[0], ys[0]);
+                if (extraStone != null) StartCoroutine(gameManager.board.BlinkAndHideRoutine(extraStone, oppColor, false));
+            }
+
             // moveHistory는 안 건드림 (SkillInduced이므로)
             Debug.Log($"[Network] DoubleDown 추가 착수 수신: ({xs[0]},{ys[0]})");
             return; // 
@@ -1099,8 +1110,12 @@ public class SkillManager : MonoBehaviour
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
-        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+        // B타입(이중착수, 칼날비)은 여기서 빈 패킷을 쏘지 않습니다 (나중에 좌표 확정 후 쏨)
+        bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
+        if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+        {
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
+        }
 
         // 스킬 사용이 끝났으므로 상태 초기화
         gameManager.currentState = GameState.Playing;
@@ -1134,10 +1149,17 @@ public class SkillManager : MonoBehaviour
                         rand.x, rand.y,
                         gameManager.currentTurnColor,
                         PlacementType.SkillInduced);
-                   
-                    if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                        gameSession.SendUseSkill(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount);
-                    Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
+
+                    // 투명화 상태라면 방금 놓은 랜덤 돌도 내 화면에서 깜빡인 후 숨김
+                    if (myInvisibilityTurns > 0)
+                    {
+                        GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
+                        if (extraStone != null) StartCoroutine(gameManager.board.BlinkAndHideRoutine(extraStone, gameManager.localPlayerColor, true));
+                    }
+
+                        // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
+                        StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
+                        Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
             }
@@ -1153,14 +1175,25 @@ public class SkillManager : MonoBehaviour
                 bx[0] = placedX; by[0] = placedY; // [0]에 제외 좌표 전달
  
                 bladefall.Execute(bx, by, gameManager, gameManager.board);
- 
-                // 네트워크 전송
-                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    gameSession.SendUseSkill(6, bx, by, gameManager.CurrentMoveCount);
- 
+
+                // 일반 착수 패킷 먼저 날아가도록 지연 전송
+                StartCoroutine(SendDeferredSkillPacket(6, bx, by, gameManager.CurrentMoveCount));
+
                 Debug.Log("[Bladefall] 착수 후 봉인 발동 완료");
                 break;
             }
+        }
+    }
+
+    // 수동 착수 패킷을 추월하지 않도록 막아주는 지연 전송 코루틴
+    private System.Collections.IEnumerator SendDeferredSkillPacket(int skillId, int[] xs, int[] ys, int turnCount)
+    {
+        // GameManager의 수동 착수 처리가 완전히 끝날 때까지 프레임 끝에서 대기합니다.
+        yield return new WaitForEndOfFrame();
+
+        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+        {
+            gameSession.SendUseSkill(skillId, xs, ys, turnCount);
         }
     }
 

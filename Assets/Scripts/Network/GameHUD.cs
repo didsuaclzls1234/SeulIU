@@ -66,10 +66,10 @@ public class GameHUD : MonoBehaviour
     public Button[] skillSelectButtons;      // 선택 가능한 10개 버튼 (임시)
     public Button readyButton;               // 선택 완료 버튼
     public TextMeshProUGUI skillSelectRoleText;
-    public Image[] skillRowIcons;            // 각 행의 아이콘 Image 배열
-     public TextMeshProUGUI[] skillRowNameTexts;  // 각 행의 스킬명 TMP
-    public TextMeshProUGUI[] skillRowSPTexts;    // 각 행의 SP 비용 TMP
-    public TextMeshProUGUI[] skillRowDescTexts;  // 각 행의 설명 TMP
+    //public Image[] skillRowIcons;            // 각 행의 아이콘 Image 배열
+    //public TextMeshProUGUI[] skillRowNameTexts;  // 각 행의 스킬명 TMP
+    //public TextMeshProUGUI[] skillRowSPTexts;    // 각 행의 SP 비용 TMP
+    //public TextMeshProUGUI[] skillRowDescTexts;  // 각 행의 설명 TMP
     public TextMeshProUGUI skillSelectMessageText; // 스킬 선택창 전용 메시지
 
     [Header("스킬 선택창 UI - 덱 슬롯")]
@@ -415,6 +415,8 @@ public class GameHUD : MonoBehaviour
                             || (skillId == 10 && myColor != StoneColor.White);
 
             skillSelectButtons[i].interactable = !isRestricted;
+
+            // CSV 데이터 가져오기
             SkillData data = default(SkillData);
             if (skillManager != null && !skillManager.skillDatabase.TryGetValue(skillId, out data)) continue;
             // {
@@ -423,26 +425,50 @@ public class GameHUD : MonoBehaviour
             //     trigger.SetData(data);
             // }
 
-            // 3. 툴팁 연결 제거 → 표 데이터 채우기로 교체
+            // CSV 데이터 스킬 리스트에 뿌려주기
+            Transform btnTransform = skillSelectButtons[i].transform;
+
             // 아이콘
-            if (skillRowIcons != null && i < skillRowIcons.Length && skillRowIcons[i] != null)
+            Image iconImg = btnTransform.Find("IconImage")?.GetComponent<Image>();
+            if (iconImg != null)
             {
                 Sprite icon = GetSkillIcon(skillId);
-                skillRowIcons[i].sprite = icon;
-                skillRowIcons[i].gameObject.SetActive(icon != null);
+                iconImg.sprite = icon;
+                iconImg.gameObject.SetActive(icon != null);
             }
 
             // 스킬명
-            if (skillRowNameTexts != null && i < skillRowNameTexts.Length && skillRowNameTexts[i] != null)
-                skillRowNameTexts[i].text = data.skillName;
+            TextMeshProUGUI nameText = btnTransform.Find("SkillNameText")?.GetComponent<TextMeshProUGUI>();
+            if (nameText != null) nameText.text = data.skillName;
 
             // SP
-            if (skillRowSPTexts != null && i < skillRowSPTexts.Length && skillRowSPTexts[i] != null)
-                skillRowSPTexts[i].text = data.type == "전용" ? "패시브" : $"{data.spCost} SP";
+            TextMeshProUGUI spText = btnTransform.Find("SPText")?.GetComponent<TextMeshProUGUI>();
+            if (spText != null) spText.text = data.type == "전용" ? "패시브" : $"{data.spCost} SP";
 
             // 설명
-            if (skillRowDescTexts != null && i < skillRowDescTexts.Length && skillRowDescTexts[i] != null)
-                skillRowDescTexts[i].text = data.description;
+            TextMeshProUGUI descText = btnTransform.Find("DescText")?.GetComponent<TextMeshProUGUI>();
+            if (descText != null) descText.text = data.description;
+
+            // 3. 툴팁 연결 제거 → 표 데이터 채우기로 교체
+            //// 아이콘
+            //if (skillRowIcons != null && i < skillRowIcons.Length && skillRowIcons[i] != null)
+            //{
+            //    Sprite icon = GetSkillIcon(skillId);
+            //    skillRowIcons[i].sprite = icon;
+            //    skillRowIcons[i].gameObject.SetActive(icon != null);
+            //}
+
+            //// 스킬명
+            //if (skillRowNameTexts != null && i < skillRowNameTexts.Length && skillRowNameTexts[i] != null)
+            //    skillRowNameTexts[i].text = data.skillName;
+
+            //// SP
+            //if (skillRowSPTexts != null && i < skillRowSPTexts.Length && skillRowSPTexts[i] != null)
+            //    skillRowSPTexts[i].text = data.type == "전용" ? "패시브" : $"{data.spCost} SP";
+
+            //// 설명
+            //if (skillRowDescTexts != null && i < skillRowDescTexts.Length && skillRowDescTexts[i] != null)
+            //    skillRowDescTexts[i].text = data.description;
         }
     }
     // 2. 버프/디버프 상태 전체 갱신 
