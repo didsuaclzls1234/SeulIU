@@ -355,8 +355,20 @@ public class SkillManager : MonoBehaviour
     }
 
     // (네트워크 수신용) 상대방이 스킬을 썼을 때
-    public void ReceiveOpponentSkill(int skillId, int[] xs, int[] ys)
-    {
+    public void ReceiveOpponentSkill(int skillId, int[] xs, int[] ys,int turnCount)
+    {   
+        // DoubleDown 두 번째 패킷 (랜덤 추가 착수) — SP/로그 없이 착수만
+        if (skillId == 3 && xs[0] != -1)
+        {
+            ReceiveSkill_DoubleDown(xs, ys);
+            return;
+        }
+        if (skillId == 6 && xs[0] != -1)
+        {
+            // 두 번째 패킷 — 실제 봉인 좌표, SP/로그 없이 처리
+            ReceiveSkill_Bladefall(xs, ys);
+            return;
+        }
         // 1. 어떤 스킬인지 찾음 (ID 기반)
         SkillBase skillObj = CreateSkillByID(skillId);
         if (skillObj == null) return;
@@ -411,7 +423,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
         Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
-        gameManager.gameHUD?.AddSkillLog("상대방", skillObj.data.skillName, gameManager.CurrentMoveCount);
+        gameManager.gameHUD?.AddSkillLog("상대방", skillObj.data.skillName, turnCount);
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
@@ -442,7 +454,7 @@ public class SkillManager : MonoBehaviour
     //  3번스킬 추가
     private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
     {
-            // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만 (기존)
+        // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만 (기존)
         // 두 번째 패킷: xs[0] != -1 → 랜덤 착수 좌표 수신
         if (xs[0] != -1)
         {
@@ -450,6 +462,7 @@ public class SkillManager : MonoBehaviour
             gameManager.board.PlaceStone(xs[0], ys[0], casterColor);
             // moveHistory는 안 건드림 (SkillInduced이므로)
             Debug.Log($"[Network] DoubleDown 추가 착수 수신: ({xs[0]},{ys[0]})");
+            return; // 
         }
         else
         {
@@ -591,11 +604,65 @@ public class SkillManager : MonoBehaviour
 
     // 스킬 선택창 관련 --------------------------------------------------
     // 1. UI에서 스킬을 고를 때마다 호출할 함수
-    public void OnSkillSelected(int slotIndex, int skillId)
+    public void OnSkillSelected(int skillId)
     {
         // slotIndex: 0~2번 자리, skillId: 선택한 스킬 번호
-        mySkillsID[slotIndex] = skillId;
-        Debug.Log($"{slotIndex}번 슬롯에 {skillId}번 스킬 장착");
+        // mySkillsID[slotIndex] = skillId;
+        // Debug.Log($"{slotIndex}번 슬롯에 {skillId}번 스킬 장착");
+        // [추가] 이미 선택된 스킬인지 확인
+        for (int i = 0; i < mySkillsID.Length; i++)
+        {
+            if (mySkillsID[i] == skillId)
+            {
+                gameManager.gameHUD?.ShowSkillSelectMessage("이미 선택된 스킬입니다.");
+                return;
+            }
+        }
+        // 빈 슬롯 찾아서 자동 배정
+        for (int i = 0; i < mySkillsID.Length; i++)
+        {
+            if (mySkillsID[i] == -1)
+            {
+                mySkillsID[i] = skillId;
+                SortDeckAndRefreshUI();
+                return;
+            }
+        }
+        // 꽉 찬 경우
+        gameManager.gameHUD?.ShowSkillSelectMessage("슬롯이 가득 찼습니다.");
+    }
+
+     private void SortDeckAndRefreshUI()
+    {
+        // ID 오름차순 정렬 (-1은 뒤로)
+        System.Array.Sort(mySkillsID, (a, b) =>
+        {
+            if (a == -1) return 1;
+            if (b == -1) return -1;
+            return a.CompareTo(b);
+        });
+ 
+        // 덱 슬롯 UI 갱신
+        gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
+ 
+        // 확정 버튼 활성화 — 3슬롯 모두 찼을 때만
+        bool isFull = System.Array.TrueForAll(mySkillsID, id => id != -1);
+        gameManager.gameHUD?.SetReadyButtonInteractable(isFull);
+    }
+
+    // 덱 슬롯 버튼 클릭 시 호출 — 인스펙터에서 각 슬롯 버튼에 연결
+    // DeckSlot_0 → OnDeckSlotClicked(0)
+    // DeckSlot_1 → OnDeckSlotClicked(1)
+    // DeckSlot_2 → OnDeckSlotClicked(2)
+    public void OnDeckSlotClicked(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= mySkillsID.Length) return;
+        if (mySkillsID[slotIndex] == -1) return; // 이미 비어있음
+ 
+        int removedId = mySkillsID[slotIndex];
+        mySkillsID[slotIndex] = -1;
+        SortDeckAndRefreshUI();
+        Debug.Log($"[SkillSelect] 슬롯{slotIndex} 스킬 {removedId}번 제거");
     }
 
     // 2. '준비 완료' 버튼 누르거나 패킷 받았을 때 호출
@@ -719,6 +786,8 @@ public class SkillManager : MonoBehaviour
                     SkillTooltipTrigger trigger = btn.GetComponent<SkillTooltipTrigger>();
                     if (trigger == null) trigger = btn.gameObject.AddComponent<SkillTooltipTrigger>();
                     trigger.SetData(newSkill.data);
+                    // [추가] 인게임 버튼에 아이콘 전달
+                    gameManager.gameHUD?.ApplySkillIconToActiveButton(i, mySkillsID[i]);
                 }
             }
         }
@@ -768,11 +837,11 @@ public class SkillManager : MonoBehaviour
                 int randomIndex = UnityEngine.Random.Range(0, availableSkills.Count);
                 int pickedId = availableSkills[randomIndex];
 
-                mySkillsID[i] = pickedId; // 슬롯에 장착
+                // mySkillsID[i] = pickedId; // 슬롯에 장착
                 availableSkills.RemoveAt(randomIndex); // 중복 방지를 위해 리스트에서 제거
 
                 // UI에 반영 
-                OnSkillSelected(i, pickedId);
+                OnSkillSelected(pickedId);
             }
         }
 
@@ -978,7 +1047,17 @@ public class SkillManager : MonoBehaviour
         int[] targetX = new int[arraySize];
         int[] targetY = new int[arraySize];
         for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
-        targetX[0] = x; targetY[0] = y;
+        // targetX[0] = x; targetY[0] = y; 대신
+        if (skill.data.targetType == "none")
+        {
+            targetX[0] = -1;
+            targetY[0] = -1;
+        }
+        else
+        {
+            targetX[0] = x;
+            targetY[0] = y;
+        }
 
         // 스킬 발동 시도
         if (skill.Execute(targetX, targetY, gameManager, gameManager.board))
@@ -1021,7 +1100,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY);
+            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
 
         // 스킬 사용이 끝났으므로 상태 초기화
         gameManager.currentState = GameState.Playing;
@@ -1055,13 +1134,9 @@ public class SkillManager : MonoBehaviour
                         rand.x, rand.y,
                         gameManager.currentTurnColor,
                         PlacementType.SkillInduced);
-                    // 추가: 랜덤 착수 좌표를 별도 패킷으로 전송
+                   
                     if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    {
-                        gameSession.SendUseSkill(3,
-                            new int[] { rand.x, -1 },
-                            new int[] { rand.y, -1 });
-                    }
+                        gameSession.SendUseSkill(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount);
                     Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
@@ -1081,7 +1156,7 @@ public class SkillManager : MonoBehaviour
  
                 // 네트워크 전송
                 if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                    gameSession.SendUseSkill(6, bx, by);
+                    gameSession.SendUseSkill(6, bx, by, gameManager.CurrentMoveCount);
  
                 Debug.Log("[Bladefall] 착수 후 봉인 발동 완료");
                 break;
@@ -1138,7 +1213,7 @@ public class SkillManager : MonoBehaviour
             // 네트워크 담당자에게 전달할 패킷 (좌표 2개가 담긴 배열 전송)
             if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
             {
-                gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY);
+                gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY,gameManager.CurrentMoveCount);
             }
 
             selectedSkillSlot = -1;
@@ -1169,7 +1244,7 @@ public class SkillManager : MonoBehaviour
         passiveSkill.Execute(noTarget, noTarget, gameManager, gameManager.board);
 
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-            gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 });
+            gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
     }
 
     // InputManager에서 현재 무슨 스킬을 들고 있는지 확인하기 위한 함수

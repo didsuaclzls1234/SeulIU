@@ -39,7 +39,7 @@ public class Skill_6_Bladefall : SkillBase
         // Debug.Log($"[Bladefall] {targets.Count}칸 봉인 완료!");
         //return true;
         // ExecutePendingSkill에서 호출 시 배열 크기가 20, ConfirmSkill에서 호출 시 2
-        bool isFromPending = (targetX.Length >= 20);
+        bool isFromPending = (targetX[0] != -1);
  
         if (!isFromPending)
         {
