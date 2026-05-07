@@ -96,6 +96,15 @@ public class BoardManager : MonoBehaviour
     public float blackStoneYRotation = 0f; // 흑돌 Y 회전
     public float whiteStoneYRotation = 0f; // 백돌 Y 회전
 
+    [Header("칼날비 칼 VFX 설정")]
+    public float knifeStartHeight = 5f;    // 낙하 시작 높이
+    public float knifeLandYOffset = -0.1f; // 착지 Y (보드판에 박히는 깊이)
+    public float knifeFallDuration = 0.3f; // 낙하 시간 (초)
+    public Vector3 knifeScale = Vector3.one; //칼 오브젝트 스케일 (인스펙터에서 조절 가능)
+    public Vector3 knifeRotation = Vector3.zero; //칼 오브젝트 초기 회전 (인스펙터에서 조절 가능)
+    public float knifeOffsetX = 0f; // ← X 오프셋
+    public float knifeOffsetZ = 0f; // ← Z 오프셋
+
     // 2차원 배열 데이터 (0: 빈칸, 1: 흑돌, 2: 백돌)
     public int[,] grid;
 
@@ -103,9 +112,10 @@ public class BoardManager : MonoBehaviour
     private List<GameObject> activeStones = new List<GameObject>();
     private List<GameObject> forbiddenMarks = new List<GameObject>(); // '❌' 마커들을 담아둘 리스트
 
-    // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패) 오브젝트를 기억하는 사전
+    // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패)/칼날비 칼 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
     //private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
+    private Dictionary<Vector2Int, GameObject> activeKnifeObjects = new Dictionary<Vector2Int, GameObject>();
 
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
@@ -268,6 +278,11 @@ public class BoardManager : MonoBehaviour
 
         foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
         activeSealMarkers.Clear();
+
+        // [추가] 칼날비 칼 오브젝트 전체 제거
+        foreach (var knife in activeKnifeObjects.Values)
+            if (knife != null) knife.SetActive(false);
+        activeKnifeObjects.Clear();
 
         //foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
         //activeShieldMarkers.Clear();
@@ -456,7 +471,7 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    // 턴이 다 되어서 자물쇠를 치워야 할 때 부르는 함수
+    // 턴이 다 되어서 칼/자물쇠를 치워야 할 때 부르는 함수
     public void RemoveSealEffect(int x, int y)
     {
         Vector2Int posKey = new Vector2Int(x, y);
@@ -465,6 +480,74 @@ public class BoardManager : MonoBehaviour
             marker.SetActive(false);
             activeSealMarkers.Remove(posKey);
         }
+
+        // [추가] 칼날비 칼 오브젝트 제거
+        if (activeKnifeObjects.TryGetValue(posKey, out GameObject knife))
+        {
+            knife.SetActive(false);
+            activeKnifeObjects.Remove(posKey);
+        }
+    }
+
+    // 칼날비 전용 봉인 — 마커 없이 칼 오브젝트 낙하
+    public void ApplySealWithKnife(int x, int y, int turns, StoneColor ownerColor)//x,y로 적혀있지만, 유니티상에서는 x,z 좌표입니다. y는 높이값으로 고정
+    {
+        // 봉인 데이터는 그대로 적용
+        sealedGrid[x, y].turns = turns;
+        sealedGrid[x, y].owner = ownerColor;
+ 
+        Vector2Int posKey = new Vector2Int(x, y);
+        if (activeKnifeObjects.ContainsKey(posKey)) return;
+ 
+        // 칼 소환 — 시작 위치는 높은 곳
+        Vector3 startPos = new Vector3(
+        x * gridSize + knifeOffsetX,
+        knifeStartHeight,
+        y * gridSize + knifeOffsetZ);
+
+        GameObject knife = ObjectPooler.Instance.SpawnFromPool("BladefallKnife", startPos, Quaternion.identity);
+        Debug.Log($"[BladefallKnife] 꺼낸 결과: {(knife == null ? "null" : knife.name)}");
+        if (knife == null) return;
+        knife.transform.localScale = knifeScale; // 인스펙터에서 조절한 스케일 적용
+        knife.transform.rotation = Quaternion.Euler(knifeRotation);
+
+        activeKnifeObjects.Add(posKey, knife);
+ 
+        // 착지 목표 위치
+        Vector3 targetPos = new Vector3(
+        x * gridSize + knifeOffsetX,
+        knifeLandYOffset,
+        y * gridSize + knifeOffsetZ);
+ 
+        // 낙하 코루틴 시작
+        StartCoroutine(KnifeFallRoutine(knife, startPos, targetPos, knifeFallDuration));
+    }
+
+     // 낙하 코루틴 — 위에서 아래로 가속하며 떨어짐
+    private IEnumerator KnifeFallRoutine(GameObject knife, Vector3 from, Vector3 to, float duration)
+    {   
+        Debug.Log($"[BladefallKnife] 낙하 시작 위치: {from}");  // ← 추가
+        float elapsed = 0f;
+ 
+        while (elapsed < duration)
+        {
+            if (knife == null || !knife.activeSelf) yield break;
+ 
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+ 
+            // 가속감 — EaseIn (처음엔 느리다가 빠르게)
+            float eased = t * t;
+ 
+            knife.transform.position = Vector3.Lerp(from, to, eased);
+            yield return null;
+        }
+ 
+        // 정확한 착지 위치 고정
+        if (knife != null && knife.activeSelf)
+            knife.transform.position = to;
+
+        Debug.Log($"[BladefallKnife] 착지 완료 위치: {to}");  // ← 추가
     }
 
     // 보호막 씌우는 핵심 API

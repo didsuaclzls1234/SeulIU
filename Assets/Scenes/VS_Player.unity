@@ -2126,7 +2126,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.size
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[3].tag
@@ -2138,7 +2138,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[5].tag
-      value: TargetHighlight
+      value: BladefallKnife
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[0].size
@@ -2162,7 +2162,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[5].size
-      value: 100
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[0].prefab
@@ -2183,7 +2183,7 @@ PrefabInstance:
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[5].prefab
       value: 
-      objectReference: {fileID: 2609466034151668977, guid: 463edde9b0ba8684686c105bfd5a88ee, type: 3}
+      objectReference: {fileID: 8754382739753334551, guid: a1b0a55866b076040a0807bac6fe1745, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2290,6 +2290,14 @@ PrefabInstance:
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: whiteSealRotation.y
       value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeLandYOffset
+      value: -0.1
       objectReference: {fileID: 0}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: visualSettings.hoverAlpha
