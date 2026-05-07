@@ -54,6 +54,19 @@ public class BoardManager : MonoBehaviour
     public RuleManager ruleManager;
     public GameManager gameManager;
 
+    [Header("3D Click Text Settings")]
+    public GameObject boardClickTextObj;
+    public Vector3 blackTextRotation = new Vector3(90, 0, 90);     // 흑돌 시점 회전값
+    public Vector3 whiteTextRotation = new Vector3(-270, 180, 90); // 백돌 시점 회전값 
+
+    [Header("Forbidden Mark Settings (금수)")]
+    public bool debugForbiddenMode = false; // 인스펙터 체크용 디버그 스위치
+    private GameObject hoverForbiddenMarkInstance; // 마우스 올렸을 때 띄울 단일 마커
+
+    [Header("Seal 3D Settings")]
+    public Vector3 blackSealRotation = new Vector3(90, 90, 0);       // 흑돌 시점 자물쇠 회전
+    public Vector3 whiteSealRotation = new Vector3(90, 270, 0);     // 백돌 시점 자물쇠 회전 
+
     private GameObject currentHoveredStone = null; // 현재 마우스가 올라가 있는 돌 기억용 (스킬 관련)
 
     [Header("Board Settings")]
@@ -206,7 +219,8 @@ public class BoardManager : MonoBehaviour
         }
         forbiddenMarks.Clear();
 
-        if (ruleManager == null) return;
+        // 디버그 모드가 꺼져있다면 전체 표시는 아예 안 하고 종료
+        if (!debugForbiddenMode || ruleManager == null) return;
 
         for (int x = 0; x < boardSize; x++)
         {
@@ -223,6 +237,24 @@ public class BoardManager : MonoBehaviour
                 }
             }
         }
+    }
+
+    // 단일 호버 ❌ 마커 제어 함수
+    public void ShowHoverForbiddenMark(int x, int y)
+    {
+        if (hoverForbiddenMarkInstance == null)
+        {
+            // 첫 호버 시 풀에서 하나만 꺼내서 재사용
+            hoverForbiddenMarkInstance = ObjectPooler.Instance.SpawnFromPool("ForbiddenMark", Vector3.zero, Quaternion.Euler(90, 0, 0));
+        }
+        hoverForbiddenMarkInstance.SetActive(true);
+        hoverForbiddenMarkInstance.transform.position = new Vector3(x * gridSize, forbiddenYOffset, y * gridSize);
+    }
+
+    public void HideHoverForbiddenMark()
+    {
+        if (hoverForbiddenMarkInstance != null)
+            hoverForbiddenMarkInstance.SetActive(false);
     }
 
     // 재시작 시 호출할 데이터 정리 함수
@@ -403,7 +435,10 @@ public class BoardManager : MonoBehaviour
         if (!activeSealMarkers.ContainsKey(posKey))
         {
             Vector3 spawnPos = new Vector3(x * gridSize, sealYOffset, y * gridSize);
-            GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+
+            // 내 컬러에 맞춰서 자물쇠 방향을 돌려서 생성
+            Vector3 spawnRot = (gameManager.localPlayerColor == StoneColor.Black) ? blackSealRotation : whiteSealRotation;
+            GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(spawnRot));
 
             if (marker == null) return;
 
@@ -717,13 +752,23 @@ public class BoardManager : MonoBehaviour
         svc.SetVisibility(true, false);
 
         // 필요하다면 여기서 BlinkStoneEffect를 호출해 깜빡임 연출을 추가해도 좋습니다.
-        // PlayBlinkEffect(visualSettings.extraPlaceBlinkColor, 0.7f);
+        //PlayBlinkEffect(visualSettings.extraPlaceBlinkColor, 0.7f);
 
         // 2. 원하는 시간만큼 대기 (예: 0.6초)
         yield return new WaitForSeconds(0.6f);
 
-        // 3. 시간이 지나면 투명 상태로 덮어씌우기
-        ApplyVisibilityToSingleStone(stone, color, false, isMyStone);
+        // 0.6초가 지나는 동안 턴이 넘어가서 투명화가 풀렸다면, 숨기면 안 됨
+        bool stillInvisible = false;
+        if (gameManager.skillManager != null)
+        {
+            stillInvisible = isMyStone ? (gameManager.skillManager.myInvisibilityTurns > 0) : (gameManager.skillManager.oppInvisibilityTurns > 0);
+        }
+
+        // 여전히 투명화 상태일 때만 숨김 처리
+        if (stillInvisible)
+        {
+            ApplyVisibilityToSingleStone(stone, color, false, isMyStone);
+        }
     }
 
     // 바둑판 전체 색상 변경 (0: 원상복구, 1: 호버, 2: 클릭)
@@ -731,15 +776,26 @@ public class BoardManager : MonoBehaviour
     {
         if (boardMaterial == null) return;
 
-        Color targetColor = originalBoardColor; // state == 0
+        Color targetColor = Color.black; // state == 0
         if (state == 1) targetColor = visualSettings.boardReadyTint;       // 대기 (하얗게)
         else if (state == 2) targetColor = visualSettings.boardHoverTint;  // 호버
         else if (state == 3) targetColor = visualSettings.boardClickTint;  // 클릭
 
-        if (boardMaterial.HasProperty("_BaseColor"))
-            boardMaterial.SetColor("_BaseColor", targetColor);
-        else if (boardMaterial.HasProperty("_Color"))
-            boardMaterial.SetColor("_Color", targetColor);
+        boardMaterial.EnableKeyword("_EMISSION");
+        boardMaterial.SetColor("_EmissionColor", targetColor * 1.5f); // 1.5f를 곱해 더 밝게!
+
+        // 상태가 1(대기)이거나 2(호버)일 때만 3D 글씨를 켭니다
+        if (boardClickTextObj != null)
+            boardClickTextObj.SetActive(state == 1 || state == 2);
+    }
+
+    // 내 색깔에 맞춰 'Click!' 텍스트 방향 세팅하는 함수
+    public void SetupBoardTextRotation(StoneColor localColor)
+    {
+        if (boardClickTextObj != null)
+        {
+            boardClickTextObj.transform.rotation = Quaternion.Euler(localColor == StoneColor.Black ? blackTextRotation : whiteTextRotation);
+        }
     }
     // ------------------------------------------------------------
     // ** 개발자용 격자 그리기
@@ -764,6 +820,8 @@ public class BoardManager : MonoBehaviour
         if (Application.isPlaying && gameManager != null && activeStones != null)
         {
             RefreshAllStonesVisuals();
+
+            if (gameManager.currentTurnColor != StoneColor.None) UpdateForbiddenMarks(gameManager.currentTurnColor);
         }
     }
 #endif

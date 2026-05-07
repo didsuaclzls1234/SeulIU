@@ -209,7 +209,10 @@ public class InputManager : MonoBehaviour
 
         if (isSkillMode)
         {
-            // 1. 스킬 모드 진입 시: 일반 캐릭터 바둑돌 호버는 무조건 숨김!
+            // 스킬 모드일 땐 금수 마커 무조건 숨김
+            gameManager.board.HideHoverForbiddenMark();
+
+            // 1. 일반 캐릭터 바둑돌 호버는 무조건 숨김!
             if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
             if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
 
@@ -266,30 +269,85 @@ public class InputManager : MonoBehaviour
         }
         else // GameState.Playing (일반 착수 상태)
         {
-            // 1. 일반 착수 모드: 빨간 점 숨기고 캐릭터 바둑돌 호버 켜기!
+            // 1. 빨간 조준점 숨기기
             if (targetingHoverIndicator != null) targetingHoverIndicator.SetActive(false);
 
-            int displayColor = (gameManager.currentMode == PlayMode.Solo) ?
-                               (int)gameManager.currentTurnColor :
-                               (int)gameManager.localPlayerColor;
+            // 2. 돌이 이미 존재하는지 먼저 파악 
+            bool hasStone = gameManager.board.grid[x, y] != 0;
+            bool isTargetInvisible = false;
 
-            GameObject activeHover = (displayColor == 1) ? blackHoverIndicator : whiteHoverIndicator;
-            GameObject inactiveHover = (displayColor == 1) ? whiteHoverIndicator : blackHoverIndicator;
-
-            if (inactiveHover != null) inactiveHover.SetActive(false);
-
-            if (activeHover != null)
+            if (hasStone)
             {
-                activeHover.SetActive(true);
-                activeHover.transform.position = new Vector3(x * gridSize, hoverYOffset, y * gridSize);
-
-                float yRotation = (displayColor == 1) ?
-                                  gameManager.board.blackStoneYRotation :
-                                  gameManager.board.whiteStoneYRotation;
-                activeHover.transform.rotation = Quaternion.Euler(0, yRotation, 0);
+                GameObject stoneObj = gameManager.board.GetStoneObjectAt(x, y);
+                if (stoneObj != null)
+                {
+                    StoneVisualController svc = stoneObj.GetComponent<StoneVisualController>();
+                    if (svc != null && !svc.IsVisible) isTargetInvisible = true; // 상대 투명돌
+                }
             }
 
-            // 2. 일반 착수 중에는 아웃라인 무조건 끄기
+            // 3. 금수 검사는 '빈 칸(!hasStone)'일 때만 실행
+            bool isForbidden = false;
+            if (!hasStone && gameManager.currentTurnColor == gameManager.localPlayerColor)
+            {
+                isForbidden = gameManager.board.ruleManager.IsForbiddenMove(x, y, (int)gameManager.currentTurnColor, gameManager.board.grid, gameManager.board.boardSize, silent: true);
+            }
+
+            if (isForbidden)
+            {
+                // 금수 자리면 투명돌(호버) 숨기고 ❌ 마커 띄우기
+                if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
+                if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
+
+                gameManager.board.ShowHoverForbiddenMark(x, y);
+            }
+            else
+            {
+                // 금수가 아니면 ❌ 마커 숨기고 일반 투명돌(호버) 띄우기
+                gameManager.board.HideHoverForbiddenMark();
+
+                // 돌이 있고, 그 돌이 내 눈에 보인다면 호버 완전 숨김 (겹침 방지)
+                if (hasStone && !isTargetInvisible)
+                {
+                    if (blackHoverIndicator != null) blackHoverIndicator.SetActive(false);
+                    if (whiteHoverIndicator != null) whiteHoverIndicator.SetActive(false);
+                }
+                else
+                {
+                    // 빈 칸이거나 상대 투명돌이면 정상적으로 호버 돌 표시
+                    int displayColor = (gameManager.currentMode == PlayMode.Solo) ? (int)gameManager.currentTurnColor : (int)gameManager.localPlayerColor;
+                    GameObject activeHover = (displayColor == 1) ? blackHoverIndicator : whiteHoverIndicator;
+                    GameObject inactiveHover = (displayColor == 1) ? whiteHoverIndicator : blackHoverIndicator;
+
+                    if (inactiveHover != null) inactiveHover.SetActive(false);
+
+                    if (activeHover != null)
+                    {
+                        activeHover.SetActive(true);
+                        activeHover.transform.position = new Vector3(x * gridSize, hoverYOffset, y * gridSize);
+                        float yRotation = (displayColor == 1) ? gameManager.board.blackStoneYRotation : gameManager.board.whiteStoneYRotation;
+                        activeHover.transform.rotation = Quaternion.Euler(0, yRotation, 0);
+
+                        // 백돌이고 신성화가 발동 중이면 호버에도 쨍한 아웃라인 추가
+                        StoneVisualController hoverSvc = activeHover.GetComponent<StoneVisualController>();
+                        if (hoverSvc != null)
+                        {
+                            if (gameManager.board.isConsecrationActive && displayColor == 2)
+                            {
+                                hoverSvc.SetConsecration(true, gameManager.board.visualSettings.consecrationOutlineColor,
+                                                               gameManager.board.visualSettings.consecrationThickness,
+                                                               gameManager.board.visualSettings.consecrationGlow);
+                            }
+                            else
+                            {
+                                hoverSvc.SetConsecration(false, Color.black);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. 일반 착수 중에는 아웃라인 무조건 끄기
             gameManager.board.ClearHoverHighlight();
         }
 
@@ -346,6 +404,9 @@ public class InputManager : MonoBehaviour
         {
             gameManager.board.ClearHoverHighlight();
             if (IsGlobalTargetSkill()) gameManager.board.SetBoardOverlayState(0);
+
+            // 보드 밖으로 나가면 금수 마커도 치움
+            gameManager.board.HideHoverForbiddenMark();
         }
     }
 
