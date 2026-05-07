@@ -62,8 +62,7 @@ public class Skill_6_Bladefall : SkillBase
  
         for (int i = 0; i < targets.Count; i++)
         {
-            // [수정] 하드코딩 1 제거 → data.durationTurn 사용
-            board.ApplySeal(targets[i].x, targets[i].y, data.durationTurn, casterColor);
+            board.ApplySealWithKnife(targets[i].x, targets[i].y, data.durationTurn, casterColor);
             if (i < targetX.Length) { targetX[i] = targets[i].x; targetY[i] = targets[i].y; }
         }
  

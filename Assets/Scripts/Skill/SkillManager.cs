@@ -514,7 +514,7 @@ public class SkillManager : MonoBehaviour
         {
             if (xs[i] != -1 && ys[i] != -1)
             {
-                gameManager.board.ApplySeal(xs[i], ys[i], skillDatabase[6].durationTurn, opponentColor);
+                gameManager.board.ApplySealWithKnife(xs[i], ys[i], skillDatabase[6].durationTurn, opponentColor);
             }
         }
 
