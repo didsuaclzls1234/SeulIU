@@ -199,6 +199,13 @@ public class BoardManager : MonoBehaviour
 
             // 2-4. 실제로 씬에 3D 모델 생성
             float yRotation = (playerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
+
+            // ** 신성화 상태라면 무조건 백돌 방향으로 강제 통일 (앞뒤 구분 방지)
+            if (isConsecrationActive)
+            {
+                yRotation = whiteStoneYRotation;
+            }
+
             GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.Euler(0, yRotation, 0));
             activeStones.Add(newStone);
 
@@ -508,6 +515,14 @@ public class BoardManager : MonoBehaviour
         GameObject knife = ObjectPooler.Instance.SpawnFromPool("BladefallKnife", startPos, Quaternion.identity);
         Debug.Log($"[BladefallKnife] 꺼낸 결과: {(knife == null ? "null" : knife.name)}");
         if (knife == null) return;
+
+        // ** 칼날비 오브젝트에 빨간색 아웃라인(오버레이) 강하게 적용
+        StoneVisualController svc = knife.GetComponent<StoneVisualController>();
+        if (svc != null)
+        {
+            svc.SetOverlay(Color.red, 0.8f);
+        }
+
         knife.transform.localScale = knifeScale; // 인스펙터에서 조절한 스케일 적용
         knife.transform.rotation = Quaternion.Euler(knifeRotation);
 
@@ -831,11 +846,9 @@ public class BoardManager : MonoBehaviour
         StoneVisualController svc = stone.GetComponent<StoneVisualController>();
         if (svc == null) yield break;
 
-        // 1. 일단 완전 보이게 설정 (기본 착수)
+        // 1. 일단 완전 보이게 설정 (기본 착수) + 노란색 점멸
         svc.SetVisibility(true, false);
-
-        // 필요하다면 여기서 BlinkStoneEffect를 호출해 깜빡임 연출을 추가해도 좋습니다.
-        //PlayBlinkEffect(visualSettings.extraPlaceBlinkColor, 0.7f);
+        svc.PlayBlinkEffect(visualSettings.extraPlaceBlinkColor, 0.7f);
 
         // 2. 원하는 시간만큼 대기 (예: 0.6초)
         yield return new WaitForSeconds(0.6f);

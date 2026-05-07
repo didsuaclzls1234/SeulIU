@@ -818,6 +818,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 47679252069624775, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 144203022707753068, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -1590,6 +1594,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Canvas_Network
       objectReference: {fileID: 0}
+    - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5056297186453892288, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -2276,6 +2284,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 603740961}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeLandYOffset
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: boardClickTextObj
       value: 
       objectReference: {fileID: 8162214874769077032}
@@ -2290,14 +2306,6 @@ PrefabInstance:
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: whiteSealRotation.y
       value: 90
-      objectReference: {fileID: 0}
-    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
-      propertyPath: knifeRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
-      propertyPath: knifeLandYOffset
-      value: -0.1
       objectReference: {fileID: 0}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: visualSettings.hoverAlpha

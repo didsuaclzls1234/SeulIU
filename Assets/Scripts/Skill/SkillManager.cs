@@ -255,9 +255,12 @@ public class SkillManager : MonoBehaviour
             bool isSilenced   = sealedTurnsRemaining > 0;
             bool onCooldown   = mySkills[i].currentCooldown > 0;
             bool notEnoughSP  = mySP < mySkills[i].data.spCost;
- 
-            btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced;
-            cdTxt.text       = (!isPassive && onCooldown) ? mySkills[i].currentCooldown.ToString() : "";
+
+            // 칠죄종(8번) 1회 영구 적용 방어 로직: 이미 승리 조건이 7이면 버튼 영구 잠금
+            bool isUsedSevenSins = (mySkills[i].data.skillId == 8 && gameManager.board.ruleManager.GetWinCondition((int)gameManager.localPlayerColor.Opponent()) == 7);
+
+            btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced && !isUsedSevenSins;
+            cdTxt.text = (!isPassive && onCooldown) ? mySkills[i].currentCooldown.ToString() : "";
         }
     }
 
