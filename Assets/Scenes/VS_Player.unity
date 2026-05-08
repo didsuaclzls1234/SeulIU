@@ -818,10 +818,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 47679252069624775, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 144203022707753068, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -833,10 +829,6 @@ PrefabInstance:
     - target: {fileID: 347446584148737967, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Padding.m_Top
       value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 347446584148737967, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_ChildForceExpandWidth
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 347446584148737967, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_ChildForceExpandHeight
@@ -1052,10 +1044,6 @@ PrefabInstance:
       objectReference: {fileID: 6446585498521817047}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: skillIcons.Array.size
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: deckSlotIcons.Array.size
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
@@ -1317,10 +1305,6 @@ PrefabInstance:
     - target: {fileID: 2635715436305696800, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
       value: DescText
-      objectReference: {fileID: 0}
-    - target: {fileID: 2718095104593096727, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_text
-      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 2734833886546114834, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -1706,17 +1690,9 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4722116109222955865, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
       value: Canvas_Network
-      objectReference: {fileID: 0}
-    - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4970610445597682836, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
@@ -2203,10 +2179,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects:
-    - {fileID: 1804265889219410616, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-    - {fileID: 1742683484954401227, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-    - {fileID: 1909498405156437714, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+    m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}

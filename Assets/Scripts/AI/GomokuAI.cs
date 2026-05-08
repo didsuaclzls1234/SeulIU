@@ -9,21 +9,23 @@ public class GomokuAI
     private int playerColor;  // 플레이어의 돌 색상
 
     private RuleManager ruleManager;
+    private GameManager gameManager;
     private int boardSize;
 
-    public GomokuAI(int aiColor, RuleManager rm, int size, int difficulty)
+    public GomokuAI(int aiColor, RuleManager rm, int size, int difficulty, GameManager gameManager)
     {
         this.aiColor = aiColor;
         this.playerColor = (aiColor == 1) ? 2 : 1;
         this.ruleManager = rm;
         this.boardSize = size;
         this.maxDepth = difficulty;
+        this.gameManager = gameManager;
     }
 
     // =========================================================
     // 1. AI 턴 진입점 (GameManager에서 호출)
     // =========================================================
-    public async Task<Vector2Int> CalculateBestMoveAsync(int[,] currentGrid)
+    public async Task<Vector2Int> CalculateBestMoveAsync(int[,] currentGrid, BoardManager.SealInfo[,] sealedGrid)
     {
         // 원본 배열이 망가지지 않게 복사본 생성
         int[,] gridClone = (int[,])currentGrid.Clone();
@@ -32,25 +34,41 @@ public class GomokuAI
         RuleSettings aiRulesClone = ruleManager.GetRulesSnapshot(aiColor);
         RuleSettings playerRulesClone = ruleManager.GetRulesSnapshot(playerColor);
 
+        // ** 정보 제한 로직: 상대(플레이어)가 투명화 중이라면?
+        int effectiveDepth = maxDepth;
+
+        // ** 유저가 '투명화' 혹은 '신성화'를 사용 중인지 체크
+        bool isUserInvisible = gameManager.skillManager.myInvisibilityTurns > 0;
+        bool isConsecrationActive = gameManager.board.isConsecrationActive;
+
+        if (isUserInvisible || isConsecrationActive)
+        {
+            // 정보가 제한된 상황이므로 AI의 수읽기를 1~2단계로 제한 (근시안적으로 만듦)
+            effectiveDepth = Mathf.Min(maxDepth, 2);
+
+            string reason = isUserInvisible ? "투명화" : "신성화";
+            Debug.Log($"[AI] 플레이어의 {reason} 감지! 눈이 침침해서 {effectiveDepth}수 앞만 봅니다.");
+        }
+
         // 2. Task에 들어갈 때 원본(ruleManager)이 아니라 복사본 2개를 쥐여서 보냄
         // (메인 스레드(유니티 화면)가 멈추지 않게 별도 스레드에서 무거운 탐색을 돌림)
-        Vector2Int bestMove = await Task.Run(() => GetBestMove(gridClone, aiRulesClone, playerRulesClone));
+        Vector2Int bestMove = await Task.Run(() => GetBestMove(gridClone, aiRulesClone, playerRulesClone, effectiveDepth, sealedGrid));
         return bestMove;
 
-        
+
     }
 
     // =========================================================
     // 2. 미니맥스 탐색 시작점
     // =========================================================
-    private Vector2Int GetBestMove(int[,] grid, RuleSettings aiRules, RuleSettings playerRules)
+    private Vector2Int GetBestMove(int[,] grid, RuleSettings aiRules, RuleSettings playerRules, int depth, BoardManager.SealInfo[,] sealedGrid)
     {
         int bestScore = int.MinValue;
         int size = grid.GetLength(0);
         Vector2Int bestMove = new Vector2Int(size / 2, size / 2); // 첫 수라면 정중앙 
 
         // 최적화 1: 19x19 전체를 돌지 않고, '돌이 놓여있는 곳 주변'만 후보군으로 추림
-        List<Vector2Int> candidateMoves = GetCandidateMoves(grid, aiColor, aiRules);
+        List<Vector2Int> candidateMoves = GetCandidateMoves(grid, aiColor, aiRules, sealedGrid);
 
         if (candidateMoves.Count == 0) return bestMove;
 
@@ -60,7 +78,7 @@ public class GomokuAI
 
             // 미니맥스 + 알파베타 재귀 호출 시작 (상대방 턴으로 넘김 -> isMaximizing = false)
             // 재귀 호출할 때 복사본 룰 2개도 같이 계속 토스!
-            int score = Minimax(grid, maxDepth - 1, int.MinValue, int.MaxValue, false, aiRules, playerRules);
+            int score = Minimax(grid, depth - 1, int.MinValue, int.MaxValue, false, aiRules, playerRules, sealedGrid);
 
             grid[move.x, move.y] = 0; // 가상으로 둔 수 원상복구 (백트래킹)
 
@@ -76,7 +94,7 @@ public class GomokuAI
     // =========================================================
     // 3. 미니맥스 + 알파베타 가지치기 코어 로직
     // =========================================================
-    private int Minimax(int[,] grid, int depth, int alpha, int beta, bool isMaximizing, RuleSettings aiRules, RuleSettings playerRules)
+    private int Minimax(int[,] grid, int depth, int alpha, int beta, bool isMaximizing, RuleSettings aiRules, RuleSettings playerRules, BoardManager.SealInfo[,] sealedGrid)
     {
         // 1. 현재 판의 점수를 먼저 확인합니다.
         int currentScore = EvaluateBoard(grid, aiRules.winCondition, playerRules.winCondition);
@@ -100,7 +118,7 @@ public class GomokuAI
         // 지금 누구 턴인지에 따라 적용할 룰 복사본 선택
         RuleSettings currentTurnRules = isMaximizing ? aiRules : playerRules;
 
-        List<Vector2Int> candidateMoves = GetCandidateMoves(grid, currentTurnColor, currentTurnRules);
+        List<Vector2Int> candidateMoves = GetCandidateMoves(grid, currentTurnColor, currentTurnRules, sealedGrid);
 
         if (isMaximizing) // AI 턴
         {
@@ -108,7 +126,7 @@ public class GomokuAI
             foreach (Vector2Int move in candidateMoves)
             {
                 grid[move.x, move.y] = aiColor;
-                int eval = Minimax(grid, depth - 1, alpha, beta, false, aiRules, playerRules);
+                int eval = Minimax(grid, depth - 1, alpha, beta, false, aiRules, playerRules, sealedGrid);
                 grid[move.x, move.y] = 0;
 
                 maxEval = Mathf.Max(maxEval, eval);
@@ -124,7 +142,7 @@ public class GomokuAI
             foreach (Vector2Int move in candidateMoves)
             {
                 grid[move.x, move.y] = playerColor;
-                int eval = Minimax(grid, depth - 1, alpha, beta, true, aiRules, playerRules);
+                int eval = Minimax(grid, depth - 1, alpha, beta, true, aiRules, playerRules, sealedGrid);
                 grid[move.x, move.y] = 0;
 
                 minEval = Mathf.Min(minEval, eval);
@@ -139,7 +157,7 @@ public class GomokuAI
     // =========================================================
     // 4. 후보군 최적화 (돌이 있는 곳 주변 반경 2칸만 탐색!)
     // =========================================================
-    private List<Vector2Int> GetCandidateMoves(int[,] grid, int turnColor, RuleSettings snapshotRules)
+    private List<Vector2Int> GetCandidateMoves(int[,] grid, int turnColor, RuleSettings snapshotRules, BoardManager.SealInfo[,] sealedGrid)
     {
         List<Vector2Int> moves = new List<Vector2Int>();
         int radius = 2;
@@ -153,9 +171,18 @@ public class GomokuAI
             {
                 if (grid[x, y] == 0 && HasNeighbor(grid, x, y, radius))
                 {
+                    // 칼날비 & 봉인 스킬 체크 로직!
+                    if (sealedGrid[x, y].turns > 0)
+                    {
+                        StoneColor colorEnum = (turnColor == 1) ? StoneColor.Black : StoneColor.White;
+                        // 내가 건 봉인이 아니면(상대가 건 봉인이면) 이 자리는 패스
+                        if (sealedGrid[x, y].owner != colorEnum)
+                            continue;
+                    }
+
                     // 흑이든 백이든(turnColor) 현재 룰 매니저 기준 금수라면 후보에서 제외
                     // (silent를 true로 줘서 AI가 수천 번 상상할 때 로그창 도배되는 걸 막습니다)
-               
+
                     // + 원본 ruleManager의 IsForbiddenMove가 아니라, 
                     // 코어 엔진(CheckIsForbidden)에 직접 '복사본 룰'을 넣어서 검사
                     if (hasForbidden && ruleManager != null &&

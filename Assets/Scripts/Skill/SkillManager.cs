@@ -357,6 +357,127 @@ public class SkillManager : MonoBehaviour
     //         gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
     // }
 
+    // AI 모드 전용: AI가 스킬을 사용할지 판단하고 실행하는 함수
+    // =========================================================
+    // AI 전용 스킬 로직
+    // =========================================================
+    public void AI_TryUseSkill()
+    {
+        // 내(AI) 턴이 아니거나, 이미 이번 턴에 스킬을 썼거나, 안티매직에 걸렸으면 종료
+        if (gameManager.currentMode != PlayMode.AI || gameManager.hasUsedSkillThisTurn || sealedTurnsRemaining > 0) return;
+
+        foreach (var skill in oppSkills)
+        {
+            // 패시브(9번, 10번)는 제외
+            if (skill.data.type == "전용") continue;
+
+            // 1. SP와 쿨타임 검사
+            if (oppSP >= skill.data.spCost && skill.currentCooldown <= 0)
+            {
+                // 2. 스킬별 타겟팅 좌표 가져오기 (AI의 판단)
+                int[] tx = { -1, -1 };
+                int[] ty = { -1, -1 };
+
+                bool shouldUse = AI_DetermineSkillTarget(skill.data.skillId, tx, ty);
+
+                // 3. 사용하기로 결정했다면 Execute 실행
+                if (shouldUse)
+                {
+                    // AI도 우리가 만들어둔 Skill_3_DoubleDown.cs 등의 Execute를 똑같이 탑니다
+                    if (skill.Execute(tx, ty, gameManager, gameManager.board))
+                    {
+                        OnAI_SkillSuccess(skill, tx, ty);
+                        return; // 한 턴에 하나만 쓰므로 즉시 종료
+                    }
+                }
+            }
+        }
+    }
+
+    // AI가 무슨 스킬을, 어디에 쓸지 결정하는 "두뇌" 함수 (확장성 100%)
+    private bool AI_DetermineSkillTarget(int skillId, int[] tx, int[] ty)
+    {
+        switch (skillId)
+        {
+            case 3: // 이중 착수 (Double Down)
+                // 발동 확률 50%
+                if (UnityEngine.Random.value > 0.5f) return false;
+
+                // 이중착수는 타겟팅 없는 전역 스킬(none)이므로 좌표가 필요 없음 (-1, -1 그대로)
+                Debug.Log("[AI] 이중착수(3번) 스킬을 시전합니다!");
+                return true;
+
+            // 나중에 여기에 case 5(제거), case 2(봉인) 등을 추가하시면 됩니다!
+            // case 5: 
+            //     tx[0] = 지울_x좌표; ty[0] = 지울_y좌표;
+            //     return true;
+
+            default:
+                // 구현되지 않은 스킬은 사용 안 함
+                return false;
+        }
+    }
+
+    // AI가 스킬을 성공적으로 썼을 때의 후처리 (SP 차감, UI 갱신 등)
+    private void OnAI_SkillSuccess(SkillBase skill, int[] tx, int[] ty)
+    {
+        oppSP -= skill.data.spCost;
+        skill.currentCooldown = skill.data.cooldown;
+        gameManager.hasUsedSkillThisTurn = true;
+        gameManager.gameHUD?.AddSkillLog("AI", skill.data.skillName, gameManager.CurrentMoveCount);
+
+        // 버프 효과 등록
+        if (skill.data.durationTurn > 0)
+        {
+            activeEffects.Add(new ActiveEffect
+            {
+                skillId = skill.data.skillId,
+                casterColor = gameManager.localPlayerColor.Opponent(),
+                remainingTurns = skill.data.durationTurn,
+                isBuff = false, // 플레이어 입장에선 AI의 버프가 디버프(적대적)로 보이게 false 처리
+                effectName = skill.data.skillName,
+                description = skill.data.description
+            });
+            gameManager.gameHUD?.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
+        }
+
+        if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
+
+        // B타입 스킬(이중착수, 칼날비)의 지연 발동을 위해 pendingSkillId 세팅 (멀티플레이 코드와 동일)
+        bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
+        if (isBType)
+        {
+            // Execute 내부에서 이미 pendingSkillId를 3으로 설정했으므로 여기서 냅둬도 됨
+            Debug.Log($"[AI] B타입 스킬 {skill.data.skillName} 예약 완료. 일반 착수 후 발동 대기.");
+        }
+    }
+
+    public void AI_AutoSelectSkills()
+    {
+        if (gameManager.currentMode != PlayMode.AI) return;
+
+        // 기획자님 의도대로 AI는 3번(이중착수)과 본인 전용 패시브만 확정으로 들고 갑니다.
+        // 플레이어가 흑(1)이면 AI는 백이므로 10번(신성화), 플레이어가 백(2)이면 AI는 흑이므로 9번(파괴)
+        int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 10 : 9;
+
+        oppSkillsID[0] = 3;           // 이중착수 확정
+        oppSkillsID[1] = aiPassiveId; // 패시브 확정
+        oppSkillsID[2] = -1;          // 나머지 한 칸은 비워둠 (혹은 다른 스킬 넣어도 됨)
+
+        // AI는 스킬 고르자마자 바로 준비 완료 처리
+        isRemotePlayerReady = true;
+        Debug.Log($"[AI] 스킬 선택 및 준비 완료: {oppSkillsID[0]}, {oppSkillsID[1]}, 빈칸");
+
+        // 만약 플레이어가 이미 준비 완료 상태라면 곧바로 게임 시작
+        if (isLocalPlayerReady)
+        {
+            gameManager.gameHUD?.HideSkillSelectPanel();
+            gameManager.StartGameAfterSelection();
+        }
+    }
+
+    // -----------------------------------------------------------------
+
     // (네트워크 수신용) 상대방이 스킬을 썼을 때
     public void ReceiveOpponentSkill(int skillId, int[] xs, int[] ys,int turnCount)
     {   
@@ -771,47 +892,62 @@ public class SkillManager : MonoBehaviour
     public void GenerateSkillInstances()
     {
         mySkills.Clear();
+        oppSkills.Clear(); //  (AI 모드일 경우: AI 스킬 리스트도 싹 비우고 시작)
 
         for (int i = 0; i < 3; i++)
         {
+            // 1. 내 스킬 생성 로직 (기존 유지)
             int skillId = mySkillsID[i];
-            SkillBase newSkill = CreateSkillByID(skillId);
-
-            if (newSkill != null)
+            if (skillId != -1)
             {
-                mySkills.Add(newSkill);
+                SkillBase newSkill = CreateSkillByID(skillId);
 
-                
-                if (gameManager.gameHUD != null)
+                if (newSkill != null)
                 {
-                    bool isPassive = newSkill.data.type == "전용";
+                    mySkills.Add(newSkill);
 
-                    if (gameManager.gameHUD.skillCostTexts.Length > i)
-                        gameManager.gameHUD.skillCostTexts[i].text = newSkill.data.spCost.ToString(); // UI에 코스트(SP) 텍스트 반영
+                    if (gameManager.gameHUD != null)
+                    {
+                        bool isPassive = newSkill.data.type == "전용";
 
-                    if (gameManager.gameHUD.skillNameTexts != null && gameManager.gameHUD.skillNameTexts.Length > i)
-                        gameManager.gameHUD.skillNameTexts[i].text = newSkill.data.skillName; // UI에 스킬 이름 텍스트 반영
+                        if (gameManager.gameHUD.skillCostTexts.Length > i)
+                            gameManager.gameHUD.skillCostTexts[i].text = newSkill.data.spCost.ToString(); // UI에 코스트(SP) 텍스트 반영
 
-                    // 패시브 스킬은 클릭 불가
-                    gameManager.gameHUD.activeSkillButtons[i].interactable = !isPassive;
+                        if (gameManager.gameHUD.skillNameTexts != null && gameManager.gameHUD.skillNameTexts.Length > i)
+                            gameManager.gameHUD.skillNameTexts[i].text = newSkill.data.skillName; // UI에 스킬 이름 텍스트 반영
 
-                    Button btn = gameManager.gameHUD.activeSkillButtons[i];
-                    SkillTooltipTrigger trigger = btn.GetComponent<SkillTooltipTrigger>();
-                    if (trigger == null) trigger = btn.gameObject.AddComponent<SkillTooltipTrigger>();
-                    trigger.SetData(newSkill.data);
-                    // [추가] 인게임 버튼에 아이콘 전달
-                    gameManager.gameHUD?.ApplySkillIconToActiveButton(i, mySkillsID[i]);
+                        // 패시브 스킬은 클릭 불가
+                        gameManager.gameHUD.activeSkillButtons[i].interactable = !isPassive;
+
+                        Button btn = gameManager.gameHUD.activeSkillButtons[i];
+                        SkillTooltipTrigger trigger = btn.GetComponent<SkillTooltipTrigger>();
+                        if (trigger == null) trigger = btn.gameObject.AddComponent<SkillTooltipTrigger>();
+                        trigger.SetData(newSkill.data);
+
+                        // 인게임 버튼에 아이콘 전달
+                        gameManager.gameHUD?.ApplySkillIconToActiveButton(i, mySkillsID[i]);
+                    }
+                }
+            }
+
+            // 2. 상대방(AI) 스킬 인스턴스 생성
+            int oppSkillId = oppSkillsID[i];
+            if (oppSkillId != -1)
+            {
+                SkillBase aiSkill = CreateSkillByID(oppSkillId);
+                if (aiSkill != null)
+                {
+                    oppSkills.Add(aiSkill);
                 }
             }
         }
-        Debug.Log($"[SkillManager] 내 스킬 인스턴스 3개 생성 완료!");
+
+        Debug.Log($"[SkillManager] 내 스킬 {mySkills.Count}개, 상대방(AI) 스킬 {oppSkills.Count}개 생성 완료!");
 
         // 생성 끝났으니 하단 버튼 이벤트 연결
         BindSkillButtons();
 
         // 게임 시작 직후, 현재 SP와 쿨타임에 맞춰 버튼 상태를 즉시 업데이트
-        // 내 로컬 플레이어 컬러를 넘겨서 내 버튼들을 새로고침합니다.
-        // UpdateSkillDurations(gameManager.localPlayerColor);
         RefreshSkillButtonStates();
     }
 
@@ -862,18 +998,16 @@ public class SkillManager : MonoBehaviour
         Debug.Log($"[SkillManager] 타임아웃! 스킬 자동 선택 완료: {mySkillsID[0]}, {mySkillsID[1]}, {mySkillsID[2]}");
 
         // 예외 처리 및 분기
-        if (gameSession != null)
+        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
             // 1. 멀티플레이 모드: GameSession이 존재하면 패킷 쏘고 상대방 기다림
             gameSession.SendSyncPlayerInfo();
         }
         else
         {
-            // 2. 솔로/AI 모드: GameSession이 없으면 상대방 기다릴 필요 없이 즉시 게임 시작
-            if (gameManager != null)
-            {
-                gameManager.StartGameAfterSelection();
-            }
+            // 2. 솔로/AI 모드: 내 스킬 덱을 장착하고 즉시 준비 완료 처리
+            InitializeSkillDeck(true, mySkillsID);
+            SetPlayerReady(true);
         }
     }
 
@@ -1271,16 +1405,30 @@ public class SkillManager : MonoBehaviour
     {
         int[] noTarget = System.Array.Empty<int>();
 
+        // 1. 내 패시브 스킬 발동 (기존 유지)
         SkillBase passiveSkill = mySkills.Find(s => s.data.type == "전용");
-        if (passiveSkill == null) return;
+        if (passiveSkill != null && passiveSkill.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor) == SkillUseResult.Success)
+        {
+            passiveSkill.Execute(noTarget, noTarget, gameManager, gameManager.board);
 
-        if (passiveSkill.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor)
-            != SkillUseResult.Success) return;
+            if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+                gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+        }
 
-        passiveSkill.Execute(noTarget, noTarget, gameManager, gameManager.board);
-
-        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-            gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+        // 2. AI 모드일 때 AI의 패시브 스킬 자동 발동!
+        if (gameManager.currentMode == PlayMode.AI)
+        {
+            SkillBase aiPassive = oppSkills.Find(s => s.data.type == "전용");
+            if (aiPassive != null)
+            {
+                StoneColor aiColor = gameManager.localPlayerColor.Opponent(); // AI의 색상
+                if (aiPassive.CanUse(oppSP, false, gameManager.board, aiColor) == SkillUseResult.Success)
+                {
+                    aiPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                    Debug.Log($"[AI] 패시브 스킬({aiPassive.data.skillName}) 자동 발동 완료!");
+                }
+            }
+        }
     }
 
     // InputManager에서 현재 무슨 스킬을 들고 있는지 확인하기 위한 함수

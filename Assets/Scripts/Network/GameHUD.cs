@@ -27,15 +27,15 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI turnText;
     public TextMeshProUGUI myColorText;
 
-    [Header("인게임 버튼 (상단/하단)")]
-    public Button undoButton;
-    public Button restartButton; // 솔로 전용
+    //[Header("인게임 버튼 (상단/하단)")]
+    //public Button undoButton;
+    //public Button restartButton; // 솔로 전용
 
-    [Header("무르기(Undo) 요청 팝업")]
-    public GameObject undoPopupPanel;
-    public TextMeshProUGUI undoRequestText;
-    public Button undoAcceptButton; 
-    public Button undoRefuseButton;
+    //[Header("무르기(Undo) 요청 팝업")]
+    //public GameObject undoPopupPanel;
+    //public TextMeshProUGUI undoRequestText;
+    //public Button undoAcceptButton; 
+    //public Button undoRefuseButton;
 
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
@@ -118,18 +118,51 @@ public class GameHUD : MonoBehaviour
     {
         // 시작할 때 패널들 닫아두기
         if (resultPanel) resultPanel.SetActive(false);
-        if (undoPopupPanel) undoPopupPanel.SetActive(false);
+        //if (undoPopupPanel) undoPopupPanel.SetActive(false);
         if (rematchPopupPanel) rematchPopupPanel.SetActive(false);
 
         // 리매치 / 나가기 버튼은 여기서 코드로 연결
         if (rematchButton) rematchButton.onClick.AddListener(OnClickRematch);
         if (exitButton) exitButton.onClick.AddListener(OnClickExit);
-         // [추가] 준비완료 버튼 초기 비활성화
-        if (readyButton) readyButton.interactable = false;
+
+        // [추가] 준비완료 버튼 초기 비활성화
+        if (readyButton)
+        {
+            readyButton.interactable = false;
+            readyButton.onClick.RemoveAllListeners();
+            readyButton.onClick.AddListener(OnClickReadyButton);
+        }
         // [추가] 덱 슬롯 버튼 초기 비활성화
         if (deckSlotButtons != null)
         foreach (var btn in deckSlotButtons)
             btn.gameObject.SetActive(false);
+    }
+
+    // 준비 완료 버튼을 눌렀을 때의 동작
+    private void OnClickReadyButton()
+    {
+        // 1. 멀티플레이어 & GameSession이 존재할 때 -> 기존처럼 패킷 전송
+        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+        {
+            gameSession.SendSyncPlayerInfo();
+        }
+        // 2. AI 또는 솔로 모드일 때 -> 포톤 없이 바로 로컬에서 준비 완료 처리
+        else
+        {
+            // 스킬 3개를 다 채웠는지 한 번 더 검증
+            for (int i = 0; i < skillManager.mySkillsID.Length; i++)
+            {
+                if (skillManager.mySkillsID[i] == -1)
+                {
+                    ShowSkillSelectMessage("스킬을 3개 모두 선택해 주세요.");
+                    return;
+                }
+            }
+
+            // 내 스킬 덱 생성 및 준비 완료 선언
+            skillManager.InitializeSkillDeck(true, skillManager.mySkillsID);
+            skillManager.SetPlayerReady(true);
+        }
     }
 
     // ── GameSession에서 호출 ─────────────────────────────────────
@@ -238,89 +271,89 @@ public class GameHUD : MonoBehaviour
         if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
-    // (1) 상대방이 Undo 요청했을 때 (버튼 ON)
-    public void ShowUndoPopup()
-    {   
-        inputManager?.HideHover();
-        inputManager?.BlockInput();
-        undoPopupPanel.SetActive(true);
-        undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
-        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
-        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(true);
+    //// (1) 상대방이 Undo 요청했을 때 (버튼 ON)
+    //public void ShowUndoPopup()
+    //{   
+    //    inputManager?.HideHover();
+    //    inputManager?.BlockInput();
+    //    undoPopupPanel.SetActive(true);
+    //    undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
+    //    if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
+    //    if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(true);
 
-        // 요청을 받는 즉시 타이머 일시정지
-        if (timerManager != null) timerManager.PauseTimer();
-    }
+    //    // 요청을 받는 즉시 타이머 일시정지
+    //    if (timerManager != null) timerManager.PauseTimer();
+    //}
 
-    // (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
-    public void ShowUndoWaitingPopup()
-    {
-        inputManager?.HideHover();
-        inputManager?.BlockInput();
-        undoPopupPanel.SetActive(true);
-        undoRequestText.text = "상대방의 응답을 기다리는 중...";
-        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
-        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
+    //// (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
+    //public void ShowUndoWaitingPopup()
+    //{
+    //    inputManager?.HideHover();
+    //    inputManager?.BlockInput();
+    //    undoPopupPanel.SetActive(true);
+    //    undoRequestText.text = "상대방의 응답을 기다리는 중...";
+    //    if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
+    //    if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
 
-        // [네트워크 동기화] 내가 요청을 보낸 순간 내 타이머도 멈춤!
-        if (timerManager != null) timerManager.PauseTimer();
-    }
+    //    // [네트워크 동기화] 내가 요청을 보낸 순간 내 타이머도 멈춤!
+    //    if (timerManager != null) timerManager.PauseTimer();
+    //}
 
-    // (3) 상대방이 응답했을 때 결과를 잠깐 보여주고 닫기 (버튼 OFF 유지)
-    public async void ShowUndoResultAndClose(bool isAccepted)
-    {
-        if (!undoPopupPanel.activeSelf) undoPopupPanel.SetActive(true);
+    //// (3) 상대방이 응답했을 때 결과를 잠깐 보여주고 닫기 (버튼 OFF 유지)
+    //public async void ShowUndoResultAndClose(bool isAccepted)
+    //{
+    //    if (!undoPopupPanel.activeSelf) undoPopupPanel.SetActive(true);
 
-        if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
-        if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
+    //    if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
+    //    if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
 
-        undoRequestText.text = isAccepted ? "상대방이 무르기를 수락했습니다!" : "상대방이 무르기를 거절했습니다.";
+    //    undoRequestText.text = isAccepted ? "상대방이 무르기를 수락했습니다!" : "상대방이 무르기를 거절했습니다.";
 
-        // 수락/거절 결과에 따라 타이머 처리
-        if (timerManager != null)
-        {
-            if (isAccepted) timerManager.RestartTurnTimer(); // 수락 시 턴 초기화
-            else timerManager.ResumeTimer(); // 거절 시 남은 시간부터 재개
-        }
+    //    // 수락/거절 결과에 따라 타이머 처리
+    //    if (timerManager != null)
+    //    {
+    //        if (isAccepted) timerManager.RestartTurnTimer(); // 수락 시 턴 초기화
+    //        else timerManager.ResumeTimer(); // 거절 시 남은 시간부터 재개
+    //    }
 
-        // 1.5초 동안 결과 텍스트 보여주고 팝업 닫기
-        await Task.Delay(1500);
+    //    // 1.5초 동안 결과 텍스트 보여주고 팝업 닫기
+    //    await Task.Delay(1500);
 
-        if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
-        inputManager?.UnblockInput();
-    }
+    //    if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
+    //    inputManager?.UnblockInput();
+    //}
 
-    public void HideUndoRequestPopup()
-    {
-        inputManager?.UnblockInput();
-        undoPopupPanel.SetActive(false);
-    }
+    //public void HideUndoRequestPopup()
+    //{
+    //    inputManager?.UnblockInput();
+    //    undoPopupPanel.SetActive(false);
+    //}
 
-    // ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
+    //// ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
 
-    // 1. [수락] 버튼
-    public void OnAcceptUndoClicked()
-    {   
-        inputManager?.UnblockInput();
-        if (undoPopupPanel) undoPopupPanel.SetActive(false);
+    //// 1. [수락] 버튼
+    //public void OnAcceptUndoClicked()
+    //{   
+    //    inputManager?.UnblockInput();
+    //    if (undoPopupPanel) undoPopupPanel.SetActive(false);
 
-        // 내가 수락했으니 턴이 뒤로 감 -> 타이머도 처음부터(30초) 다시 시작
-        if (timerManager != null) timerManager.RestartTurnTimer();
+    //    // 내가 수락했으니 턴이 뒤로 감 -> 타이머도 처음부터(30초) 다시 시작
+    //    if (timerManager != null) timerManager.RestartTurnTimer();
 
-        gameManager.ReplyToUndoRequest(true); // GameManager에게 'true(수락)' 토스
-    }
+    //    gameManager.ReplyToUndoRequest(true); // GameManager에게 'true(수락)' 토스
+    //}
 
-    // 2. [거절] 버튼
-    public void OnRefuseUndoClicked()
-    {
-        inputManager?.UnblockInput();
-        if (undoPopupPanel) undoPopupPanel.SetActive(false);
+    //// 2. [거절] 버튼
+    //public void OnRefuseUndoClicked()
+    //{
+    //    inputManager?.UnblockInput();
+    //    if (undoPopupPanel) undoPopupPanel.SetActive(false);
 
-        // 내가 거절했으니 턴은 그대로 유지 -> 멈췄던 타이머를 다시 흐르게 함
-        if (timerManager != null) timerManager.ResumeTimer();
+    //    // 내가 거절했으니 턴은 그대로 유지 -> 멈췄던 타이머를 다시 흐르게 함
+    //    if (timerManager != null) timerManager.ResumeTimer();
 
-        gameManager.ReplyToUndoRequest(false); // GameManager에게 'false(거절)' 토스
-    }
+    //    gameManager.ReplyToUndoRequest(false); // GameManager에게 'false(거절)' 토스
+    //}
 
     // ── 결과 패널 버튼 콜백 ────────────────────────────────────────────────
     public void OnClickRematch()
@@ -334,7 +367,21 @@ public class GameHUD : MonoBehaviour
             if (gameSession != null)
                 gameSession.RequestRematch();
         }
-        // 2. Solo / AI 모드일 때
+        // 2. AI 모드일 때 (새로 추가)
+        else if (gameManager != null && gameManager.currentMode == PlayMode.AI)
+        {
+            // 게임 매니저의 리셋 함수 호출 (보드 클리어 등)
+            gameManager.ResetForRematch();
+
+            // 스킬 선택 패널 다시 띄우기
+            ShowSkillSelectPanel();
+
+            // 스킬 선택 타이머 다시 시작
+            if (timerManager != null) timerManager.StartSkillSelectTimer();
+
+            Debug.Log("[AI Rematch] AI 대전 다시 시작: 보드 초기화 및 스킬 선택 단계 진입");
+        }
+        // 2. Solo 모드일 때
         else
         {
             // 결과창을 닫고, GameManager의 재시작 코어 로직을 실행
@@ -499,11 +546,11 @@ public class GameHUD : MonoBehaviour
 
     // -------------------------------------------------------
     // AI가 생각 중일 때 버튼들을 클릭 못 하게(회색으로) 막는 함수
-    public void SetInteractableButtons(bool isInteractable)
-    {
-        if (restartButton != null) restartButton.interactable = isInteractable;
-        if (undoButton != null) undoButton.interactable = isInteractable;
-    }
+    //public void SetInteractableButtons(bool isInteractable)
+    //{
+    //    if (restartButton != null) restartButton.interactable = isInteractable;
+    //    if (undoButton != null) undoButton.interactable = isInteractable;
+    //}
 
     // ── Rematch 팝업 ─────────────────────────────────────────
 

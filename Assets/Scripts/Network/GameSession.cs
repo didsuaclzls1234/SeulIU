@@ -1,6 +1,8 @@
 using ExitGames.Client.Photon;
 using Photon.Pun;
 using Photon.Realtime;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -32,40 +34,62 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     
     private void Start()
     {
-        PhotonNetwork.AddCallbackTarget(this);
+        // 로비에서 정해온 모드를 GameManager에 주입
+        gameManager.currentMode = LobbyManager.SelectedMode;
 
-        // 1. 내 턴에 돌을 뒀을 때 서버로 쏘는 이벤트 구독
-        if (gameManager)
+        InitSkillButtons();
+
+        // 멀티 플레이 모드
+        if (gameManager.currentMode == PlayMode.Multiplayer)
         {
+            PhotonNetwork.AddCallbackTarget(this);
+
             // 멀티플레이 모드로 전환 및 이벤트 연결
             gameManager.currentMode = PlayMode.Multiplayer;
             gameManager.OnStonePlacedLocally += SendPlaceStoneEvent;
-            gameManager.OnGameOverLocally += SendGameOverEvent; 
-            //gameManager.OnUndoRequestedLocally += SendUndoRequestEvent;
-            //gameManager.OnUndoReplyLocally += SendUndoReplyEvent;
-            //gameManager.OnDoubleDownExtraPlaced += SendDoubleDownExtraEvent;
-            
+            gameManager.OnGameOverLocally += SendGameOverEvent;
+
+            // 2. 방장(Master Client)이면 흑/백 배정 시작
+            if (PhotonNetwork.IsMasterClient)
+            {
+                RoleAssigner.AssignAndBroadcast();
+            }
         }
-
-        // * 멀티플레이 세팅: GameHUD에 불필요한 버튼 끄라고 지시
-        //if (gameHUD)
-        //{
-        //    gameHUD.SetupForMultiplayer();
-        //}
-     
-        // 스킬 버튼 자동 연결
-        InitSkillButtons();
-
-        // 2. 방장(Master Client)이면 흑/백 배정 시작
-        if (PhotonNetwork.IsMasterClient)
+        else if (gameManager.currentMode == PlayMode.AI)
         {
-            RoleAssigner.AssignAndBroadcast();
+            // AI 모드: 로컬에서 즉시 흑백 배정 및 시작
+            StartCoroutine(InitAISessionRoutine());
         }
+    }
+
+    private IEnumerator InitAISessionRoutine()
+    {
+        // 1. 흑/백 랜덤 결정
+        StoneColor playerColor = UnityEngine.Random.value < 0.5f ? StoneColor.Black : StoneColor.White;
+        gameManager.localPlayerColor = playerColor;
+        gameManager.localPlayerName = "나(Player)";
+        gameManager.remotePlayerName = "알파오목(AI)";
+
+        // 2. UI 표시
+        gameHUD.ShowRoleAssigned(playerColor);
+        gameHUD.SetPlayerNames("나", "AI");
+        gameHUD.DisplayMyRole(playerColor);
+        gameHUD.ShowSkillSelectPanel();
+        timerManager.StartSkillSelectTimer();
+
+        // 3. AI가 스킬을 랜덤으로 고를 시간을 줌 (약 1.5초 뒤)
+        yield return new WaitForSeconds(1.5f);
+
+        // (SkillManager에서 알아서 3번+패시브 챙기고 준비 완료까지 침)
+        if (skillManager != null) skillManager.AI_AutoSelectSkills();
     }
 
     private void OnDestroy()
     {
-        PhotonNetwork.RemoveCallbackTarget(this);
+        // 멀티플레이일 때만 해제
+        if (gameManager.currentMode == PlayMode.Multiplayer)
+            PhotonNetwork.RemoveCallbackTarget(this);
+
         if (gameManager)
         {
             gameManager.OnStonePlacedLocally -= SendPlaceStoneEvent;
