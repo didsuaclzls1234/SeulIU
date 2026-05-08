@@ -1049,41 +1049,81 @@ PrefabInstance:
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[0]'
       value: 
-      objectReference: {fileID: 21300000, guid: 1a5a69850894fa24f8674c68e1b8f6a4, type: 3}
+      objectReference: {fileID: 21300000, guid: 4a82182cf32831c42996e4b5fc276bc4, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[1]'
       value: 
-      objectReference: {fileID: 21300000, guid: 6b6435ddd1e01154dac16d46548a6637, type: 3}
+      objectReference: {fileID: 21300000, guid: c5e8124d8ec3fa3459f30fd3bf610a01, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[2]'
       value: 
-      objectReference: {fileID: 21300000, guid: 8c533aaf26d0c5344919df0e3099ca20, type: 3}
+      objectReference: {fileID: 21300000, guid: d8fa559abeca45e44a7931cb08bec130, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[3]'
       value: 
-      objectReference: {fileID: 21300000, guid: 3dd51d84ac9b49f44a62f1341b3eee2f, type: 3}
+      objectReference: {fileID: 21300000, guid: baf93a2a53216d441a9c85cf0483b8ca, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[4]'
       value: 
-      objectReference: {fileID: 21300000, guid: e83ae3ef2dfefa44f9cb9834ac9bffbd, type: 3}
+      objectReference: {fileID: 21300000, guid: ce7850581113d774398751f77f9b45eb, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[5]'
       value: 
-      objectReference: {fileID: 21300000, guid: fdedd9d29e79eda4ab1e22d4e204d061, type: 3}
+      objectReference: {fileID: 21300000, guid: 5ed06118d1e9efe4397331792d8688ec, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[6]'
       value: 
-      objectReference: {fileID: 21300000, guid: 7383929c62638a949ab8b00b3221bc5a, type: 3}
+      objectReference: {fileID: 21300000, guid: fa226c873d06a6547a8849a9421c7487, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[7]'
       value: 
-      objectReference: {fileID: 21300000, guid: ab10cad578a48fb48978a9bdc0c8e688, type: 3}
+      objectReference: {fileID: 21300000, guid: 2a94eee037a8d8d42abeb253d319dad3, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[8]'
       value: 
-      objectReference: {fileID: 21300000, guid: ab97fe116dbe8ea4b9239020516c758b, type: 3}
+      objectReference: {fileID: 21300000, guid: a57f797138eff4841b5120e17855a1ce, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[9]'
+      value: 
+      objectReference: {fileID: 21300000, guid: fc17b1b185019a84eb812e2ade491ffb, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[0]'
+      value: 
+      objectReference: {fileID: 21300000, guid: 1a5a69850894fa24f8674c68e1b8f6a4, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[1]'
+      value: 
+      objectReference: {fileID: 21300000, guid: 6b6435ddd1e01154dac16d46548a6637, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[2]'
+      value: 
+      objectReference: {fileID: 21300000, guid: 8c533aaf26d0c5344919df0e3099ca20, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[3]'
+      value: 
+      objectReference: {fileID: 21300000, guid: 3dd51d84ac9b49f44a62f1341b3eee2f, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[4]'
+      value: 
+      objectReference: {fileID: 21300000, guid: e83ae3ef2dfefa44f9cb9834ac9bffbd, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[5]'
+      value: 
+      objectReference: {fileID: 21300000, guid: fdedd9d29e79eda4ab1e22d4e204d061, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[6]'
+      value: 
+      objectReference: {fileID: 21300000, guid: 7383929c62638a949ab8b00b3221bc5a, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[7]'
+      value: 
+      objectReference: {fileID: 21300000, guid: ab10cad578a48fb48978a9bdc0c8e688, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[8]'
+      value: 
+      objectReference: {fileID: 21300000, guid: ab97fe116dbe8ea4b9239020516c758b, type: 3}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: 'deckSlotIcons.Array.data[9]'
       value: 
       objectReference: {fileID: 21300000, guid: 707387a965f57504eac2b725e31cf0ed, type: 3}
     - target: {fileID: 1519143788505667438, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
