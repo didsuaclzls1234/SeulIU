@@ -372,12 +372,12 @@ public class SkillManager : MonoBehaviour
             ReceiveSkill_Bladefall(xs, ys);
             return;
         }
-        // 1. 어떤 스킬인지 찾음 (ID 기반)
-        SkillBase skillObj = CreateSkillByID(skillId);
-        if (skillObj == null) return;
-
+         // 1. 어떤 스킬인지 찾음 (ID 기반)
+        //SkillBase skillObj = CreateSkillByID(skillId);완전한 객체 생성 불필요. 정보만 가져오면 됨.
+        //if (skillObj == null) return;
+        if (!skillDatabase.TryGetValue(skillId, out SkillData skillData)) return;
         // 2. 상대방 SP 차감 및 쿨타임(시각적) 표시 로직 
-        oppSP -= skillObj.data.spCost;
+        oppSP -= skillData.spCost;
         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
 
@@ -412,21 +412,21 @@ public class SkillManager : MonoBehaviour
         //         gameManager.board.RemoveStoneObjectAt(tx, ty);
         //     }
         // }
-        if (skillObj.data.durationTurn > 0)
+        if (skillData.durationTurn > 0)
         {
             activeEffects.Add(new ActiveEffect
             {
                 skillId = skillId,
-                remainingTurns = skillObj.data.durationTurn,
+                remainingTurns = skillData.durationTurn,
                 isBuff = false,
-                effectName = skillObj.data.skillName,
-                description = skillObj.data.description,
+                effectName = skillData.skillName,
+                description = skillData.description,
                 casterColor = gameManager.localPlayerColor.Opponent()
             });
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
-        Debug.Log($"[Network] 상대방이 {skillObj.data.skillName}을 사용했습니다.");
-        gameManager.gameHUD?.AddSkillLog("상대방", skillObj.data.skillName, turnCount);
+        Debug.Log($"[Network] 상대방이 {skillData.skillName}을 사용했습니다.");
+        gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
