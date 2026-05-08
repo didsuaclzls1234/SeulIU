@@ -107,11 +107,14 @@ public class GameManager : MonoBehaviour
             int aiColorInt = (localPlayerColor == StoneColor.Black) ? 2 : 1;
 
             // 룰 매니저, 바둑판 사이즈, '난이도'를 넘겨줌
-            aiPlayer = new GomokuAI(aiColorInt, board.ruleManager, board.boardSize, aiDifficulty);
+            aiPlayer = new GomokuAI(aiColorInt, board.ruleManager, board.boardSize, aiDifficulty, this);
 
             Debug.Log($"[GameManager] AI 세팅 완료. AI 색상: {(StoneColor)aiColorInt} / 난이도: {aiDifficulty}");
-        }
 
+            // AI 스킬 자동 선택 및 준비 완료 처리!
+            if (skillManager != null) skillManager.AI_AutoSelectSkills();
+
+        }
 
         // 게임 시작 직후 1턴(흑돌)의 금수 자리 표시 (첫 턴이라 없겠지만 구조상 필요)
         board.UpdateForbiddenMarks(currentTurnColor);
@@ -327,24 +330,33 @@ public class GameManager : MonoBehaviour
         isAITurnProcessing = true;
         Debug.Log("[GameManager] AI가 수를 고민 중입니다...");
 
-        // 1. UI 버튼 비활성화 (버튼이 회색으로 변하고 클릭 안 됨)
-        if (gameHUD != null) gameHUD.SetInteractableButtons(false);
+        // AI가 연산을 시작할 때의 턴(착수 횟수)을 기억합니다.
+        int expectedMoveCount = moveHistory.Count;
 
         // AI가 사람처럼 고민하는 딜레이 타임 (0.3초)
         await Task.Delay(300);
 
+        // ** AI에게 넘겨줄 봉인(칼날비/봉인) 데이터 복사본 생성
+        BoardManager.SealInfo[,] sealedClone = (BoardManager.SealInfo[,])board.sealedGrid.Clone();
+
         // 비동기로 AI가 최적의 수를 계산 (화면 멈춤 없음)
-        Vector2Int aiMove = await aiPlayer.CalculateBestMoveAsync(board.grid);
+        Vector2Int aiMove = await aiPlayer.CalculateBestMoveAsync(board.grid, sealedClone);
 
         isAITurnProcessing = false;
 
-        // 2. 연산이 끝났으니 UI 버튼 다시 활성화
-        if (gameHUD != null) gameHUD.SetInteractableButtons(true);
-
         // 게임이 그 사이에 종료되지 않았다면 착수
-        if (currentState == GameState.Playing && currentTurnColor != localPlayerColor)
+        // **연산이 끝났는데, 만약 타임아웃이 터져서 이미 턴이 넘어갔다면 이 수는 폐기합니다!
+        if (currentState == GameState.Playing && currentTurnColor != localPlayerColor && moveHistory.Count == expectedMoveCount)
         {
-            ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor);
+            ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor, PlacementType.PlayerManual);
+
+            if (currentState == GameState.GameOver) return;
+
+            PassTurn(currentTurnColor);
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] 이미 타임아웃 등으로 턴이 넘어갔으므로 AI의 지연 착수를 취소합니다.");
         }
     }
 
@@ -371,106 +383,106 @@ public class GameManager : MonoBehaviour
     // 2. 한 수 무르기 (Undo) 파트
     // =========================================================
 
-    // UI 무르기 버튼에 연결할 함수
-    public void RequestUndo()
-    {
-        if (currentMode == PlayMode.Multiplayer) return;
-        if (moveHistory.Count == 0 || currentState == GameState.GameOver) return; // 무를 수단이 없으면 리턴
+    //// UI 무르기 버튼에 연결할 함수
+    //public void RequestUndo()
+    //{
+    //    if (currentMode == PlayMode.Multiplayer) return;
+    //    if (moveHistory.Count == 0 || currentState == GameState.GameOver) return; // 무를 수단이 없으면 리턴
 
-        // 2. 모드별 분기 처리
-        //if (currentMode == PlayMode.Multiplayer)
-        //{
-        //    // [멀티플레이] 상대방에게 "물러도 될까?" 물어보는 패킷을 GameSession이 쏘도록 이벤트 호출
-        //    // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
-        //    OnUndoRequestedLocally?.Invoke();
-        //    Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
+    //    // 2. 모드별 분기 처리
+    //    //if (currentMode == PlayMode.Multiplayer)
+    //    //{
+    //    //    // [멀티플레이] 상대방에게 "물러도 될까?" 물어보는 패킷을 GameSession이 쏘도록 이벤트 호출
+    //    //    // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
+    //    //    OnUndoRequestedLocally?.Invoke();
+    //    //    Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
 
-        //    // 요청하자마자 '대기 팝업'을 띄움 (돌 놓기 방지)
-        //    if (gameHUD != null) gameHUD.ShowUndoWaitingPopup();
-        //}
-        //else
-        //{
-            // [Solo / AI] 기다릴 필요 없이 즉시 내 화면에서 무르기 실행
-            ExecuteUndo();
+    //    //    // 요청하자마자 '대기 팝업'을 띄움 (돌 놓기 방지)
+    //    //    if (gameHUD != null) gameHUD.ShowUndoWaitingPopup();
+    //    //}
+    //    //else
+    //    //{
+    //        // [Solo / AI] 기다릴 필요 없이 즉시 내 화면에서 무르기 실행
+    //        ExecuteUndo();
 
-            // ** [AI 모드] 내가 무르기를 하면 턴이 AI로 넘어가서 바로 다시 두어버림. 
-            // 따라서 AI의 직전 수도 같이 무르기(총 2번 Pop) 처리
-            if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor && moveHistory.Count > 0)
-            {
-                ExecuteUndo();
-            }
-        //}
-    }
+    //        // ** [AI 모드] 내가 무르기를 하면 턴이 AI로 넘어가서 바로 다시 두어버림. 
+    //        // 따라서 AI의 직전 수도 같이 무르기(총 2번 Pop) 처리
+    //        if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor && moveHistory.Count > 0)
+    //        {
+    //            ExecuteUndo();
+    //        }
+    //    //}
+    //}
 
     // ** 상대가 무르기를 요청했을 경우 수신됨
-    public void ReceiveNetworkUndoRequest()
-    {
-        if (currentState == GameState.GameOver) return;
-        if (gameHUD != null) gameHUD.ShowUndoPopup();
-    }
+    //public void ReceiveNetworkUndoRequest()
+    //{
+    //    if (currentState == GameState.GameOver) return;
+    //    if (gameHUD != null) gameHUD.ShowUndoPopup();
+    //}
 
     // ** 본인이 무르기 요청 후, 수락/거절 응답을 상대방으로부터 수신할 경우
-    public void ReceiveNetworkUndoReply(bool isAccepted)
-    {
-        if (currentState == GameState.GameOver) return;
+    //public void ReceiveNetworkUndoReply(bool isAccepted)
+    //{
+    //    if (currentState == GameState.GameOver) return;
 
-        // 상대방의 응답을 받으면 HUD에 결과 텍스트 띄우기 (1.5초 뒤 자동 꺼짐)
-        if (gameHUD != null) gameHUD.ShowUndoResultAndClose(isAccepted);
+    //    // 상대방의 응답을 받으면 HUD에 결과 텍스트 띄우기 (1.5초 뒤 자동 꺼짐)
+    //    if (gameHUD != null) gameHUD.ShowUndoResultAndClose(isAccepted);
 
-        if (isAccepted) ExecuteUndo();
-    }
+    //    if (isAccepted) ExecuteUndo();
+    //}
 
     // ** HUD에서 수락/거절 버튼을 눌렀을 때 호출되는 함수 (발신)
-    public void ReplyToUndoRequest(bool isAccepted)
-    {
-        // 1. 이미 게임이 끝났다면 무르기 팝업 닫고 무시
-        if (currentState == GameState.GameOver)
-        {
-            if (gameHUD != null) gameHUD.undoPopupPanel.SetActive(false);
-            return;
-        }
+    //public void ReplyToUndoRequest(bool isAccepted)
+    //{
+    //    // 1. 이미 게임이 끝났다면 무르기 팝업 닫고 무시
+    //    if (currentState == GameState.GameOver)
+    //    {
+    //        if (gameHUD != null) gameHUD.undoPopupPanel.SetActive(false);
+    //        return;
+    //    }
 
-        // 2. 수락(true)을 눌렀다면 내 화면에서도 무르기 진행
-        if (isAccepted)
-        {
-            ExecuteUndo();
-        }
+    //    // 2. 수락(true)을 눌렀다면 내 화면에서도 무르기 진행
+    //    if (isAccepted)
+    //    {
+    //        ExecuteUndo();
+    //    }
 
-        // 3. GameSession 쪽으로 수락/거절 여부(bool) 전달
-        OnUndoReplyLocally?.Invoke(isAccepted);
-    }
+    //    // 3. GameSession 쪽으로 수락/거절 여부(bool) 전달
+    //    OnUndoReplyLocally?.Invoke(isAccepted);
+    //}
 
-    // 3. 한 수 무르기 (Undo) 기능
-    public void ExecuteUndo()
-    {
-        if (moveHistory.Count == 0) return;
+    //// 3. 한 수 무르기 (Undo) 기능
+    //public void ExecuteUndo()
+    //{
+    //    if (moveHistory.Count == 0) return;
 
-        // 가장 마지막에 둔 돌 정보 꺼내기
-        MoveRecord lastMove = moveHistory.Pop();
+    //    // 가장 마지막에 둔 돌 정보 꺼내기
+    //    MoveRecord lastMove = moveHistory.Pop();
 
-        // 1. 데이터 배열에서 돌 삭제
-        board.grid[lastMove.x, lastMove.y] = 0;
+    //    // 1. 데이터 배열에서 돌 삭제
+    //    board.grid[lastMove.x, lastMove.y] = 0;
 
-        // 2. 화면에서 3D 돌 오브젝트 없애기
-        if (lastMove.stoneObj != null) lastMove.stoneObj.SetActive(false);
+    //    // 2. 화면에서 3D 돌 오브젝트 없애기
+    //    if (lastMove.stoneObj != null) lastMove.stoneObj.SetActive(false);
 
-        // 3. 턴 되돌리기 + 화면 글씨 자동 갱신
-        currentTurnColor = lastMove.playerColor;
+    //    // 3. 턴 되돌리기 + 화면 글씨 자동 갱신
+    //    currentTurnColor = lastMove.playerColor;
 
-        // (게임오버 시 무르기 불가이므로 currentState = GameState.Playing 강제 주입은 제거해도 되지만, 만약의 오류 방지용으로 놔둠)
-        currentState = GameState.Playing;
+    //    // (게임오버 시 무르기 불가이므로 currentState = GameState.Playing 강제 주입은 제거해도 되지만, 만약의 오류 방지용으로 놔둠)
+    //    currentState = GameState.Playing;
 
-        // 5. 무르기 완료 후 UI(HUD) 턴 글씨 갱신
-        if (gameHUD != null)
-        {
-            gameHUD.resultPanel.SetActive(false);
-        }
+    //    // 5. 무르기 완료 후 UI(HUD) 턴 글씨 갱신
+    //    if (gameHUD != null)
+    //    {
+    //        gameHUD.resultPanel.SetActive(false);
+    //    }
 
-        // 6. 무른 후의 턴에 맞춰 금수 마커 다시 계산!
-        board.UpdateForbiddenMarks(currentTurnColor);
+    //    // 6. 무른 후의 턴에 맞춰 금수 마커 다시 계산!
+    //    board.UpdateForbiddenMarks(currentTurnColor);
 
-        Debug.Log($"[Undo] ({lastMove.x}, {lastMove.y}) 무르기 완료. 현재 턴: {currentTurnColor.ToKorean()}");
-    }
+    //    Debug.Log($"[Undo] ({lastMove.x}, {lastMove.y}) 무르기 완료. 현재 턴: {currentTurnColor.ToKorean()}");
+    //}
 
     // =========================================================
     //  3. 재시작 (Restart) 파트
@@ -500,7 +512,34 @@ public class GameManager : MonoBehaviour
         currentState      = GameState.WaitingForSkillSelect;
 
         // 결과 패널 숨기기
-        if (gameHUD != null) gameHUD.resultPanel.SetActive(false);
+        if (gameHUD != null)
+        {
+            gameHUD.resultPanel.SetActive(false);
+            gameHUD.ResetSkillLog(); // 스킬 로그도 싹 비워줍니다.
+        }
+
+        // ** AI 모드일 때의 특수 처리
+        if (currentMode == PlayMode.AI)
+        {
+            // 1. 흑/백 랜덤 재배정 (나와 AI의 색깔을 다시 정함)
+            StoneColor newPlayerColor = UnityEngine.Random.value < 0.5f ? StoneColor.Black : StoneColor.White;
+            localPlayerColor = newPlayerColor;
+
+            // 2. AI 두뇌 재설정 (새로운 색상에 맞춰서)
+            int aiColorInt = (localPlayerColor == StoneColor.Black) ? 2 : 1;
+            aiPlayer = new GomokuAI(aiColorInt, board.ruleManager, board.boardSize, aiDifficulty, this);
+
+            // 3. UI 텍스트 갱신 (당신은 ~돌입니다 등)
+            gameHUD?.DisplayMyRole(localPlayerColor);
+            gameHUD?.SetPlayerNames(localPlayerName, "알파오목(AI)");
+
+            // 4. AI 스킬 자동 선택 및 준비 완료 처리
+            if (skillManager != null)
+            {
+                skillManager.ResetForRematch(); // SkillManager 내부 SP/준비상태 초기화
+                skillManager.AI_AutoSelectSkills(); // AI가 다시 3번과 패시브를 들고 준비하게 함
+            }
+        }
 
         board.UpdateForbiddenMarks(StoneColor.Black);
         Debug.Log("[GameManager] ResetForRematch 완료 — 스킬 선택 대기 상태로 복귀");
@@ -609,7 +648,16 @@ public class GameManager : MonoBehaviour
 
         if (randomMove.x != -1)
         {
-            TryPlaceStone(randomMove.x, randomMove.y);
+            // **  TryPlaceStone은 마우스 클릭 전용(내 턴 검사)이므로, 
+            // 타임아웃 시에는 ExecutePlaceStone과 PassTurn을 강제로 다이렉트 호출합니다
+            ExecutePlaceStone(randomMove.x, randomMove.y, currentTurnColor, PlacementType.PlayerManual);
+
+            if (currentMode == PlayMode.Multiplayer)
+                OnStonePlacedLocally?.Invoke(randomMove.x, randomMove.y, moveHistory.Count - 1);
+
+            if (currentState == GameState.GameOver) return;
+
+            PassTurn(currentTurnColor);
         }
     }
 
@@ -649,10 +697,17 @@ public class GameManager : MonoBehaviour
         currentTurnColor     = currentTurnColor.Opponent();
         board.UpdateForbiddenMarks(currentTurnColor);
         hasUsedSkillThisTurn = false;
-        
+
+        // 턴이 넘어갈 때마다 모드 상관없이 무조건 타이머 재시작! (0초 멈춤 해결)
+        if (timerManager != null) timerManager.RestartTurnTimer();
+
         // 5. AI 모드라면 AI에게 턴 넘김
         if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
         {
+            // AI가 스킬 쓸지 말지 먼저 판별
+            if (skillManager != null) skillManager.AI_TryUseSkill();
+
+            // 그 다음 돌 두기
             ExecuteAITurn();
         }
     }

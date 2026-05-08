@@ -27,6 +27,10 @@ public class LobbyManager : MonoBehaviourPunCallbacks
 
     private float _waitingTime = 0f;
     private bool _isWaiting = false;
+
+    // 씬 이동 시 모드를 기억할 변수
+    public static PlayMode SelectedMode = PlayMode.Multiplayer;
+
     #endregion
 
     #region 생명주기
@@ -189,8 +193,9 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     public void OnClick_VS_AI()
     {
         Debug.Log("[Scene] VS_AI 씬으로 이동");
-        
-        SceneManager.LoadScene("VS_AI");
+
+        SelectedMode = PlayMode.AI; // AI 모드 저장
+        SceneManager.LoadScene("VS_Player"); // 동일한 씬으로 이동
     }
 
     public void OnClick_VS_Player()

@@ -818,10 +818,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 47679252069624775, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 144203022707753068, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -833,10 +829,6 @@ PrefabInstance:
     - target: {fileID: 347446584148737967, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Padding.m_Top
       value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 347446584148737967, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_ChildForceExpandWidth
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 347446584148737967, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_ChildForceExpandHeight
@@ -1055,10 +1047,6 @@ PrefabInstance:
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: deckSlotIcons.Array.size
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[0]'
       value: 
       objectReference: {fileID: 21300000, guid: 1a5a69850894fa24f8674c68e1b8f6a4, type: 3}
@@ -1096,46 +1084,6 @@ PrefabInstance:
       objectReference: {fileID: 21300000, guid: ab97fe116dbe8ea4b9239020516c758b, type: 3}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: 'skillIcons.Array.data[9]'
-      value: 
-      objectReference: {fileID: 21300000, guid: 707387a965f57504eac2b725e31cf0ed, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[0]'
-      value: 
-      objectReference: {fileID: 21300000, guid: 1a5a69850894fa24f8674c68e1b8f6a4, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[1]'
-      value: 
-      objectReference: {fileID: 21300000, guid: 6b6435ddd1e01154dac16d46548a6637, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[2]'
-      value: 
-      objectReference: {fileID: 21300000, guid: 8c533aaf26d0c5344919df0e3099ca20, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[3]'
-      value: 
-      objectReference: {fileID: 21300000, guid: 3dd51d84ac9b49f44a62f1341b3eee2f, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[4]'
-      value: 
-      objectReference: {fileID: 21300000, guid: e83ae3ef2dfefa44f9cb9834ac9bffbd, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[5]'
-      value: 
-      objectReference: {fileID: 21300000, guid: fdedd9d29e79eda4ab1e22d4e204d061, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[6]'
-      value: 
-      objectReference: {fileID: 21300000, guid: 7383929c62638a949ab8b00b3221bc5a, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[7]'
-      value: 
-      objectReference: {fileID: 21300000, guid: ab10cad578a48fb48978a9bdc0c8e688, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[8]'
-      value: 
-      objectReference: {fileID: 21300000, guid: ab97fe116dbe8ea4b9239020516c758b, type: 3}
-    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: 'deckSlotIcons.Array.data[9]'
       value: 
       objectReference: {fileID: 21300000, guid: 707387a965f57504eac2b725e31cf0ed, type: 3}
     - target: {fileID: 1519143788505667438, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
@@ -1317,10 +1265,6 @@ PrefabInstance:
     - target: {fileID: 2635715436305696800, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
       value: DescText
-      objectReference: {fileID: 0}
-    - target: {fileID: 2718095104593096727, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_text
-      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 2734833886546114834, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -1706,17 +1650,9 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4722116109222955865, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
       value: Canvas_Network
-      objectReference: {fileID: 0}
-    - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4970610445597682836, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
@@ -2203,10 +2139,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects:
-    - {fileID: 1804265889219410616, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-    - {fileID: 1742683484954401227, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
-    - {fileID: 1909498405156437714, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+    m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
