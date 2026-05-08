@@ -296,7 +296,8 @@ public class BoardManager : MonoBehaviour
 
         System.Array.Clear(grid, 0, grid.Length);
         //System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
-
+        System.Array.Clear(sealedGrid, 0, sealedGrid.Length); // 추가
+        
         isConsecrationActive = false;
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }

@@ -190,7 +190,7 @@ public class GameHUD : MonoBehaviour
             if (skillSelectTimerText) skillSelectTimerText.text = timeStr;
         }
         // 2. Playing, SkillTargeting 상태일 때 타이머 글씨 업데이트
-        else if (gameManager.currentState == GameState.Playing || gameManager.currentState == GameState.SkillTargeting|| gameManager.currentState == GameState.SkillPreview)
+        else if (gameManager.currentState == GameState.Playing || /*gameManager.currentState == GameState.SkillTargeting||*/ gameManager.currentState == GameState.SkillPreview)
         {
             if (turnTimerText) turnTimerText.text = timeStr;
         }
@@ -236,7 +236,7 @@ public class GameHUD : MonoBehaviour
     {
         if (resultPanel) resultPanel.SetActive(true);
         if (resultText) resultText.text = "상대방이 나갔습니다.";
-        if (rematchButton) rematchButton.gameObject.SetActive(false); // 나갔는데 리매치는 불가
+        if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
     // (1) 상대방이 Undo 요청했을 때 (버튼 ON)
@@ -670,5 +670,11 @@ public class GameHUD : MonoBehaviour
     {
         skillSelectPanel?.SetActive(false);
         inGameUI?.SetActive(true);
+    }
+    //스킬로그 초기화 함수
+    public void ResetSkillLog()
+    {
+        _logEntries.Clear();
+        if (skillLogText != null) skillLogText.text = "";
     }
 }

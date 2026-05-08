@@ -208,18 +208,18 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         // 상대방 스킬 덱 등록
         skillManager.InitializeSkillDeck(false, oppSkillIDs);
-
+        skillManager.SetPlayerReady(false); // 한 줄로 교체
         // 상대방 정보만 저장, SetPlayerReady는 내가 Ready 버튼 눌렀을 때만
-        skillManager.isRemotePlayerReady = true;
+        // skillManager.isRemotePlayerReady = true;
 
-        Debug.Log($"[GameSession] 상대방 정보 수신 / 내 Ready: {skillManager.isLocalPlayerReady}");
+        // Debug.Log($"[GameSession] 상대방 정보 수신 / 내 Ready: {skillManager.isLocalPlayerReady}");
 
-        // 내가 이미 Ready 상태면 게임 시작
-        if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
-        {   
-            gameHUD?.HideSkillSelectPanel();
-            gameManager.StartGameAfterSelection();
-        }    
+        // // 내가 이미 Ready 상태면 게임 시작
+        // if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
+        // {   
+        //     gameHUD?.HideSkillSelectPanel();
+        //     gameManager.StartGameAfterSelection();
+        // }    
 
         
     }
@@ -332,14 +332,15 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         // 내 Ready 처리
         skillManager.InitializeSkillDeck(true, skillManager.mySkillsID);
-        skillManager.isLocalPlayerReady = true;
+        skillManager.SetPlayerReady(true);
+        // skillManager.isLocalPlayerReady = true;
 
-        // 상대방이 이미 Ready면 게임 시작
-        if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
-        {
-            gameHUD?.HideSkillSelectPanel();
-            gameManager.StartGameAfterSelection();
-        }
+        // // 상대방이 이미 Ready면 게임 시작
+        // if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
+        // {
+        //     gameHUD?.HideSkillSelectPanel();
+        //     gameManager.StartGameAfterSelection();
+        // }
     }
 
     //무르기 요청 이벤트 발신
@@ -531,12 +532,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
          Debug.Log($"[GameSession] {otherPlayer.NickName} 나감 / 현재 상태: {gameManager.currentState}");
         // [추가] 재도전 대기 중이었다면 패널 닫기
         if (gameHUD != null) gameHUD.HideRematchPanel();
+        _isRematchRequested = false; // 플래그 초기화 추가
+       
+        gameManager.currentState = GameState.GameOver;
+        if (gameHUD) gameHUD.ShowOpponentLeft();
         
-        if (gameManager.currentState != GameState.GameOver)
-        {
-            gameManager.currentState = GameState.GameOver;
-            if (gameHUD) gameHUD.ShowOpponentLeft();
-        }
     }
 
     private void OnApplicationQuit()//게임 세션이 종료될 때 네트워크 연결 끊기(유니티 기본 콜백)

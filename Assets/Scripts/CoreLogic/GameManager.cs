@@ -6,7 +6,7 @@ using System.Threading.Tasks; // Stack 사용
 
 
 // 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
-public enum GameState { WaitingForSkillSelect, Playing, SkillPreview, SkillTargeting, GameOver }
+public enum GameState { WaitingForSkillSelect, Playing, SkillPreview, /*SkillTargeting*/ GameOver }
 public enum PlayMode { Solo, AI, Multiplayer } // 플레이 모드 
 // [추가] 착수 종류 구분 — PlayerManual은 턴 카운트 감소, SkillInduced는 감소 없음
 public enum PlacementType { PlayerManual, SkillInduced }
@@ -150,8 +150,7 @@ public class GameManager : MonoBehaviour
         }
 
         // BoardManager한테 돌을 두어도 되는지 물어봄
-        if (board.IsValidMove(x, y, currentTurnColor)
-            && !board.ruleManager.IsForbiddenMove(x, y, (int)currentTurnColor, board.grid, board.boardSize, false))
+        if (board.IsValidMove(x, y, currentTurnColor))
         {
             // bool hasExtraPlacement = extraPlacementCount > 0;
             // // 실제 돌 놓는 코어 로직 실행
@@ -578,7 +577,8 @@ public class GameManager : MonoBehaviour
     {
         // ** 스킬 조준(타겟팅) 중에 시간이 다 되었다면 강제 취소 처리
         // [수정] SkillPreview 상태도 취소 대상 추가
-        if (currentState == GameState.SkillTargeting || currentState == GameState.SkillPreview)
+        // [수정] SkillTargeting 상태 제거 
+        if (/*currentState == GameState.SkillTargeting ||*/ currentState == GameState.SkillPreview)
         {
             Debug.Log("[GameManager] 타임아웃! 스킬 시전이 취소됩니다.");
             if (skillManager != null)
