@@ -761,6 +761,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(0, 0);
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
             gameManager.gameHUD.SetOpponentSilencedUI(false);
+            gameManager.gameHUD.ResetSkillLog();
         }
 
         Debug.Log("[SkillManager] ResetForRematch 완료");

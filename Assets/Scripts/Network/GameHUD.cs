@@ -671,4 +671,10 @@ public class GameHUD : MonoBehaviour
         skillSelectPanel?.SetActive(false);
         inGameUI?.SetActive(true);
     }
+    //스킬로그 초기화 함수
+    public void ResetSkillLog()
+    {
+        _logEntries.Clear();
+        if (skillLogText != null) skillLogText.text = "";
+    }
 }
