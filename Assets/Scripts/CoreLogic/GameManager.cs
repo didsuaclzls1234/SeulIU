@@ -150,8 +150,7 @@ public class GameManager : MonoBehaviour
         }
 
         // BoardManager한테 돌을 두어도 되는지 물어봄
-        if (board.IsValidMove(x, y, currentTurnColor)
-            && !board.ruleManager.IsForbiddenMove(x, y, (int)currentTurnColor, board.grid, board.boardSize, false))
+        if (board.IsValidMove(x, y, currentTurnColor))
         {
             // bool hasExtraPlacement = extraPlacementCount > 0;
             // // 실제 돌 놓는 코어 로직 실행
