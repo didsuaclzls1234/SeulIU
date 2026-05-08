@@ -236,7 +236,7 @@ public class GameHUD : MonoBehaviour
     {
         if (resultPanel) resultPanel.SetActive(true);
         if (resultText) resultText.text = "상대방이 나갔습니다.";
-        if (rematchButton) rematchButton.gameObject.SetActive(false); // 나갔는데 리매치는 불가
+        if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
     // (1) 상대방이 Undo 요청했을 때 (버튼 ON)

@@ -532,12 +532,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
          Debug.Log($"[GameSession] {otherPlayer.NickName} 나감 / 현재 상태: {gameManager.currentState}");
         // [추가] 재도전 대기 중이었다면 패널 닫기
         if (gameHUD != null) gameHUD.HideRematchPanel();
+        _isRematchRequested = false; // 플래그 초기화 추가
+       
+        gameManager.currentState = GameState.GameOver;
+        if (gameHUD) gameHUD.ShowOpponentLeft();
         
-        if (gameManager.currentState != GameState.GameOver)
-        {
-            gameManager.currentState = GameState.GameOver;
-            if (gameHUD) gameHUD.ShowOpponentLeft();
-        }
     }
 
     private void OnApplicationQuit()//게임 세션이 종료될 때 네트워크 연결 끊기(유니티 기본 콜백)
