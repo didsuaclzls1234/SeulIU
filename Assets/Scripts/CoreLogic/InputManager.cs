@@ -91,11 +91,11 @@ public class InputManager : MonoBehaviour
 
         // 우클릭 취소
         if (Input.GetMouseButtonDown(1) &&
-            (gameManager.currentState == GameState.SkillTargeting ||
+            (/*gameManager.currentState == GameState.SkillTargeting ||*/
              gameManager.currentState == GameState.SkillPreview))
         {
             gameManager.gameHUD?.HideSystemMessage();
-            CancelSkillTargeting();
+            CancelSkill();
             return;
         }
 
@@ -196,7 +196,7 @@ public class InputManager : MonoBehaviour
     private bool ShouldBlockInput()
     {
         bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-        bool isInvalidState = gameManager.currentState != GameState.Playing && gameManager.currentState != GameState.SkillTargeting && gameManager.currentState != GameState.SkillPreview;
+        bool isInvalidState = gameManager.currentState != GameState.Playing && /*gameManager.currentState != GameState.SkillTargeting &&*/ gameManager.currentState != GameState.SkillPreview;
         bool isNotMyTurn = gameManager.currentMode != PlayMode.Solo && gameManager.currentTurnColor != gameManager.localPlayerColor;
 
         return isPointerOverUI || isInvalidState || isNotMyTurn || isProcessingClick || _isInputBlocked;
@@ -205,7 +205,7 @@ public class InputManager : MonoBehaviour
     private void UpdateHoverVisuals(int x, int y)
     {
         // 현재 상태가 스킬 시전 대기 중(Preview)이거나 타겟팅 중일 때
-        bool isSkillMode = (gameManager.currentState == GameState.SkillPreview || gameManager.currentState == GameState.SkillTargeting);
+        bool isSkillMode = (gameManager.currentState == GameState.SkillPreview /*|| gameManager.currentState == GameState.SkillTargeting*/);
 
         if (isSkillMode)
         {
@@ -366,10 +366,10 @@ public class InputManager : MonoBehaviour
         {
             gameManager.TryPlaceStone(x, y);
         }
-        else if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
-        {
-            skillManager.ExecuteSkillAt(x, y);
-        }
+        // else if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
+        // {
+        //     skillManager.ExecuteSkillAt(x, y);
+        // }
         // [추가] SkillPreview 상태에서 좌클릭 → 스킬 확정
         else if (gameManager.currentState == GameState.SkillPreview)
         {
@@ -379,7 +379,7 @@ public class InputManager : MonoBehaviour
         isProcessingClick = false;
     }
 
-    private void CancelSkillTargeting()
+    private void CancelSkill()
     {
         Debug.Log("스킬 사용 취소");
         gameManager.currentState = GameState.Playing;

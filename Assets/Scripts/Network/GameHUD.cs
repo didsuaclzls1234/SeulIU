@@ -190,7 +190,7 @@ public class GameHUD : MonoBehaviour
             if (skillSelectTimerText) skillSelectTimerText.text = timeStr;
         }
         // 2. Playing, SkillTargeting 상태일 때 타이머 글씨 업데이트
-        else if (gameManager.currentState == GameState.Playing || gameManager.currentState == GameState.SkillTargeting|| gameManager.currentState == GameState.SkillPreview)
+        else if (gameManager.currentState == GameState.Playing || /*gameManager.currentState == GameState.SkillTargeting||*/ gameManager.currentState == GameState.SkillPreview)
         {
             if (turnTimerText) turnTimerText.text = timeStr;
         }

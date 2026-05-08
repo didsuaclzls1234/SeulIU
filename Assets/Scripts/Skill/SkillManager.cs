@@ -1203,68 +1203,68 @@ public class SkillManager : MonoBehaviour
     // 기존 ExecuteSkillAt — SkillTargeting 상태에서 호출 (타겟 지정형)
     // [수정] ConfirmSkill로 흡수됐으므로 SkillPreview → ConfirmSkill로 위임
     // =========================================================
-    public void ExecuteSkillAt(int x, int y)
-    {
-        // SkillPreview 상태라면 ConfirmSkill로 위임
-        if (gameManager.currentState == GameState.SkillPreview)
-        {
-            ConfirmSkill(x, y);
-            return;
-        }
+    // public void ExecuteSkillAt(int x, int y)
+    // {
+    //     // SkillPreview 상태라면 ConfirmSkill로 위임
+    //     if (gameManager.currentState == GameState.SkillPreview)
+    //     {
+    //         ConfirmSkill(x, y);
+    //         return;
+    //     }
 
-        if (selectedSkillSlot < 0 || selectedSkillSlot >= mySkills.Count) return;
+    //     if (selectedSkillSlot < 0 || selectedSkillSlot >= mySkills.Count) return;
 
-        SkillBase skillToUse = mySkills[selectedSkillSlot];
+    //     SkillBase skillToUse = mySkills[selectedSkillSlot];
 
-        // 1. 배열로 좌표 전달 (다중 타겟 스킬도 있으니 배열로 감싸서 보냄) (0:선택좌표, 1:랜덤좌표)
-        int[] targetX = new int[] { x, -1 };
-        int[] targetY = new int[] { y, -1 };
+    //     // 1. 배열로 좌표 전달 (다중 타겟 스킬도 있으니 배열로 감싸서 보냄) (0:선택좌표, 1:랜덤좌표)
+    //     int[] targetX = new int[] { x, -1 };
+    //     int[] targetY = new int[] { y, -1 };
 
-        // 2. 스킬 발동! (구체적인 효과는 각 스킬 클래스 내부에서 처리)
-        // Execute 내부에서 targetX[1], targetY[1]의 값을 랜덤 좌표로 채워줍니다.
-        if (skillToUse.Execute(targetX, targetY, gameManager, gameManager.board))
-        {
-            gameManager.hasUsedSkillThisTurn = true;
-            mySP -= skillToUse.data.spCost;
-            skillToUse.currentCooldown = skillToUse.data.cooldown;
+    //     // 2. 스킬 발동! (구체적인 효과는 각 스킬 클래스 내부에서 처리)
+    //     // Execute 내부에서 targetX[1], targetY[1]의 값을 랜덤 좌표로 채워줍니다.
+    //     if (skillToUse.Execute(targetX, targetY, gameManager, gameManager.board))
+    //     {
+    //         gameManager.hasUsedSkillThisTurn = true;
+    //         mySP -= skillToUse.data.spCost;
+    //         skillToUse.currentCooldown = skillToUse.data.cooldown;
 
-            // durationTurn이 있는 스킬만 activeEffects에 추가
-            if (skillToUse.data.durationTurn > 0)
-            {
-                ActiveEffect effect = new ActiveEffect
-                {
-                    skillId = skillToUse.data.skillId,
-                    remainingTurns = skillToUse.data.durationTurn,
-                    isBuff = true,
-                    effectName = skillToUse.data.skillName,
-                    description = skillToUse.data.description
-                };
-                activeEffects.Add(effect);
-                gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
-            }
+    //         // durationTurn이 있는 스킬만 activeEffects에 추가
+    //         if (skillToUse.data.durationTurn > 0)
+    //         {
+    //             ActiveEffect effect = new ActiveEffect
+    //             {
+    //                 skillId = skillToUse.data.skillId,
+    //                 remainingTurns = skillToUse.data.durationTurn,
+    //                 isBuff = true,
+    //                 effectName = skillToUse.data.skillName,
+    //                 description = skillToUse.data.description
+    //             };
+    //             activeEffects.Add(effect);
+    //             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
+    //         }
 
-            if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
+    //         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
-            // 네트워크 담당자에게 전달할 패킷 (좌표 2개가 담긴 배열 전송)
-            if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-            {
-                gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY,gameManager.CurrentMoveCount);
-            }
+    //         // 네트워크 담당자에게 전달할 패킷 (좌표 2개가 담긴 배열 전송)
+    //         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+    //         {
+    //             gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY,gameManager.CurrentMoveCount);
+    //         }
 
-            selectedSkillSlot = -1;
-            gameManager.currentState = GameState.Playing;
-            gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
+    //         selectedSkillSlot = -1;
+    //         gameManager.currentState = GameState.Playing;
+    //         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
 
-        }
-        else
-        {
-            selectedSkillSlot = -1;
-            gameManager.currentState = GameState.Playing;
-        }
+    //     }
+    //     else
+    //     {
+    //         selectedSkillSlot = -1;
+    //         gameManager.currentState = GameState.Playing;
+    //     }
 
-        // 스킬이 성공하든 실패하든 마커는 지워야 함
-        gameManager.board.HideSkillTargetMarkers();
-    }
+    //     // 스킬이 성공하든 실패하든 마커는 지워야 함
+    //     gameManager.board.HideSkillTargetMarkers();
+    // }
 
     public void AutoActivatePassiveSkills()
     {
