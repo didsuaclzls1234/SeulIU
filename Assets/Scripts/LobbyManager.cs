@@ -201,7 +201,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     public void OnClick_VS_Player()
     {   
         Debug.Log("[Photon] VS_Player 버튼 클릭 후 서버 연결 시도");
-
+        SelectedMode = PlayMode.Multiplayer; // 멀티플레이어 모드 저장
         PhotonNetwork.AutomaticallySyncScene = true; // 마스터 클라이언트와 씬 동기화 설정
 
         if (PhotonNetwork.IsConnected)
