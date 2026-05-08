@@ -74,7 +74,6 @@ public class GameHUD : MonoBehaviour
 
     [Header("스킬 선택창 UI - 덱 슬롯")]
     public Button[] deckSlotButtons;         // DeckSlot_0, 1, 2
-    public Image[] deckSlotIcons;            // 각 슬롯의 스킬 아이콘
     public TextMeshProUGUI[] deckSlotNameTexts; // 각 슬롯의 스킬명 TMP(이름이 필요 없다면 삭제 가능)
 
     [Header("스킬 아이콘 (Resources 폴더 없을 경우 null 허용)")]
@@ -448,7 +447,6 @@ public class GameHUD : MonoBehaviour
             // 설명
             TextMeshProUGUI descText = btnTransform.Find("DescText")?.GetComponent<TextMeshProUGUI>();
             if (descText != null) descText.text = data.description;
-
             // 3. 툴팁 연결 제거 → 표 데이터 채우기로 교체
             //// 아이콘
             //if (skillRowIcons != null && i < skillRowIcons.Length && skillRowIcons[i] != null)
@@ -580,11 +578,11 @@ public class GameHUD : MonoBehaviour
             if (!hasSkill) continue;
 
             // 아이콘 갱신
-            if (deckSlotIcons != null && i < deckSlotIcons.Length && deckSlotIcons[i] != null)
+           Image btnImage = deckSlotButtons[i].GetComponent<Image>();
+            if (btnImage != null)
             {
                 Sprite icon = GetSkillIcon(skillId);
-                deckSlotIcons[i].sprite = icon;
-                deckSlotIcons[i].gameObject.SetActive(icon != null);
+                if (icon != null) btnImage.sprite = icon;
             }
  
             // 스킬명 갱신
