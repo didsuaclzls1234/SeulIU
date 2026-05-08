@@ -208,18 +208,18 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         // 상대방 스킬 덱 등록
         skillManager.InitializeSkillDeck(false, oppSkillIDs);
-
+        skillManager.SetPlayerReady(false); // 한 줄로 교체
         // 상대방 정보만 저장, SetPlayerReady는 내가 Ready 버튼 눌렀을 때만
-        skillManager.isRemotePlayerReady = true;
+        // skillManager.isRemotePlayerReady = true;
 
-        Debug.Log($"[GameSession] 상대방 정보 수신 / 내 Ready: {skillManager.isLocalPlayerReady}");
+        // Debug.Log($"[GameSession] 상대방 정보 수신 / 내 Ready: {skillManager.isLocalPlayerReady}");
 
-        // 내가 이미 Ready 상태면 게임 시작
-        if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
-        {   
-            gameHUD?.HideSkillSelectPanel();
-            gameManager.StartGameAfterSelection();
-        }    
+        // // 내가 이미 Ready 상태면 게임 시작
+        // if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
+        // {   
+        //     gameHUD?.HideSkillSelectPanel();
+        //     gameManager.StartGameAfterSelection();
+        // }    
 
         
     }
@@ -332,14 +332,15 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         // 내 Ready 처리
         skillManager.InitializeSkillDeck(true, skillManager.mySkillsID);
-        skillManager.isLocalPlayerReady = true;
+        skillManager.SetPlayerReady(true);
+        // skillManager.isLocalPlayerReady = true;
 
-        // 상대방이 이미 Ready면 게임 시작
-        if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
-        {
-            gameHUD?.HideSkillSelectPanel();
-            gameManager.StartGameAfterSelection();
-        }
+        // // 상대방이 이미 Ready면 게임 시작
+        // if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
+        // {
+        //     gameHUD?.HideSkillSelectPanel();
+        //     gameManager.StartGameAfterSelection();
+        // }
     }
 
     //무르기 요청 이벤트 발신

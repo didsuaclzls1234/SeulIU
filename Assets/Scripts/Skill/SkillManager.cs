@@ -685,6 +685,7 @@ public class SkillManager : MonoBehaviour
         // 둘 다 준비되면 게임 시작 상태로 변경 (GameManager 제어)
         if (isLocalPlayerReady && isRemotePlayerReady)
         {
+            gameManager.gameHUD?.HideSkillSelectPanel();
             gameManager.StartGameAfterSelection();
         }
     }
