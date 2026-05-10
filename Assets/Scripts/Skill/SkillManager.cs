@@ -884,8 +884,8 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
             gameManager.gameHUD.SetOpponentSilencedUI(false);
             gameManager.gameHUD.ResetSkillLog();
+            gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
         }
-
         Debug.Log("[SkillManager] ResetForRematch 완료");
     }
     // 네트워크 동기화가 끝나고 게임 시작 직전(StartGameAfterSelection)에 호출하면 됩니다.
