@@ -12,7 +12,7 @@ EditorBuildSettings:
     path: Assets/Scenes/VS_AI.unity
     guid: 46cb20aa8bff7ab4796c0fb4163d4b2b
   - enabled: 1
-    path: Assets/Scenes/VS_Player.unity
+    path: Assets/Scenes/VS_Player_original.unity
     guid: 0c4d6b33e0da09847945ee7a00d51956
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
