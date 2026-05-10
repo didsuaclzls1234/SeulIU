@@ -205,7 +205,7 @@ public class InputManager : MonoBehaviour
     private void UpdateHoverVisuals(int x, int y)
     {
         // 현재 상태가 스킬 시전 대기 중(Preview)이거나 타겟팅 중일 때
-        bool isSkillMode = (gameManager.currentState == GameState.SkillPreview /*|| gameManager.currentState == GameState.SkillTargeting*/);
+        bool isSkillMode = (gameManager.currentState == GameState.SkillPreview);
 
         if (isSkillMode)
         {
@@ -222,12 +222,10 @@ public class InputManager : MonoBehaviour
             // 2. 스킬 타입(targetType)에 따라 빨간 점 표시 여부 결정
             if (skillManager.skillDatabase.TryGetValue(skillId, out SkillData data))
             {
-                // 타겟팅이 필요한 스킬(돌이동, 봉인, 제거 등)만 빨간 점 표시
                 if (data.targetType == "my" || data.targetType == "enemy" || data.targetType == "cell")
                 {
                     showRedDot = true;
                 }
-                // "none" (이중착수, 칼날비, 투명화, 칠죄종)은 빨간 점도 안 띄움
             }
 
             if (showRedDot)
@@ -246,17 +244,27 @@ public class InputManager : MonoBehaviour
             // 3. 타겟팅 호버링 아웃라인(테두리) 처리
             int myColorInt = (int)gameManager.localPlayerColor;
             int enemyColorInt = (gameManager.localPlayerColor == StoneColor.Black) ? 2 : 1;
+            bool hasStone = gameManager.board.grid[x, y] != 0;
 
-            if (skillId == 5) // 5번: 제거 (상대 돌 타겟팅)
+            if (skillId == 5 && hasStone) // 5번: 제거 (상대 돌 타겟팅)
             {
                 if (gameManager.board.grid[x, y] == enemyColorInt)
                     gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.enemyHoverHighlightColor);
                 else
                     gameManager.board.ClearHoverHighlight();
             }
-            else if (skillId == 1) // 1번: 돌 이동 (내 돌 타겟팅)
+            else if (skillId == 1 && hasStone) // 1번: 돌 이동 (내 돌 타겟팅)
             {
                 if (gameManager.board.grid[x, y] == myColorInt)
+                    gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.myHoverHighlightColor);
+                else
+                    gameManager.board.ClearHoverHighlight();
+            }
+            // 🔥 9번: 신의 가호 (보호막이 없는 내 돌만 파란색 조준 테두리 표시!)
+            else if (skillId == 9 && hasStone)
+            {
+                // 내 돌이면서 && 쉴드가 없는 돌일 때만 파란색 하이라이트!
+                if (gameManager.board.grid[x, y] == myColorInt && !gameManager.board.shieldGrid[x, y])
                     gameManager.board.HighlightSingleStone(x, y, gameManager.board.visualSettings.myHoverHighlightColor);
                 else
                     gameManager.board.ClearHoverHighlight();

@@ -557,15 +557,25 @@ public class SkillManager : MonoBehaviour
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
     {
-        // xs[0], ys[0] = 이동 전 좌표 제거
-        gameManager.board.grid[xs[0], ys[0]] = 0;
-        gameManager.board.RemoveStoneObjectAt(xs[0], ys[0]);
+        int tx = xs[0];
+        int ty = ys[0];
+        int destX = xs[1];
+        int destY = ys[1];
 
-        // xs[1], ys[1] = 이동 후 좌표 배치
+        // 1. 이동하기 전에 원래 자리에 방패(신의 가호)가 있었는지 확인!
+        bool hadShield = gameManager.board.shieldGrid[tx, ty];
+
+        // 2. 이동 전 좌표 제거 (돌 + 방패)
+        gameManager.board.grid[tx, ty] = 0;
+        gameManager.board.RemoveStoneObjectAt(tx, ty);
+        if (hadShield) gameManager.board.RemoveShield(tx, ty);
+
+        // 3. 이동 후 좌표 배치 (돌 + 방패)
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
-        GameObject newStone = gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
+        GameObject newStone = gameManager.board.PlaceStone(destX, destY, opponentColor);
+        if (hadShield) gameManager.board.ApplyShield(destX, destY);
 
-        // 상대 투명화 시전 중일 때는 코루틴으로 깜빡인 후 숨김!
+        // 4. 상대 투명화 시전 중일 때는 코루틴으로 깜빡인 후 숨김!
         if (oppInvisibilityTurns > 0 && newStone != null)
         {
             StartCoroutine(gameManager.board.BlinkAndHideRoutine(newStone, opponentColor, false));

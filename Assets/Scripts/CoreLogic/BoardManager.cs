@@ -601,11 +601,18 @@ public class BoardManager : MonoBehaviour
             {
                 activeShieldMarkers.Add(posKey, marker);
 
-                GameObject stone = GetStoneObjectAt(x, y);
-                if (stone != null)
+                StoneColor stoneColor = (StoneColor)grid[x, y];
+                bool isMyStone = (stoneColor == gameManager.localPlayerColor);
+                bool isOpponentInvisible = (gameManager.skillManager != null && gameManager.skillManager.oppInvisibilityTurns > 0);
+
+                // 돌이 상대방 투명 상태라면 방패도 태어날 때부터 안 보이게 처리
+                if (!isMyStone && isOpponentInvisible)
                 {
-                    StoneVisualController svc = stone.GetComponent<StoneVisualController>();
-                    if (svc != null && !svc.IsVisible) marker.SetActive(false);
+                    marker.SetActive(false);
+                }
+                else
+                {
+                    marker.SetActive(true);
                 }
             }
         }
@@ -697,7 +704,7 @@ public class BoardManager : MonoBehaviour
         if (isVisible)
         {
             svc.SetVisibility(true, false);
-            //if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+            if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
         }
         else
         {
@@ -705,12 +712,12 @@ public class BoardManager : MonoBehaviour
             {
                 // 인스펙터 연동
                 svc.SetVisibility(true, true, gAlpha, gMet, gSmo);
-                //if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
             }
             else
             {
                 svc.SetVisibility(false, false); // 완전 숨김
-                //if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
             }
         }
     }
@@ -820,8 +827,8 @@ public class BoardManager : MonoBehaviour
                 ApplyStoneBuffVisuals(tempStone, svc);
 
                 // 호버가 끝났을 때, 원래 숨겨져 있어야 할 돌이면 다시 끄기
-                int x = Mathf.RoundToInt(currentHoveredStone.transform.position.x / gridSize);
-                int y = Mathf.RoundToInt(currentHoveredStone.transform.position.z / gridSize);
+                int x = Mathf.RoundToInt(tempStone.transform.position.x / gridSize);
+                int y = Mathf.RoundToInt(tempStone.transform.position.z / gridSize);
                 StoneColor stoneColor = (StoneColor)grid[x, y];
                 bool isMyStone = (stoneColor == gameManager.localPlayerColor);
 
@@ -1025,22 +1032,27 @@ public class BoardManager : MonoBehaviour
             StoneColor stoneColor = (StoneColor)grid[x, y];
             bool isMyStone = (stoneColor == gameManager.localPlayerColor);
 
-            // 실시간 새로고침에도 흑/백 분리 세팅 적용
             float gAlpha = (stoneColor == StoneColor.Black) ? visualSettings.blackGhostAlpha : visualSettings.whiteGhostAlpha;
             float gMet = (stoneColor == StoneColor.Black) ? visualSettings.blackGhostMetallic : visualSettings.whiteGhostMetallic;
             float gSmo = (stoneColor == StoneColor.Black) ? visualSettings.blackGhostSmoothness : visualSettings.whiteGhostSmoothness;
 
+            Vector2Int posKey = new Vector2Int(x, y);
+
             if (isMyStone && isMyInvisibilityActive)
             {
                 svc.SetVisibility(true, true, gAlpha, gMet, gSmo);
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
             }
             else if (!isMyStone && isOpponentInvisible)
             {
                 svc.SetVisibility(false, false);
+                // 갱신될 때도 방패 끄기
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(false);
             }
             else
             {
                 svc.SetVisibility(true, false);
+                if (activeShieldMarkers.TryGetValue(posKey, out GameObject shield)) shield.SetActive(true);
             }
 
             ApplyStoneBuffVisuals(stoneObj, svc);
