@@ -38,13 +38,17 @@ public class VisualSettings
     [Header("Blink Effect (제거 스킬 등 깜빡임)")]
     public Color removeBlinkColor = Color.red; // 제거 시 깜빡이는 색
     public Color extraPlaceBlinkColor = Color.yellow; // 추가 착수(3번 스킬) 깜빡이는 색
-    //public Color godBlessBlinkColor = Color.cyan; // 신의 가호(8번 스킬) 깜빡이는 색
+    public Color godBlessBlinkColor = Color.cyan; // 신의 가호(9번 스킬) 깜빡이는 색
     [Range(0f, 1f)] public float blinkOverlayBlend = 0.7f; // 깜빡일 때 색상이 덮어씌워지는 강도
 
     [Header("Board Skill Overlay (전체 타겟 스킬용)")]
     public Color boardReadyTint = new Color(0.9f, 0.9f, 0.9f, 1f);
     public Color boardHoverTint = new Color(0.8f, 0.8f, 1f, 1f); // 살짝 푸른빛이 도는 밝은 색
     public Color boardClickTint = new Color(0.5f, 0.5f, 0.8f, 1f); // 클릭 시 확 짙어지는 색
+
+    [Header("Anti-Magic Skill (4번 안티매직 스킬 (본인 돌색깔 변경))")]
+    public Color antiMagicOverlayColor = Color.cyan; // 안티매직 발동 시 내 돌을 덮어씌울 색상
+    [Range(0f, 1f)] public float antiMagicOverlayBlend = 0.4f; // 색상이 덮어씌워지는 투명도(강도)
 }
 
 // -------------------------------------------------------------------------------------
@@ -89,7 +93,7 @@ public class BoardManager : MonoBehaviour
     public float stoneYOffset = 0.4f;       // 바둑돌 높이
     public float forbiddenYOffset = 0.1f;   // 금수(❌) 마커 높이
     public float sealYOffset = 0.15f;       // 봉인(자물쇠) 마커 높이
-    //public float shieldYOffset = 0.6f;      // 보호막(신의 가호) 마커 높이
+    public float shieldYOffset = 0.6f;      // 보호막(신의 가호) 마커 높이
     public float blinkYOffset = 0.15f;      // 제거 스킬 빈자리 깜빡임 높이
 
     [Header("Stone Rotation")]
@@ -114,8 +118,8 @@ public class BoardManager : MonoBehaviour
 
     // 좌표(Vector2Int)별로 떠 있는 자물쇠/신의가호(방패)/칼날비 칼 오브젝트를 기억하는 사전
     private Dictionary<Vector2Int, GameObject> activeSealMarkers = new Dictionary<Vector2Int, GameObject>();
-    //private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
-    private Dictionary<Vector2Int, GameObject> activeKnifeObjects = new Dictionary<Vector2Int, GameObject>();
+    private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
+    public Dictionary<Vector2Int, GameObject> activeKnifeObjects = new Dictionary<Vector2Int, GameObject>();
 
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
@@ -127,7 +131,7 @@ public class BoardManager : MonoBehaviour
     // 봉인 스킬 관련: 0이면 정상, 1 이상이면 남은 봉인 턴 수
     public SealInfo[,] sealedGrid;
     // 보호막 여부를 저장하는 배열 (true면 보호받음)
-    //public bool[,] shieldGrid;
+    public bool[,] shieldGrid;
 
     // 신성화(10번) 스킬 전용
     [Header("Consecration State")]
@@ -138,7 +142,7 @@ public class BoardManager : MonoBehaviour
         // 게임 시작과 동시에 빈 배열 생성
         grid = new int[boardSize, boardSize];
         sealedGrid = new SealInfo[boardSize, boardSize];
-        //shieldGrid = new bool[boardSize, boardSize];
+        shieldGrid = new bool[boardSize, boardSize];
 
         AdjustCameraToBoardSize(); // 시작 시 카메라 자동 세팅
 
@@ -295,7 +299,7 @@ public class BoardManager : MonoBehaviour
         //activeShieldMarkers.Clear();
 
         System.Array.Clear(grid, 0, grid.Length);
-        //System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
+        System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
         System.Array.Clear(sealedGrid, 0, sealedGrid.Length); // 추가
         
         isConsecrationActive = false;
@@ -386,16 +390,32 @@ public class BoardManager : MonoBehaviour
     public Vector2Int GetRandomValidMove(StoneColor playerColor)
     {
         List<Vector2Int> validMoves = new List<Vector2Int>();
+        int radius = 2; // 반경 2칸 제한! (너무 멀리 안 날아가게)
+
         for (int x = 0; x < boardSize; x++)
         {
             for (int y = 0; y < boardSize; y++)
             {
                 if (IsValidMove(x, y, playerColor, silent: true))
                 {
-                    validMoves.Add(new Vector2Int(x, y));
+                    // 주변 반경 내에 돌이 있을 때만 후보에 추가
+                    if (HasNeighborInRadius(x, y, radius))
+                    {
+                        validMoves.Add(new Vector2Int(x, y));
+                    }
                 }
             }
         }
+
+        // 주변 빈칸이 아예 없으면 (초반이거나 너무 꽉 찼을 때) 전체 유효 칸에서 다시 검색
+        if (validMoves.Count == 0)
+        {
+            for (int x = 0; x < boardSize; x++)
+                for (int y = 0; y < boardSize; y++)
+                    if (IsValidMove(x, y, playerColor, silent: true))
+                        validMoves.Add(new Vector2Int(x, y));
+        }
+
         if (validMoves.Count == 0) return new Vector2Int(-1, -1);
         int randomIndex = UnityEngine.Random.Range(0, validMoves.Count);
         return validMoves[randomIndex];
@@ -567,29 +587,29 @@ public class BoardManager : MonoBehaviour
     }
 
     // 보호막 씌우는 핵심 API
-    //public void ApplyShield(int x, int y)
-    //{
-    //    shieldGrid[x, y] = true;
-    //    Vector2Int posKey = new Vector2Int(x, y);
+    public void ApplyShield(int x, int y)
+    {
+        shieldGrid[x, y] = true;
+        Vector2Int posKey = new Vector2Int(x, y);
 
-    //    if (!activeShieldMarkers.ContainsKey(posKey))
-    //    {
-    //        Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
-    //        GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+        if (!activeShieldMarkers.ContainsKey(posKey))
+        {
+            Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
+            GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
 
-    //        if (marker != null)
-    //        {
-    //            activeShieldMarkers.Add(posKey, marker);
+            if (marker != null)
+            {
+                activeShieldMarkers.Add(posKey, marker);
 
-    //            GameObject stone = GetStoneObjectAt(x, y);
-    //            if (stone != null)
-    //            {
-    //                StoneVisualController svc = stone.GetComponent<StoneVisualController>();
-    //                if (svc != null && !svc.IsVisible) marker.SetActive(false);
-    //            }
-    //        }
-    //    }
-    //}
+                GameObject stone = GetStoneObjectAt(x, y);
+                if (stone != null)
+                {
+                    StoneVisualController svc = stone.GetComponent<StoneVisualController>();
+                    if (svc != null && !svc.IsVisible) marker.SetActive(false);
+                }
+            }
+        }
+    }
 
     // 해당 스킬이 어떤 돌(내 돌 or 상대 돌)을 수정하는가?
     public void ShowSkillTargetMarkers_My(StoneColor myColor)
@@ -640,10 +660,22 @@ public class BoardManager : MonoBehaviour
                 StoneVisualController svc = stoneObj.GetComponent<StoneVisualController>();
                 if (svc != null)
                 {
-                    svc.SetOverlay(Color.black, 0f);
-                    RestoreConsecrationOutline(stoneObj, svc);
+                    // 타겟팅 마커를 끄면서 안티매직/신성화 상태 복구
+                    ApplyStoneBuffVisuals(stoneObj, svc);
                 }
             }
+        }
+    }
+
+    // 방패 지우는 함수
+    public void RemoveShield(int x, int y)
+    {
+        shieldGrid[x, y] = false;
+        Vector2Int posKey = new Vector2Int(x, y);
+        if (activeShieldMarkers.TryGetValue(posKey, out GameObject marker))
+        {
+            marker.SetActive(false);
+            activeShieldMarkers.Remove(posKey);
         }
     }
 
@@ -780,8 +812,12 @@ public class BoardManager : MonoBehaviour
             StoneVisualController svc = currentHoveredStone.GetComponent<StoneVisualController>();
             if (svc != null)
             {
-                svc.SetOverlay(Color.black, 0f);
-                RestoreConsecrationOutline(currentHoveredStone, svc);
+                // 현재 호버돌을 null로 먼저 만들고 비주얼을 업데이트해야 안티매직 오버레이가 정상 복구됨
+                GameObject tempStone = currentHoveredStone;
+                currentHoveredStone = null;
+
+                // 여기서 복구!
+                ApplyStoneBuffVisuals(tempStone, svc);
 
                 // 호버가 끝났을 때, 원래 숨겨져 있어야 할 돌이면 다시 끄기
                 int x = Mathf.RoundToInt(currentHoveredStone.transform.position.x / gridSize);
@@ -811,33 +847,81 @@ public class BoardManager : MonoBehaviour
             if (stone.activeSelf)
             {
                 StoneVisualController svc = stone.GetComponent<StoneVisualController>();
-                if (svc != null) RestoreConsecrationOutline(stone, svc);
+                if (svc != null) ApplyStoneBuffVisuals(stone, svc);
             }
         }
     }
 
     // 아웃라인을 완전히 끄는 대신, 신성화 상태면 파랑/빨강으로 되돌리는 헬퍼 함수
-    public void RestoreConsecrationOutline(GameObject stoneObj, StoneVisualController svc)
-    {
-        // 백돌 플레이어(시전자)의 화면에서만 작동
-        if (isConsecrationActive && gameManager.localPlayerColor == StoneColor.White)
-        {
-            int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
-            int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
+    //public void RestoreConsecrationOutline(GameObject stoneObj, StoneVisualController svc)
+    //{
+    //    // 백돌 플레이어(시전자)의 화면에서만 작동
+    //    if (isConsecrationActive && gameManager.localPlayerColor == StoneColor.White)
+    //    {
+    //        int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
+    //        int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
 
-            if (grid[x, y] == (int)StoneColor.White)
-            {
-                // 인스펙터 연동 (두께와 발광 강도 적용)
-                svc.SetConsecration(true, visualSettings.consecrationOutlineColor, visualSettings.consecrationThickness, visualSettings.consecrationGlow);
-            }
-            else
-            {
-                svc.SetConsecration(false, Color.black); // 상대방 돌(흑돌)은 아웃라인 무조건 끔
-            }
+    //        if (grid[x, y] == (int)StoneColor.White)
+    //        {
+    //            // 인스펙터 연동 (두께와 발광 강도 적용)
+    //            svc.SetConsecration(true, visualSettings.consecrationOutlineColor, visualSettings.consecrationThickness, visualSettings.consecrationGlow);
+    //        }
+    //        else
+    //        {
+    //            svc.SetConsecration(false, Color.black); // 상대방 돌(흑돌)은 아웃라인 무조건 끔
+    //        }
+    //    }
+    //    else
+    //    {
+    //        svc.SetConsecration(false, Color.black); // 신성화가 아니면 그냥 끔
+    //    }
+    //}
+
+    public void ApplyStoneBuffVisuals(GameObject stoneObj, StoneVisualController svc)
+    {
+        int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
+        int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
+        StoneColor stoneColor = (StoneColor)grid[x, y];
+
+        // --- A. 신성화 테두리 로직 (백돌 시전자 기준) ---
+        if (isConsecrationActive && gameManager.localPlayerColor == StoneColor.White && stoneColor == StoneColor.White)
+        {
+            svc.SetConsecration(true, visualSettings.consecrationOutlineColor, visualSettings.consecrationThickness, visualSettings.consecrationGlow);
         }
         else
         {
-            svc.SetConsecration(false, Color.black); // 신성화가 아니면 그냥 끔
+            svc.SetConsecration(false, Color.black);
+        }
+
+        // --- B. 안티매직 반투명 하늘색 오버레이 로직 ---
+        bool hasMyAntiMagic = false;
+        // 시전자가 나이고, 돌 색깔도 내 돌일 때만 발동! (상대 눈엔 안 보임)
+        if (gameManager.skillManager != null && stoneColor == gameManager.localPlayerColor)
+        {
+            foreach (var eff in gameManager.skillManager.activeEffects)
+            {
+                // 안티매직(4번)이 내 버프로 켜져 있다면
+                if (eff.skillId == 4 && eff.casterColor == gameManager.localPlayerColor)
+                {
+                    hasMyAntiMagic = true;
+                    break;
+                }
+            }
+        }
+
+        // 마우스 호버(또는 스킬 조준점) 중인 돌이 아닐 때만 적용 (호버 색상과 안 겹치게)
+        if (currentHoveredStone != stoneObj)
+        {
+            if (hasMyAntiMagic)
+            {
+                // 반투명 하늘색(Cyan) 오버레이 적용 (투명도 0.4f)
+                svc.SetOverlay(visualSettings.antiMagicOverlayColor, visualSettings.antiMagicOverlayBlend);
+            }
+            else
+            {
+                // 기본 상태
+                svc.SetOverlay(Color.black, 0f);
+            }
         }
     }
 
@@ -959,7 +1043,7 @@ public class BoardManager : MonoBehaviour
                 svc.SetVisibility(true, false);
             }
 
-            RestoreConsecrationOutline(stoneObj, svc);
+            ApplyStoneBuffVisuals(stoneObj, svc);
         }
     }
 }

@@ -1,8 +1,8 @@
 using UnityEngine;
 
-public class Skill_9_Destruction : SkillBase
+public class Skill_10_Destruction : SkillBase
 {
-    public Skill_9_Destruction(SkillData skillData) : base(skillData) { }
+    public Skill_10_Destruction(SkillData skillData) : base(skillData) { }
 
     // 런타임 방어 — 덱 구성 단계에서 막히겠지만 혹시 모를 상황 대비
     public override SkillUseResult CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)

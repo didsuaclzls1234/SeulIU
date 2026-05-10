@@ -43,10 +43,31 @@ public class Skill_1_StoneShift : SkillBase
         if (destX == -1)
         {
             List<Vector2Int> validDestinations = new List<Vector2Int>();
+            int radius = 2; // 반경 2칸 이내 
+
             for (int x = 0; x < board.boardSize; x++)
+            {
                 for (int y = 0; y < board.boardSize; y++)
-                    if (!(x == tx && y == ty) && board.IsValidMove(x, y, casterColor, silent: true))
-                        validDestinations.Add(new Vector2Int(x, y));
+                {
+                    if (x == tx && y == ty) continue;
+
+                    // IsValidMove가 '상대 봉인', '칼날비(None)', '금수', '이미 있는 돌'을 완벽히 차단함!
+                    if (board.IsValidMove(x, y, casterColor, silent: true))
+                    {
+                        if (HasNeighborInRadius(board.grid, x, y, radius, board.boardSize))
+                            validDestinations.Add(new Vector2Int(x, y));
+                    }
+                }
+            }
+
+            // 주변에 자리가 없으면 전체 보드에서 찾음 (안전장치)
+            if (validDestinations.Count == 0)
+            {
+                for (int x = 0; x < board.boardSize; x++)
+                    for (int y = 0; y < board.boardSize; y++)
+                        if (!(x == tx && y == ty) && board.IsValidMove(x, y, casterColor, silent: true))
+                            validDestinations.Add(new Vector2Int(x, y));
+            }
 
             if (validDestinations.Count == 0)
             {
@@ -64,12 +85,17 @@ public class Skill_1_StoneShift : SkillBase
             targetY[1] = destY;
         }
 
+        // ** 돌이 가진 '신의 가호(방패)' 여부 확인
+        bool hadShield = board.shieldGrid[tx, ty];
+
         // 4. 원래 자리 제거 (데이터 + 3D 오브젝트)
         board.grid[tx, ty] = 0;
         board.RemoveStoneObjectAt(tx, ty);
+        if (hadShield) board.RemoveShield(tx, ty); // 기존 방패 제거
 
         // 5. 목적지에 배치 (데이터 + 3D 오브젝트)
         GameObject newStone = board.PlaceStone(destX, destY, casterColor);
+        if (hadShield) board.ApplyShield(destX, destY); // 새 자리에 방패 부여
 
         // ** 투명화 상태라면 이동된 돌도 잠깐 보였다가 사라지게
         if (gm.skillManager.myInvisibilityTurns > 0 && newStone != null)
@@ -80,5 +106,20 @@ public class Skill_1_StoneShift : SkillBase
         Debug.Log($"[StoneShift] ({tx},{ty}) → ({destX},{destY}) 이동 완료!");
 
         return true;
+    }
+
+    // 주변 반경 탐색 헬퍼 함수
+    private bool HasNeighborInRadius(int[,] grid, int cx, int cy, int radius, int size)
+    {
+        int startX = Mathf.Max(0, cx - radius);
+        int endX = Mathf.Min(size - 1, cx + radius);
+        int startY = Mathf.Max(0, cy - radius);
+        int endY = Mathf.Min(size - 1, cy + radius);
+
+        for (int i = startX; i <= endX; i++)
+            for (int j = startY; j <= endY; j++)
+                if (grid[i, j] != 0) return true;
+
+        return false;
     }
 }

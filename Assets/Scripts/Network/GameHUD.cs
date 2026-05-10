@@ -457,8 +457,8 @@ public class GameHUD : MonoBehaviour
         {
             int skillId = i + 1;
 
-            bool isRestricted = (skillId == 9 && myColor != StoneColor.Black)
-                            || (skillId == 10 && myColor != StoneColor.White);
+            bool isRestricted = (skillId == 10 && myColor != StoneColor.Black)
+                            || (skillId == 11 && myColor != StoneColor.White);
 
             skillSelectButtons[i].interactable = !isRestricted;
 

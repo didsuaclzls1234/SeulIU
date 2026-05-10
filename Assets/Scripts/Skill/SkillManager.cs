@@ -88,11 +88,13 @@ public class SkillManager : MonoBehaviour
             case 7:
                 return new Skill_7_Invisibility(data);
             case 8:
-                return new Skill_8_SevenSins(data);   // return new Skill_8_GodBless(data);
+                return new Skill_8_SevenSins(data);   
             case 9:
-                return new Skill_9_Destruction(data);
-            case 10: 
-                return new Skill_10_Consecration(data);
+                return new Skill_9_GodBless(data);
+            case 10:
+                return new Skill_10_Destruction(data);
+            case 11:
+                return new Skill_11_Consecration(data);
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
                 Debug.Log($"[SkillManager] ID {id} 스킬은 아직 미구현! 빈 껍데기 반환.");
@@ -457,8 +459,8 @@ public class SkillManager : MonoBehaviour
         if (gameManager.currentMode != PlayMode.AI) return;
 
         // 기획자님 의도대로 AI는 3번(이중착수)과 본인 전용 패시브만 확정으로 들고 갑니다.
-        // 플레이어가 흑(1)이면 AI는 백이므로 10번(신성화), 플레이어가 백(2)이면 AI는 흑이므로 9번(파괴)
-        int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 10 : 9;
+        // 플레이어가 흑(1)이면 AI는 백이므로 11번(신성화), 플레이어가 백(2)이면 AI는 흑이므로 10번(파괴)
+        int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 11 : 10;
 
         oppSkillsID[0] = 3;           // 이중착수 확정
         oppSkillsID[1] = aiPassiveId; // 패시브 확정
@@ -513,8 +515,9 @@ public class SkillManager : MonoBehaviour
             case 6: ReceiveSkill_Bladefall(xs, ys); break;
             case 7: ReceiveSkill_Invisibility(xs, ys); break;
             case 8: ReceiveSkill_SevenSins(); break; //ReceiveSkill_GodBless(xs, ys); break;
-            case 9: ReceiveSkill_Destruction(); break;
-            case 10: ReceiveSkill_Consecration(); break;
+            case 9: ReceiveSkill_GodBless(xs, ys); break; 
+            case 10: ReceiveSkill_Destruction(); break;
+            case 11: ReceiveSkill_Consecration(); break;
             default:
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
@@ -548,6 +551,8 @@ public class SkillManager : MonoBehaviour
         }
         Debug.Log($"[Network] 상대방이 {skillData.skillName}을 사용했습니다.");
         gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
+
+        gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
@@ -681,33 +686,35 @@ public class SkillManager : MonoBehaviour
 
         Debug.Log("[Network] 칠죄종 수신 — 내 승리 조건 7목 강제 적용!");
     }
-    //private void ReceiveSkill_GodBless(int[] xs, int[] ys)
-    //{
-    //    // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
-    //    for (int i = 0; i < xs.Length; i++)
-    //    {
-    //        if (xs[i] != -1 && ys[i] != -1)
-    //        {
-    //            // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
-    //            gameManager.board.ApplyShield(xs[i], ys[i]);
-
-    //            // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
-    //            GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
-    //            if (stone != null)
-    //            {
-    //                MeshRenderer mr = stone.GetComponent<MeshRenderer>();
-
-    //                // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
-    //                if (mr != null && mr.enabled)
-    //                {
-    //                    gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
 
     // 9번 스킬
+    private void ReceiveSkill_GodBless(int[] xs, int[] ys)
+    {
+        // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
+        for (int i = 0; i < xs.Length; i++)
+        {
+            if (xs[i] != -1 && ys[i] != -1)
+            {
+                // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
+                gameManager.board.ApplyShield(xs[i], ys[i]);
+
+                // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
+                GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
+                if (stone != null)
+                {
+                    MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+
+                    // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
+                    if (mr != null && mr.enabled)
+                    {
+                        gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
+                    }
+                }
+            }
+        }
+    }
+
+    // 10번 스킬
     private void ReceiveSkill_Destruction()
     {
         // 상대방(흑돌)이 룰 파괴를 썼으니, 내 화면의 RuleManager에도 동일하게 적용
@@ -722,7 +729,7 @@ public class SkillManager : MonoBehaviour
         Debug.Log("[Network] 룰 파괴 수신 — 흑돌 금수 해제 적용!");
     }
 
-    // 10번 스킬
+    // 11번 스킬
     private void ReceiveSkill_Consecration()
     {
         // 상대방(백돌)이 10번 패시브를 가지고 있으면 내 화면(흑돌)의 보드도 신성화 모드로 변경
@@ -966,12 +973,13 @@ public class SkillManager : MonoBehaviour
     public void AutoSelectRandomSkills()
     {
         // 1. 선택 가능한 전체 스킬 풀(Pool) 리스트
-        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8};//전용 스킬 9,10 은 별도로.
+        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9};//전용 스킬 9,10 은 별도로.
 
+        // 10번: 렌주룰 파괴(흑), 11번: 신성화(백)
         if (gameManager.localPlayerColor == StoneColor.Black)
-            availableSkills.Add(9);
-        else
             availableSkills.Add(10);
+        else
+            availableSkills.Add(11);
 
         // 2. 이미 선택된 스킬은 목록에서 제거
         foreach (int selectedId in mySkillsID)
@@ -1260,6 +1268,8 @@ public class SkillManager : MonoBehaviour
         gameManager.board.HideSkillTargetMarkers();
         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
         RefreshSkillButtonStates();
+
+        gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
     }
 
     // =========================================================

@@ -1,8 +1,8 @@
 using UnityEngine;
 
-public class Skill_10_Consecration : SkillBase
+public class Skill_11_Consecration : SkillBase
 {
-    public Skill_10_Consecration(SkillData skillData) : base(skillData) { }
+    public Skill_11_Consecration(SkillData skillData) : base(skillData) { }
 
     public override SkillUseResult CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
     {
