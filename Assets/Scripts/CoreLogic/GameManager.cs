@@ -517,7 +517,9 @@ public class GameManager : MonoBehaviour
             gameHUD.resultPanel.SetActive(false);
             gameHUD.ResetSkillLog(); // 스킬 로그도 싹 비워줍니다.
         }
-
+        //룰도 기본으로 돌아옴.
+        board.ruleManager.blackRules.winCondition = 5;
+        board.ruleManager.whiteRules.winCondition = 5;
         // ** AI 모드일 때의 특수 처리
         if (currentMode == PlayMode.AI)
         {
