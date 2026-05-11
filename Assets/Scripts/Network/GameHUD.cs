@@ -125,6 +125,13 @@ public class GameHUD : MonoBehaviour
     public int victorySFXCount = 1;  // 인스펙터에서 조절
     public int defeatSFXCount = 1;   // 인스펙터에서 조절
 
+    [Header("플레이어 패널 이미지")]
+    public Image myPanelImage;          // 내 패널 Image 컴포넌트
+    public Image oppPanelImage;         // 상대 패널 Image 컴포넌트
+
+    [Header("패널 스프라이트")]
+    public Sprite blackPlayerSprite;    // 흑돌용 이미지
+    public Sprite whitePlayerSprite;    // 백돌용 이미지
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
@@ -544,6 +551,13 @@ public class GameHUD : MonoBehaviour
             //// 설명
             //if (skillRowDescTexts != null && i < skillRowDescTexts.Length && skillRowDescTexts[i] != null)
             //    skillRowDescTexts[i].text = data.description;
+            bool isBlack = (myColor == StoneColor.Black);
+
+            if (myPanelImage != null)
+                myPanelImage.sprite = isBlack ? blackPlayerSprite : whitePlayerSprite;
+
+            if (oppPanelImage != null)
+                oppPanelImage.sprite = isBlack ? whitePlayerSprite : blackPlayerSprite;
         }
     }
     // 2. 버프/디버프 상태 전체 갱신 
