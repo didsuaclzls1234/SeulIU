@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 /// <summary>
 /// VS_Player 씬의 중앙 조율자.
@@ -25,6 +26,10 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     public GameManager gameManager;
     public SkillManager skillManager;
     public TimerManager timerManager;
+
+    [Header("Ready Button UI")]
+    [SerializeField] private Image readyButtonImage;
+    [SerializeField] private Sprite readyButtonSelectedSprite;
     
 
     // 재도전 요청을 내가 보냈는지 여부 (중복 요청 방지)
@@ -343,7 +348,15 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         //검증 통과했으면 중복 전송 방지 플래그 체크
         if (_isReadySent) return;
-        _isReadySent = true;
+        else
+        {
+            _isReadySent = true;
+
+            if (readyButtonImage != null && readyButtonSelectedSprite != null)
+            {
+                readyButtonImage.sprite = readyButtonSelectedSprite;
+            }
+        }
 
         object[] data = new object[]
         {
