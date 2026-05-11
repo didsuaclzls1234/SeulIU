@@ -1026,6 +1026,18 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1990110467}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeScale.x
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeScale.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: knifeScale.z
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: boardRenderer
       value: 
       objectReference: {fileID: 603740961}
