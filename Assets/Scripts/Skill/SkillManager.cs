@@ -1363,10 +1363,14 @@ public class SkillManager : MonoBehaviour
                         GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
                         if (extraStone != null) gameManager.board.BlinkStoneEffect(extraStone, gameManager.board.visualSettings.extraPlaceBlinkColor);
                     }
-
                     // 방금 강제로 튀어나온 랜덤 돌에도 안티매직 등 버프 색상을 즉시 묻혀줌!
                     gameManager.board.RefreshAllStonesVisuals();
+                    
+                    // ↓ 추가
+                    SkillBase doubleDown = mySkills.Find(s => s.data.skillId == 3);
+                    if (doubleDown != null)
 
+                    gameManager.gameHUD?.AddSkillLog("나", doubleDown.data.skillName, gameManager.CurrentMoveCount);
                     // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
                     StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
                     Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
@@ -1385,6 +1389,9 @@ public class SkillManager : MonoBehaviour
                 bx[0] = placedX; by[0] = placedY; // [0]에 제외 좌표 전달
  
                 bladefall.Execute(bx, by, gameManager, gameManager.board);
+
+                 // ↓ 추가
+                gameManager.gameHUD?.AddSkillLog("나", bladefall.data.skillName, gameManager.CurrentMoveCount);
 
                 // 일반 착수 패킷 먼저 날아가도록 지연 전송
                 StartCoroutine(SendDeferredSkillPacket(6, bx, by, gameManager.CurrentMoveCount));
