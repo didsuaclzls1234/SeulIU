@@ -222,15 +222,30 @@ public class SkillManager : MonoBehaviour
             mySP = Mathf.Min(mySP + 1, MAX_SP);
         else
             oppSP = Mathf.Min(oppSP + 1, MAX_SP);
- 
+
         // 6. activeEffects 감소
         for (int i = activeEffects.Count - 1; i >= 0; i--)
         {
-            activeEffects[i].remainingTurns--;
-            if (activeEffects[i].remainingTurns <= 0)
-                activeEffects.RemoveAt(i);
+            // 안티매직(4번)은 '상대방'이 돌을 둘 때 지속시간을 깎음! (그래야 나-상-나-상 꽉 채워서 유지됨)
+            if (activeEffects[i].skillId == 4)
+            {
+                if (placedColor != activeEffects[i].casterColor)
+                {
+                    activeEffects[i].remainingTurns--;
+                    if (activeEffects[i].remainingTurns <= 0) activeEffects.RemoveAt(i);
+                }
+            }
+            else
+            {
+                // 다른 일반 버프(투명화 등)는 '시전자(나)'가 돌을 둘 때 깎음
+                if (placedColor == activeEffects[i].casterColor)
+                {
+                    activeEffects[i].remainingTurns--;
+                    if (activeEffects[i].remainingTurns <= 0) activeEffects.RemoveAt(i);
+                }
+            }
         }
- 
+
         // 7. UI 갱신
         if (gameManager.gameHUD != null)
         {
@@ -239,6 +254,9 @@ public class SkillManager : MonoBehaviour
         }
  
         RefreshSkillButtonStates();
+
+        // (새로 놓은 돌에 하늘색 입히고(안티매직), 버프 끝나면 지우기 위해 무조건 갱신)
+        gameManager.board.RefreshAllStonesVisuals();
     }
 
      // =========================================================
@@ -549,6 +567,10 @@ public class SkillManager : MonoBehaviour
             });
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
+
+        // * 상대방이 안티매직을 썼을 때도 갱신이 필요할 수 있으므로 (혹은 턴 만료 시)
+        gameManager.board.RefreshAllStonesVisuals();
+
         Debug.Log($"[Network] 상대방이 {skillData.skillName}을 사용했습니다.");
         gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
 
@@ -1257,7 +1279,8 @@ public class SkillManager : MonoBehaviour
                 remainingTurns = skill.data.durationTurn,
                 isBuff = true,
                 effectName = skill.data.skillName,
-                description = skill.data.description
+                description = skill.data.description,
+                casterColor = gameManager.localPlayerColor
             });
             gameManager.gameHUD?.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
@@ -1271,6 +1294,9 @@ public class SkillManager : MonoBehaviour
         {
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
         }
+
+        // ** 안티매직 시전 즉시 모든 내 돌에 하늘색 오버레이를 입히기 위해 호출!
+        gameManager.board.RefreshAllStonesVisuals();
 
         // 스킬 사용이 끝났으므로 상태 초기화
         gameManager.currentState = GameState.Playing;
@@ -1293,19 +1319,37 @@ public class SkillManager : MonoBehaviour
             case 3: // DoubleDown — placedX,Y 제외 랜덤 착수
             {
                 List<Vector2Int> candidates = new List<Vector2Int>();
+                int radius = 2; // 반경 2칸 이내 제한 
+
                 for (int x = 0; x < gameManager.board.boardSize; x++)
+                {
                     for (int y = 0; y < gameManager.board.boardSize; y++)
-                        if (!(x == placedX && y == placedY) &&
-                            gameManager.board.IsValidMove(x, y, gameManager.currentTurnColor, silent: true))
-                            candidates.Add(new Vector2Int(x, y));
- 
+                    {
+                        if (!(x == placedX && y == placedY) && gameManager.board.IsValidMove(x, y, gameManager.currentTurnColor, silent: true))
+                        {
+                            // 주변에 다른 돌이 있을 때만 후보에 넣음
+                            if (gameManager.board.HasNeighborInRadius(x, y, radius))
+                                candidates.Add(new Vector2Int(x, y));
+                        }
+                    }
+                }
+
+                // 만약 초반이라 주변 자리가 없으면 전체 보드에서 찾음 (안전장치)
+                if (candidates.Count == 0)
+                {
+                    for (int x = 0; x < gameManager.board.boardSize; x++)
+                        for (int y = 0; y < gameManager.board.boardSize; y++)
+                            if (!(x == placedX && y == placedY) && gameManager.board.IsValidMove(x, y, gameManager.currentTurnColor, silent: true))
+                                candidates.Add(new Vector2Int(x, y));
+                }
+
                 if (candidates.Count > 0)
                 {
                     Vector2Int rand = candidates[UnityEngine.Random.Range(0, candidates.Count)];
                     gameManager.ExecutePlaceStonePublic(
-                        rand.x, rand.y,
-                        gameManager.currentTurnColor,
-                        PlacementType.SkillInduced);
+                    rand.x, rand.y,
+                    gameManager.currentTurnColor,
+                    PlacementType.SkillInduced);
 
                     // 투명화 상태라면 방금 놓은 랜덤 돌도 내 화면에서 깜빡인 후 숨김
                     if (myInvisibilityTurns > 0)
@@ -1313,10 +1357,19 @@ public class SkillManager : MonoBehaviour
                         GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
                         if (extraStone != null) StartCoroutine(gameManager.board.BlinkAndHideRoutine(extraStone, gameManager.localPlayerColor, true));
                     }
+                    else
+                    {
+                        // 노란색 점멸 복구
+                        GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
+                        if (extraStone != null) gameManager.board.BlinkStoneEffect(extraStone, gameManager.board.visualSettings.extraPlaceBlinkColor);
+                    }
 
-                        // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
-                        StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
-                        Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
+                    // 방금 강제로 튀어나온 랜덤 돌에도 안티매직 등 버프 색상을 즉시 묻혀줌!
+                    gameManager.board.RefreshAllStonesVisuals();
+
+                    // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
+                    StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
+                    Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
             }

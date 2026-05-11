@@ -613,25 +613,39 @@ public class GameHUD : MonoBehaviour
     public void RefreshDeckSlots(int[] mySkillsID, Dictionary<int, SkillData> skillDatabase)
     {
         if (deckSlotButtons == null) return;
- 
+
         for (int i = 0; i < deckSlotButtons.Length; i++)
         {
             int skillId = (i < mySkillsID.Length) ? mySkillsID[i] : -1;
             bool hasSkill = skillId != -1;
- 
+
             // 스킬 없으면 슬롯 숨김
             deckSlotButtons[i].gameObject.SetActive(hasSkill);
-
             if (!hasSkill) continue;
 
-            // 아이콘 갱신
-           Image btnImage = deckSlotButtons[i].GetComponent<Image>();
-            if (btnImage != null)
+            Sprite icon = GetSkillIcon(skillId);
+
+            // 1. 자식 오브젝트 중에 "IconImage"가 있는지 먼저 확인 (스킬 목록 버튼과 같은 구조일 경우)
+            Transform iconTransform = deckSlotButtons[i].transform.Find("IconImage");
+            if (iconTransform != null)
             {
-                Sprite icon = GetSkillIcon(skillId);
-                if (icon != null) btnImage.sprite = icon;
+                Image iconImg = iconTransform.GetComponent<Image>();
+                if (iconImg != null && icon != null)
+                {
+                    iconImg.sprite = icon;
+                    iconImg.gameObject.SetActive(true); // 꺼져있을까봐 확실하게 켜줌
+                }
             }
- 
+            else
+            {
+                // 2. 자식이 없다면? 슬롯 버튼 자신의 배경 Image를 바로 교체
+                Image btnImage = deckSlotButtons[i].GetComponent<Image>();
+                if (btnImage != null && icon != null)
+                {
+                    btnImage.sprite = icon;
+                }
+            }
+
             // 스킬명 갱신
             if (deckSlotNameTexts != null && i < deckSlotNameTexts.Length && deckSlotNameTexts[i] != null)
             {
@@ -672,20 +686,41 @@ public class GameHUD : MonoBehaviour
     public void ApplySkillIconToActiveButton(int slotIndex, int skillId)
     {
         if (activeSkillButtons == null || slotIndex >= activeSkillButtons.Length) return;
- 
-        // 인게임 버튼 안에 Image 컴포넌트가 있으면 아이콘 적용
-        Image iconImg = activeSkillButtons[slotIndex].GetComponentInChildren<Image>();
+
+        // 1. 버튼 배경 Image와 자식 아이콘 Image를 분리해서 찾습니다.
+        Image bgImage = activeSkillButtons[slotIndex].GetComponent<Image>();
+        Transform iconTransform = activeSkillButtons[slotIndex].transform.Find("IconImage");
+        Image iconImg = iconTransform != null ? iconTransform.GetComponent<Image>() : bgImage;
+
         if (iconImg == null) return;
- 
+
         Sprite icon = GetSkillIcon(skillId);
+
         if (icon != null)
         {
             iconImg.sprite = icon;
-            iconImg.gameObject.SetActive(true);
+            iconImg.color = Color.white; // 색상 정상화
+            if (iconTransform != null) iconImg.gameObject.SetActive(true); // 자식 오브젝트면 켜줌
         }
         else
         {
-             // 아이콘 없으면 기존 Image 그대로 유지 (건드리지 않음)
+            // 아이콘이 없을 때의 처리
+            if (iconTransform != null)
+            {
+                // 자식 오브젝트(아이콘 전용)가 따로 있다면, 아이콘 이미지 오브젝트만 꺼버림 
+                // -> 버튼의 원래 배경(기본 버튼 이미지)은 아주 예쁘게 그대로 남습니다!
+                iconImg.sprite = null;
+                iconImg.gameObject.SetActive(false);
+            }
+            else
+            {
+                // 버튼 배경 자체를 교체하는 구조라면, 이미지만 지우고 색은 하얗게(투명도 100%) 유지
+                // -> 유니티 기본 하얀색 네모 버튼으로 돌아갑니다.
+                iconImg.sprite = null;
+                iconImg.color = Color.white;
+            }
+
+            Debug.LogWarning($"[GameHUD] {skillId}번 스킬 아이콘이 없어 인게임 슬롯 {slotIndex}번을 기본 버튼 상태로 둡니다.");
         }
     }
     //스킬 선택창용 메시지.

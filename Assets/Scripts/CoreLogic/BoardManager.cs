@@ -30,7 +30,7 @@ public class VisualSettings
     [Range(0f, 1f)] public float whiteGhostMetallic = 0f;
     [Range(0f, 1f)] public float whiteGhostSmoothness = 0.05f;
 
-    [Header("Consecration Skill (10번 신성화 스킬)")]
+    [Header("Consecration Skill (11번 신성화 스킬)")]
     public Color consecrationOutlineColor = Color.yellow; // 신성화 발동 시 테두리 색상
     [Range(0.1f, 5f)] public float consecrationThickness = 5; // 테두리 두께 (작을수록 두꺼워짐.)
     [Range(1f, 10f)] public float consecrationGlow = 4.0f; // 테두리 발광 강도 (수치가 높을수록 더 많이 빛남)
@@ -42,9 +42,9 @@ public class VisualSettings
     [Range(0f, 1f)] public float blinkOverlayBlend = 0.7f; // 깜빡일 때 색상이 덮어씌워지는 강도
 
     [Header("Board Skill Overlay (전체 타겟 스킬용)")]
-    public Color boardReadyTint = new Color(0.9f, 0.9f, 0.9f, 1f);
-    public Color boardHoverTint = new Color(0.8f, 0.8f, 1f, 1f); // 살짝 푸른빛이 도는 밝은 색
-    public Color boardClickTint = new Color(0.5f, 0.5f, 0.8f, 1f); // 클릭 시 확 짙어지는 색
+    public Color boardReadyTint = new Color(1f, 1f, 1f, 0.4f);
+    public Color boardHoverTint = new Color(0.1f, 0.5f, 0.1f, 1f); // 살짝 푸른빛이 도는 밝은 색
+    public Color boardClickTint = new Color(0.2f, 0.8f, 0.2f, 1f); // 클릭 시 확 짙어지는 색
 
     [Header("Anti-Magic Skill (4번 안티매직 스킬 (본인 돌색깔 변경))")]
     public Color antiMagicOverlayColor = Color.cyan; // 안티매직 발동 시 내 돌을 덮어씌울 색상
@@ -62,6 +62,10 @@ public class BoardManager : MonoBehaviour
     public GameObject boardClickTextObj;
     public Vector3 blackTextRotation = new Vector3(90, 0, 90);     // 흑돌 시점 회전값
     public Vector3 whiteTextRotation = new Vector3(-270, 180, 90); // 백돌 시점 회전값 
+
+    [Header("Shield 3D Settings")]
+    public Vector3 blackShieldRotation = new Vector3(0, 0, 0); // 흑돌 시점 방패 회전
+    public Vector3 whiteShieldRotation = new Vector3(0, 180, 0); // 백돌 시점 방패 회전
 
     [Header("Forbidden Mark Settings (금수)")]
     public bool debugForbiddenMode = false; // 인스펙터 체크용 디버그 스위치
@@ -171,6 +175,12 @@ public class BoardManager : MonoBehaviour
 
         if (sealedGrid[x, y].turns > 0)
         {
+            // 칼날비(None)는 피아 식별 없이 무조건 입구컷
+            if (sealedGrid[x, y].owner == StoneColor.None)
+            {
+                if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
+                return false;
+            }
             if (playerColor != sealedGrid[x, y].owner)
             {
                 if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
@@ -295,8 +305,9 @@ public class BoardManager : MonoBehaviour
             if (knife != null) knife.SetActive(false);
         activeKnifeObjects.Clear();
 
-        //foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
-        //activeShieldMarkers.Clear();
+        // 방패(신의 가호) 초기화 완벽 반영!
+        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        activeShieldMarkers.Clear();
 
         System.Array.Clear(grid, 0, grid.Length);
         System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
@@ -347,7 +358,7 @@ public class BoardManager : MonoBehaviour
     }
 
     // [최적화 헬퍼] 내 주변(반경)에 돌이 하나라도 있는지 검사
-    private bool HasNeighborInRadius(int cx, int cy, int radius)
+    public bool HasNeighborInRadius(int cx, int cy, int radius)
     {
         int startX = Mathf.Max(0, cx - radius);
         int endX = Mathf.Min(boardSize - 1, cx + radius);
@@ -594,8 +605,12 @@ public class BoardManager : MonoBehaviour
 
         if (!activeShieldMarkers.ContainsKey(posKey))
         {
+            // 설정된 shieldYOffset 적용
             Vector3 spawnPos = new Vector3(x * gridSize, shieldYOffset, y * gridSize);
-            GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(90, 0, 0));
+
+            // 내 컬러에 맞춰서 방패 방향을 돌려서 생성 (자물쇠와 동일한 방식)
+            Vector3 spawnRot = (gameManager.localPlayerColor == StoneColor.Black) ? blackShieldRotation : whiteShieldRotation;
+            GameObject marker = ObjectPooler.Instance.SpawnFromPool("ShieldMarker", spawnPos, Quaternion.Euler(spawnRot));
 
             if (marker != null)
             {
@@ -819,26 +834,35 @@ public class BoardManager : MonoBehaviour
             StoneVisualController svc = currentHoveredStone.GetComponent<StoneVisualController>();
             if (svc != null)
             {
-                // 현재 호버돌을 null로 먼저 만들고 비주얼을 업데이트해야 안티매직 오버레이가 정상 복구됨
                 GameObject tempStone = currentHoveredStone;
                 currentHoveredStone = null;
 
-                // 여기서 복구!
                 ApplyStoneBuffVisuals(tempStone, svc);
 
-                // 호버가 끝났을 때, 원래 숨겨져 있어야 할 돌이면 다시 끄기
                 int x = Mathf.RoundToInt(tempStone.transform.position.x / gridSize);
                 int y = Mathf.RoundToInt(tempStone.transform.position.z / gridSize);
                 StoneColor stoneColor = (StoneColor)grid[x, y];
                 bool isMyStone = (stoneColor == gameManager.localPlayerColor);
 
-                // 현재 상대방의 투명화 스킬이 발동 중인지 확인
                 bool isOpponentInvisible = (gameManager.skillManager != null && gameManager.skillManager.oppInvisibilityTurns > 0);
+                bool isMyInvisibilityActive = (gameManager.skillManager != null && gameManager.skillManager.myInvisibilityTurns > 0);
 
-                // 만약 상대방 돌이고 + 상대가 투명화 상태라면 다시 완전 숨김 처리
-                if (!isMyStone && isOpponentInvisible)
+                // 돌의 렌더링(투명화) 상태를 완벽하게 재평가하여 강제 적용!
+                if (isMyStone && isMyInvisibilityActive)
                 {
-                    ApplyVisibilityToSingleStone(currentHoveredStone, stoneColor, false, false);
+                    float gAlpha = (stoneColor == StoneColor.Black) ? visualSettings.blackGhostAlpha : visualSettings.whiteGhostAlpha;
+                    float gMet = (stoneColor == StoneColor.Black) ? visualSettings.blackGhostMetallic : visualSettings.whiteGhostMetallic;
+                    float gSmo = (stoneColor == StoneColor.Black) ? visualSettings.blackGhostSmoothness : visualSettings.whiteGhostSmoothness;
+                    svc.SetVisibility(true, true, gAlpha, gMet, gSmo);
+                }
+                else if (!isMyStone && isOpponentInvisible)
+                {
+                    // 상대 투명돌이면 얄짤없이 완전 숨김!
+                    svc.SetVisibility(false, false);
+                }
+                else
+                {
+                    svc.SetVisibility(true, false);
                 }
             }
             currentHoveredStone = null;
@@ -900,33 +924,37 @@ public class BoardManager : MonoBehaviour
             svc.SetConsecration(false, Color.black);
         }
 
-        // --- B. 안티매직 반투명 하늘색 오버레이 로직 ---
-        bool hasMyAntiMagic = false;
-        // 시전자가 나이고, 돌 색깔도 내 돌일 때만 발동! (상대 눈엔 안 보임)
-        if (gameManager.skillManager != null && stoneColor == gameManager.localPlayerColor)
+        // --- B. 안티매직 반투명 하늘색 오버레이 (조건 강화) ---
+        bool shouldShowAntiMagic = false;
+
+        if (gameManager.skillManager != null)
         {
-            foreach (var eff in gameManager.skillManager.activeEffects)
+            // 1. 내 돌이어야 함 (stoneColor == gameManager.localPlayerColor)
+            // 2. 내가 안티매직을 시전한 상태여야 함 (eff.casterColor == gameManager.localPlayerColor)
+            if (stoneColor == gameManager.localPlayerColor)
             {
-                // 안티매직(4번)이 내 버프로 켜져 있다면
-                if (eff.skillId == 4 && eff.casterColor == gameManager.localPlayerColor)
+                foreach (var eff in gameManager.skillManager.activeEffects)
                 {
-                    hasMyAntiMagic = true;
-                    break;
+                    if (eff.skillId == 4 && eff.casterColor == gameManager.localPlayerColor)
+                    {
+                        shouldShowAntiMagic = true;
+                        break;
+                    }
                 }
             }
         }
 
-        // 마우스 호버(또는 스킬 조준점) 중인 돌이 아닐 때만 적용 (호버 색상과 안 겹치게)
+        // 마우스 호버 중이 아닐 때만 버프 색상 표시
         if (currentHoveredStone != stoneObj)
         {
-            if (hasMyAntiMagic)
+            if (shouldShowAntiMagic)
             {
-                // 반투명 하늘색(Cyan) 오버레이 적용 (투명도 0.4f)
+                // 인스펙터에서 설정한 하늘색 오버레이 적용
                 svc.SetOverlay(visualSettings.antiMagicOverlayColor, visualSettings.antiMagicOverlayBlend);
             }
             else
             {
-                // 기본 상태
+                // 버프 없으면 오버레이 해제
                 svc.SetOverlay(Color.black, 0f);
             }
         }
@@ -964,15 +992,36 @@ public class BoardManager : MonoBehaviour
     {
         if (boardMaterial == null) return;
 
-        Color targetColor = Color.black; // state == 0
-        if (state == 1) targetColor = visualSettings.boardReadyTint;       // 대기 (하얗게)
-        else if (state == 2) targetColor = visualSettings.boardHoverTint;  // 호버
-        else if (state == 3) targetColor = visualSettings.boardClickTint;  // 클릭
+        Color baseColor = originalBoardColor; // 원래 바둑판 텍스처/색상
+        Color emissionColor = Color.black;    // 빛 반사(오버레이) 끄기
 
+        if (state == 1)
+        {
+            // 1. 대기: 보드판 자체가 반투명해짐 (원래 색상에 알파값만 깎음)
+            baseColor = new Color(originalBoardColor.r, originalBoardColor.g, originalBoardColor.b, visualSettings.boardReadyTint.a);
+        }
+        else if (state == 2)
+        {
+            // 2. 호버: 불투명 바둑판(원상복구) + 은은한 반투명 초록색 오버레이
+            baseColor = originalBoardColor;
+            emissionColor = visualSettings.boardHoverTint;
+        }
+        else if (state == 3)
+        {
+            // 3. 클릭: 진한 초록색 오버레이
+            baseColor = originalBoardColor;
+            emissionColor = visualSettings.boardClickTint;
+        }
+
+        // _BaseColor (URP) 또는 _Color (Legacy) 에 알파값이 포함된 베이스 컬러 적용
+        if (boardMaterial.HasProperty("_BaseColor")) boardMaterial.SetColor("_BaseColor", baseColor);
+        else if (boardMaterial.HasProperty("_Color")) boardMaterial.SetColor("_Color", baseColor);
+
+        // 은은한 초록색 덧씌우기는 자체 발광(Emission) 기능을 활용하여 오버레이 효과 냄
         boardMaterial.EnableKeyword("_EMISSION");
-        boardMaterial.SetColor("_EmissionColor", targetColor * 1.5f); // 1.5f를 곱해 더 밝게!
+        boardMaterial.SetColor("_EmissionColor", emissionColor);
 
-        // 상태가 1(대기)이거나 2(호버)일 때만 3D 글씨를 켭니다
+        // 상태가 1(대기)이거나 2(호버)일 때만 3D 'Click!' 글씨를 켭니다
         if (boardClickTextObj != null)
             boardClickTextObj.SetActive(state == 1 || state == 2);
     }

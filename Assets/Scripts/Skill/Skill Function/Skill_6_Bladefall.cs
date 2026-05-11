@@ -62,8 +62,8 @@ public class Skill_6_Bladefall : SkillBase
  
         for (int i = 0; i < targets.Count; i++)
         {
-            // 소유자를 None으로 지정하여 흑/백 모두 접근 불가하게 만듦! (칼날비는 시전자, 상대방 모두 돌 착수 불가하도록)
-            board.ApplySealWithKnife(targets[i].x, targets[i].y, data.durationTurn, StoneColor.None);
+            // 지속시간(durationTurn)에 2를 곱해서 던져줌 (양쪽 턴 모두 차감되므로)
+            board.ApplySealWithKnife(targets[i].x, targets[i].y, data.durationTurn * 2, StoneColor.None);
             if (i < targetX.Length) { targetX[i] = targets[i].x; targetY[i] = targets[i].y; }
         }
  
