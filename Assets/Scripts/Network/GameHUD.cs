@@ -596,11 +596,32 @@ public class GameHUD : MonoBehaviour
     {
         if (skillLogText == null) return;
 
-        _logEntries.Add($"[{turnCount}턴] {userName} — {skillName}");
+        skillLogText.richText = true;
+
+        string safeUserName = SanitizeRichText(userName);
+        string safeSkillName = SanitizeRichText(skillName);
+
+        string logEntry =
+            $"<pos=5><color=#FFA500>[{turnCount}턴]</color>" +
+            $"<pos=90>{safeUserName}" +
+            $"<pos=180>{safeSkillName}";
+
+        _logEntries.Add(logEntry);
         skillLogText.text = string.Join("\n", _logEntries);
 
-        // 최신 로그로 스크롤
         StartCoroutine(ScrollToBottom());
+    }
+
+    private string SanitizeRichText(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        return text
+            .Replace("<", "＜")
+            .Replace(">", "＞");
     }
     private IEnumerator ScrollToBottom()
     {
