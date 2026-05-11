@@ -62,7 +62,8 @@ public class Skill_6_Bladefall : SkillBase
  
         for (int i = 0; i < targets.Count; i++)
         {
-            board.ApplySealWithKnife(targets[i].x, targets[i].y, data.durationTurn, casterColor);
+            // 지속시간(durationTurn)에 2를 곱해서 던져줌 (양쪽 턴 모두 차감되므로)
+            board.ApplySealWithKnife(targets[i].x, targets[i].y, data.durationTurn * 2, StoneColor.None);
             if (i < targetX.Length) { targetX[i] = targets[i].x; targetY[i] = targets[i].y; }
         }
  

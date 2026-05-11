@@ -517,9 +517,16 @@ public class GameManager : MonoBehaviour
             gameHUD.resultPanel.SetActive(false);
             gameHUD.ResetSkillLog(); // 스킬 로그도 싹 비워줍니다.
         }
-        //룰도 기본으로 돌아옴.
-        board.ruleManager.blackRules.winCondition = 5;
-        board.ruleManager.whiteRules.winCondition = 5;
+
+        // 승리 조건 초기화 (오목이니까 5로 복구)
+        if (board.ruleManager != null)
+        {
+            board.ruleManager.blackRules.winCondition = 5;
+            board.ruleManager.whiteRules.winCondition = 5;
+
+            board.ruleManager.SetPreset_Renju();
+        }
+
         // ** AI 모드일 때의 특수 처리
         if (currentMode == PlayMode.AI)
         {
@@ -568,6 +575,17 @@ public class GameManager : MonoBehaviour
         // 재시작 시 텍스트 다시 숨기기
         if (gameHUD != null) gameHUD.resultPanel.SetActive(false);
         board.UpdateForbiddenMarks(currentTurnColor);
+
+        // 스킬로 변경된 렌주룰 및 승리 조건(칠죄종) 원상 복구!
+        if (board.ruleManager != null)
+        {
+            // 칠죄종 초기화
+            board.ruleManager.blackRules.winCondition = 5;
+            board.ruleManager.whiteRules.winCondition = 5;
+
+            // 10번 렌주룰 파괴 초기화 (33, 44, 장목 금수 다시 켬)
+            board.ruleManager.SetPreset_Renju();
+        }
 
         // ** [AI 모드] 재시작했는데 AI가 흑(선공)이라면 바로 돌을 두게 만듦
         if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)

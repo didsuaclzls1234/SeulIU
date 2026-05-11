@@ -88,11 +88,13 @@ public class SkillManager : MonoBehaviour
             case 7:
                 return new Skill_7_Invisibility(data);
             case 8:
-                return new Skill_8_SevenSins(data);   // return new Skill_8_GodBless(data);
+                return new Skill_8_SevenSins(data);   
             case 9:
-                return new Skill_9_Destruction(data);
-            case 10: 
-                return new Skill_10_Consecration(data);
+                return new Skill_9_GodBless(data);
+            case 10:
+                return new Skill_10_Destruction(data);
+            case 11:
+                return new Skill_11_Consecration(data);
             // 나중에 다른 스킬들도 여기에 case 추가
             default:
                 Debug.Log($"[SkillManager] ID {id} 스킬은 아직 미구현! 빈 껍데기 반환.");
@@ -220,15 +222,30 @@ public class SkillManager : MonoBehaviour
             mySP = Mathf.Min(mySP + 1, MAX_SP);
         else
             oppSP = Mathf.Min(oppSP + 1, MAX_SP);
- 
+
         // 6. activeEffects 감소
         for (int i = activeEffects.Count - 1; i >= 0; i--)
         {
-            activeEffects[i].remainingTurns--;
-            if (activeEffects[i].remainingTurns <= 0)
-                activeEffects.RemoveAt(i);
+            // 안티매직(4번)은 '상대방'이 돌을 둘 때 지속시간을 깎음! (그래야 나-상-나-상 꽉 채워서 유지됨)
+            if (activeEffects[i].skillId == 4)
+            {
+                if (placedColor != activeEffects[i].casterColor)
+                {
+                    activeEffects[i].remainingTurns--;
+                    if (activeEffects[i].remainingTurns <= 0) activeEffects.RemoveAt(i);
+                }
+            }
+            else
+            {
+                // 다른 일반 버프(투명화 등)는 '시전자(나)'가 돌을 둘 때 깎음
+                if (placedColor == activeEffects[i].casterColor)
+                {
+                    activeEffects[i].remainingTurns--;
+                    if (activeEffects[i].remainingTurns <= 0) activeEffects.RemoveAt(i);
+                }
+            }
         }
- 
+
         // 7. UI 갱신
         if (gameManager.gameHUD != null)
         {
@@ -237,6 +254,9 @@ public class SkillManager : MonoBehaviour
         }
  
         RefreshSkillButtonStates();
+
+        // (새로 놓은 돌에 하늘색 입히고(안티매직), 버프 끝나면 지우기 위해 무조건 갱신)
+        gameManager.board.RefreshAllStonesVisuals();
     }
 
      // =========================================================
@@ -457,8 +477,8 @@ public class SkillManager : MonoBehaviour
         if (gameManager.currentMode != PlayMode.AI) return;
 
         // 기획자님 의도대로 AI는 3번(이중착수)과 본인 전용 패시브만 확정으로 들고 갑니다.
-        // 플레이어가 흑(1)이면 AI는 백이므로 10번(신성화), 플레이어가 백(2)이면 AI는 흑이므로 9번(파괴)
-        int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 10 : 9;
+        // 플레이어가 흑(1)이면 AI는 백이므로 11번(신성화), 플레이어가 백(2)이면 AI는 흑이므로 10번(파괴)
+        int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 11 : 10;
 
         oppSkillsID[0] = 3;           // 이중착수 확정
         oppSkillsID[1] = aiPassiveId; // 패시브 확정
@@ -513,8 +533,9 @@ public class SkillManager : MonoBehaviour
             case 6: ReceiveSkill_Bladefall(xs, ys); break;
             case 7: ReceiveSkill_Invisibility(xs, ys); break;
             case 8: ReceiveSkill_SevenSins(); break; //ReceiveSkill_GodBless(xs, ys); break;
-            case 9: ReceiveSkill_Destruction(); break;
-            case 10: ReceiveSkill_Consecration(); break;
+            case 9: ReceiveSkill_GodBless(xs, ys); break; 
+            case 10: ReceiveSkill_Destruction(); break;
+            case 11: ReceiveSkill_Consecration(); break;
             default:
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
@@ -546,21 +567,37 @@ public class SkillManager : MonoBehaviour
             });
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
+
+        // * 상대방이 안티매직을 썼을 때도 갱신이 필요할 수 있으므로 (혹은 턴 만료 시)
+        gameManager.board.RefreshAllStonesVisuals();
+
         Debug.Log($"[Network] 상대방이 {skillData.skillName}을 사용했습니다.");
         gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
+
+        gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
     {
-        // xs[0], ys[0] = 이동 전 좌표 제거
-        gameManager.board.grid[xs[0], ys[0]] = 0;
-        gameManager.board.RemoveStoneObjectAt(xs[0], ys[0]);
+        int tx = xs[0];
+        int ty = ys[0];
+        int destX = xs[1];
+        int destY = ys[1];
 
-        // xs[1], ys[1] = 이동 후 좌표 배치
+        // 1. 이동하기 전에 원래 자리에 방패(신의 가호)가 있었는지 확인!
+        bool hadShield = gameManager.board.shieldGrid[tx, ty];
+
+        // 2. 이동 전 좌표 제거 (돌 + 방패)
+        gameManager.board.grid[tx, ty] = 0;
+        gameManager.board.RemoveStoneObjectAt(tx, ty);
+        if (hadShield) gameManager.board.RemoveShield(tx, ty);
+
+        // 3. 이동 후 좌표 배치 (돌 + 방패)
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
-        GameObject newStone = gameManager.board.PlaceStone(xs[1], ys[1], opponentColor);
+        GameObject newStone = gameManager.board.PlaceStone(destX, destY, opponentColor);
+        if (hadShield) gameManager.board.ApplyShield(destX, destY);
 
-        // 상대 투명화 시전 중일 때는 코루틴으로 깜빡인 후 숨김!
+        // 4. 상대 투명화 시전 중일 때는 코루틴으로 깜빡인 후 숨김!
         if (oppInvisibilityTurns > 0 && newStone != null)
         {
             StartCoroutine(gameManager.board.BlinkAndHideRoutine(newStone, opponentColor, false));
@@ -681,33 +718,35 @@ public class SkillManager : MonoBehaviour
 
         Debug.Log("[Network] 칠죄종 수신 — 내 승리 조건 7목 강제 적용!");
     }
-    //private void ReceiveSkill_GodBless(int[] xs, int[] ys)
-    //{
-    //    // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
-    //    for (int i = 0; i < xs.Length; i++)
-    //    {
-    //        if (xs[i] != -1 && ys[i] != -1)
-    //        {
-    //            // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
-    //            gameManager.board.ApplyShield(xs[i], ys[i]);
-
-    //            // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
-    //            GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
-    //            if (stone != null)
-    //            {
-    //                MeshRenderer mr = stone.GetComponent<MeshRenderer>();
-
-    //                // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
-    //                if (mr != null && mr.enabled)
-    //                {
-    //                    gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
 
     // 9번 스킬
+    private void ReceiveSkill_GodBless(int[] xs, int[] ys)
+    {
+        // xs, ys 배열에는 선택한 돌과 랜덤으로 선택된 돌의 좌표가 들어있습니다.
+        for (int i = 0; i < xs.Length; i++)
+        {
+            if (xs[i] != -1 && ys[i] != -1)
+            {
+                // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
+                gameManager.board.ApplyShield(xs[i], ys[i]);
+
+                // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
+                GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
+                if (stone != null)
+                {
+                    MeshRenderer mr = stone.GetComponent<MeshRenderer>();
+
+                    // 내 화면에서 이 돌이 보일 때만 하늘색으로 깜빡임! (투명화 스킬 관련 예외처리)
+                    if (mr != null && mr.enabled)
+                    {
+                        gameManager.board.BlinkStoneEffect(stone, gameManager.board.visualSettings.godBlessBlinkColor);
+                    }
+                }
+            }
+        }
+    }
+
+    // 10번 스킬
     private void ReceiveSkill_Destruction()
     {
         // 상대방(흑돌)이 룰 파괴를 썼으니, 내 화면의 RuleManager에도 동일하게 적용
@@ -722,7 +761,7 @@ public class SkillManager : MonoBehaviour
         Debug.Log("[Network] 룰 파괴 수신 — 흑돌 금수 해제 적용!");
     }
 
-    // 10번 스킬
+    // 11번 스킬
     private void ReceiveSkill_Consecration()
     {
         // 상대방(백돌)이 10번 패시브를 가지고 있으면 내 화면(흑돌)의 보드도 신성화 모드로 변경
@@ -966,12 +1005,13 @@ public class SkillManager : MonoBehaviour
     public void AutoSelectRandomSkills()
     {
         // 1. 선택 가능한 전체 스킬 풀(Pool) 리스트
-        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8};//전용 스킬 9,10 은 별도로.
+        List<int> availableSkills = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9};//전용 스킬 9,10 은 별도로.
 
+        // 10번: 렌주룰 파괴(흑), 11번: 신성화(백)
         if (gameManager.localPlayerColor == StoneColor.Black)
-            availableSkills.Add(9);
-        else
             availableSkills.Add(10);
+        else
+            availableSkills.Add(11);
 
         // 2. 이미 선택된 스킬은 목록에서 제거
         foreach (int selectedId in mySkillsID)
@@ -1239,7 +1279,8 @@ public class SkillManager : MonoBehaviour
                 remainingTurns = skill.data.durationTurn,
                 isBuff = true,
                 effectName = skill.data.skillName,
-                description = skill.data.description
+                description = skill.data.description,
+                casterColor = gameManager.localPlayerColor
             });
             gameManager.gameHUD?.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
@@ -1254,12 +1295,17 @@ public class SkillManager : MonoBehaviour
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
         }
 
+        // ** 안티매직 시전 즉시 모든 내 돌에 하늘색 오버레이를 입히기 위해 호출!
+        gameManager.board.RefreshAllStonesVisuals();
+
         // 스킬 사용이 끝났으므로 상태 초기화
         gameManager.currentState = GameState.Playing;
         selectedSkillSlot = -1;
         gameManager.board.HideSkillTargetMarkers();
         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
         RefreshSkillButtonStates();
+
+        gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
     }
 
     // =========================================================
@@ -1273,19 +1319,37 @@ public class SkillManager : MonoBehaviour
             case 3: // DoubleDown — placedX,Y 제외 랜덤 착수
             {
                 List<Vector2Int> candidates = new List<Vector2Int>();
+                int radius = 2; // 반경 2칸 이내 제한 
+
                 for (int x = 0; x < gameManager.board.boardSize; x++)
+                {
                     for (int y = 0; y < gameManager.board.boardSize; y++)
-                        if (!(x == placedX && y == placedY) &&
-                            gameManager.board.IsValidMove(x, y, gameManager.currentTurnColor, silent: true))
-                            candidates.Add(new Vector2Int(x, y));
- 
+                    {
+                        if (!(x == placedX && y == placedY) && gameManager.board.IsValidMove(x, y, gameManager.currentTurnColor, silent: true))
+                        {
+                            // 주변에 다른 돌이 있을 때만 후보에 넣음
+                            if (gameManager.board.HasNeighborInRadius(x, y, radius))
+                                candidates.Add(new Vector2Int(x, y));
+                        }
+                    }
+                }
+
+                // 만약 초반이라 주변 자리가 없으면 전체 보드에서 찾음 (안전장치)
+                if (candidates.Count == 0)
+                {
+                    for (int x = 0; x < gameManager.board.boardSize; x++)
+                        for (int y = 0; y < gameManager.board.boardSize; y++)
+                            if (!(x == placedX && y == placedY) && gameManager.board.IsValidMove(x, y, gameManager.currentTurnColor, silent: true))
+                                candidates.Add(new Vector2Int(x, y));
+                }
+
                 if (candidates.Count > 0)
                 {
                     Vector2Int rand = candidates[UnityEngine.Random.Range(0, candidates.Count)];
                     gameManager.ExecutePlaceStonePublic(
-                        rand.x, rand.y,
-                        gameManager.currentTurnColor,
-                        PlacementType.SkillInduced);
+                    rand.x, rand.y,
+                    gameManager.currentTurnColor,
+                    PlacementType.SkillInduced);
 
                     // 투명화 상태라면 방금 놓은 랜덤 돌도 내 화면에서 깜빡인 후 숨김
                     if (myInvisibilityTurns > 0)
@@ -1293,10 +1357,19 @@ public class SkillManager : MonoBehaviour
                         GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
                         if (extraStone != null) StartCoroutine(gameManager.board.BlinkAndHideRoutine(extraStone, gameManager.localPlayerColor, true));
                     }
+                    else
+                    {
+                        // 노란색 점멸 복구
+                        GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
+                        if (extraStone != null) gameManager.board.BlinkStoneEffect(extraStone, gameManager.board.visualSettings.extraPlaceBlinkColor);
+                    }
 
-                        // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
-                        StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
-                        Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
+                    // 방금 강제로 튀어나온 랜덤 돌에도 안티매직 등 버프 색상을 즉시 묻혀줌!
+                    gameManager.board.RefreshAllStonesVisuals();
+
+                    // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
+                    StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
+                    Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
             }
