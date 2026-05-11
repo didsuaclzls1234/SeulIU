@@ -676,7 +676,8 @@ public class GameManager : MonoBehaviour
                 OnStonePlacedLocally?.Invoke(randomMove.x, randomMove.y, moveHistory.Count - 1);
 
             if (currentState == GameState.GameOver) return;
-
+             // ↓ 추가: 플레이어 시점이라면 탑뷰로 강제 복귀
+            cameraSwitcher?.ForceTopView();
             PassTurn(currentTurnColor);
         }
     }
