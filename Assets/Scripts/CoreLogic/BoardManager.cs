@@ -141,6 +141,8 @@ public class BoardManager : MonoBehaviour
     [Header("Consecration State")]
     public bool isConsecrationActive = false;
 
+    // 방금 착수되어 0.6초간 깜빡이는(불투명 유지) 돌들을 보호할 리스트 추가
+    private HashSet<GameObject> blinkingStones = new HashSet<GameObject>();
     void Awake()
     {
         // 게임 시작과 동시에 빈 배열 생성
@@ -312,7 +314,9 @@ public class BoardManager : MonoBehaviour
         System.Array.Clear(grid, 0, grid.Length);
         System.Array.Clear(shieldGrid, 0, shieldGrid.Length);
         System.Array.Clear(sealedGrid, 0, sealedGrid.Length); // 추가
-        
+
+        blinkingStones.Clear();
+
         isConsecrationActive = false;
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }
@@ -966,25 +970,20 @@ public class BoardManager : MonoBehaviour
         StoneVisualController svc = stone.GetComponent<StoneVisualController>();
         if (svc == null) yield break;
 
-        // 1. 일단 완전 보이게 설정 (기본 착수) + 노란색 점멸
+        blinkingStones.Add(stone); // 🚨 락(Lock) 걸기: 새로고침 간섭 차단
+
+        // 1. 0.6초 동안 100% 불투명한 상태로 노랗게 번쩍이게 만듦
         svc.SetVisibility(true, false);
         svc.PlayBlinkEffect(visualSettings.extraPlaceBlinkColor, 0.7f);
 
-        // 2. 원하는 시간만큼 대기 (예: 0.6초)
+        // 2. 대기 (상대방 눈에도, 내 눈에도 불투명도 100%로 확실하게 보임)
         yield return new WaitForSeconds(0.6f);
 
-        // 0.6초가 지나는 동안 턴이 넘어가서 투명화가 풀렸다면, 숨기면 안 됨
-        bool stillInvisible = false;
-        if (gameManager.skillManager != null)
-        {
-            stillInvisible = isMyStone ? (gameManager.skillManager.myInvisibilityTurns > 0) : (gameManager.skillManager.oppInvisibilityTurns > 0);
-        }
+        blinkingStones.Remove(stone); // 🚨 락 해제
 
-        // 여전히 투명화 상태일 때만 숨김 처리
-        if (stillInvisible)
-        {
-            ApplyVisibilityToSingleStone(stone, color, false, isMyStone);
-        }
+        // 3. 0.6초가 지난 후 다시 싹 새로고침!
+        // (이때 안티매직 색깔, 턴이 지나서 풀린 투명화, 유지되는 투명화 등이 완벽하게 재평가되어 입혀짐)
+        RefreshAllStonesVisuals();
     }
 
     // 바둑판 전체 색상 변경 (0: 원상복구, 1: 호버, 2: 클릭)
@@ -1072,6 +1071,9 @@ public class BoardManager : MonoBehaviour
         foreach (GameObject stoneObj in activeStones)
         {
             if (stoneObj == null || !stoneObj.activeSelf) continue;
+
+            // 핵심 추가: 0.6초간 100% 불투명하게 깜빡이는 중인 돌은 덮어쓰지 않고 무시
+            if (blinkingStones.Contains(stoneObj)) continue;
 
             StoneVisualController svc = stoneObj.GetComponent<StoneVisualController>();
             if (svc == null) continue;
