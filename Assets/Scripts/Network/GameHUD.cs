@@ -498,7 +498,18 @@ public class GameHUD : MonoBehaviour
                             || (skillId == 11 && myColor != StoneColor.White);
 
             skillSelectButtons[i].interactable = !isRestricted;
-
+            if (isRestricted)
+            {
+                Transform iconTr =skillSelectButtons[i].transform.Find("IconImage");
+                if (iconTr != null)
+                {
+                    Image iconImg1 = iconTr.GetComponent<Image>();
+                    if (iconImg1 != null)
+                    {
+                        iconImg1.color = Color.gray;
+                    }
+                }
+            }
             // CSV 데이터 가져오기
             SkillData data = default(SkillData);
             if (skillManager != null && !skillManager.skillDatabase.TryGetValue(skillId, out data)) continue;
