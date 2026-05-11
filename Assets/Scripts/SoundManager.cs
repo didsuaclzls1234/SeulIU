@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -119,5 +120,21 @@ public class SoundManager : Singleton<SoundManager>
     {
         float volume = Mathf.Log10(sliderValue) * 20;
         masterMixer.SetFloat("SFXVolume", volume);
+    }
+    //sfx 반복 재생 (예: 스킬 효과음이 여러 번 겹쳐서 재생되어야 할 때)
+    public void PlaySFXRepeat(string name, int count)
+    {
+        StartCoroutine(PlaySFXRepeatRoutine(name, count));
+    }
+    // 효과음 반복 재생 코루틴
+    private IEnumerator PlaySFXRepeatRoutine(string name, int count)
+    {
+        if (!sfxDictionary.TryGetValue(name, out AudioClip clip)) yield break;
+
+        for (int i = 0; i < count; i++)
+        {
+            sfxSource.PlayOneShot(clip);
+            yield return new WaitForSeconds(clip.length);
+        }
     }
 }

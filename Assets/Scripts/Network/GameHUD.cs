@@ -121,6 +121,9 @@ public class GameHUD : MonoBehaviour
     [Header("상대방 스킬 덱 표시")]
     public Image[] oppDeckSlotImages;
 
+    [Header("사운드 설정")]
+    public int victorySFXCount = 1;  // 인스펙터에서 조절
+    public int defeatSFXCount = 1;   // 인스펙터에서 조절
 
     private void Start()
     {
@@ -279,6 +282,13 @@ public class GameHUD : MonoBehaviour
         {
             resultText.text = $"{winner.ToKorean()}돌 승리!";
         }
+
+        SoundManager.Instance.StopBGM(); // ↓ 추가
+         bool isWin = (winner == myColor);
+        if (isWin)
+            SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
+        else
+            SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
     }
 
     public void ShowOpponentLeft()
@@ -807,6 +817,7 @@ public class GameHUD : MonoBehaviour
     {
         skillSelectPanel?.SetActive(true);
         inGameUI?.SetActive(false);
+        SoundManager.Instance.PlayBGM("BattleBGM");
     }
 
     public void HideSkillSelectPanel()

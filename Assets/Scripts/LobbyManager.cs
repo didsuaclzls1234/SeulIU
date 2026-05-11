@@ -54,7 +54,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         });
 
         // (브금 테스트 예시)
-        //SoundManager.Instance.PlayBGM("Example");
+         SoundManager.Instance.PlayBGM("LobbyBGM");
     }
     private void Update()
     {
