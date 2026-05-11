@@ -2,9 +2,9 @@ using ExitGames.Client.Photon;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 /// <summary>
 /// VS_Player 씬의 중앙 조율자.
@@ -25,13 +25,24 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     public GameManager gameManager;
     public SkillManager skillManager;
     public TimerManager timerManager;
-    
+
+    [Header("Ready Button UI")]
+    [SerializeField] private Image readyButtonImage;
+    [SerializeField] private Sprite readyButtonSelectedSprite;
+
+    [Header("Deck Slot Container UI")]
+    [SerializeField] private Image deckSlotContainerImage;
+    [SerializeField] private Sprite blackDeckSlotContainerSprite;
+    [SerializeField] private Sprite whiteDeckSlotContainerSprite;
 
     // 재도전 요청을 내가 보냈는지 여부 (중복 요청 방지)
     private bool _isRematchRequested = false;
 
+    // Ready 버튼 중복 전송 차단 플래그
+    private bool _isReadySent = false;
+
     #region 생명주기
-    
+
     private void Start()
     {
         // 로비에서 정해온 모드를 GameManager에 주입
@@ -49,7 +60,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameManager.OnStonePlacedLocally += SendPlaceStoneEvent;
             gameManager.OnGameOverLocally += SendGameOverEvent;
 
-            // 2. 방장(Master Client)이면 흑/백 배정 시작
+            // 방장(Master Client)이면 흑/백 배정 시작
             if (PhotonNetwork.IsMasterClient)
             {
                 RoleAssigner.AssignAndBroadcast();
@@ -74,75 +85,106 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         gameHUD.ShowRoleAssigned(playerColor);
         gameHUD.SetPlayerNames("나", "AI");
         gameHUD.DisplayMyRole(playerColor);
+        ApplyDeckSlotContainerTheme(playerColor);
         gameHUD.ShowSkillSelectPanel();
         timerManager.StartSkillSelectTimer();
 
-        // 3. AI가 스킬을 랜덤으로 고를 시간을 줌 (약 1.5초 뒤)
+        // 3. AI가 스킬을 랜덤으로 고를 시간을 줌
         yield return new WaitForSeconds(1.5f);
 
-        // (SkillManager에서 알아서 3번+패시브 챙기고 준비 완료까지 침)
-        if (skillManager != null) skillManager.AI_AutoSelectSkills();
+        // SkillManager에서 알아서 3번 + 패시브 챙기고 준비 완료까지 처리
+        if (skillManager != null)
+        {
+            skillManager.AI_AutoSelectSkills();
+        }
     }
 
     private void OnDestroy()
     {
         // 멀티플레이일 때만 해제
-        if (gameManager.currentMode == PlayMode.Multiplayer)
+        if (gameManager != null && gameManager.currentMode == PlayMode.Multiplayer)
+        {
             PhotonNetwork.RemoveCallbackTarget(this);
+        }
 
         if (gameManager)
         {
             gameManager.OnStonePlacedLocally -= SendPlaceStoneEvent;
             gameManager.OnGameOverLocally -= SendGameOverEvent;
-            //gameManager.OnUndoRequestedLocally -= SendUndoRequestEvent;
-            //gameManager.OnUndoReplyLocally -= SendUndoReplyEvent;
-            //gameManager.OnDoubleDownExtraPlaced -= SendDoubleDownExtraEvent;
         }
+    }
+
+    #endregion
+
+    #region UI
+
+    private void ApplyDeckSlotContainerTheme(StoneColor playerColor)
+    {
+        if (deckSlotContainerImage == null)
+        {
+            Debug.LogWarning("[GameSession] DeckSlotContainer Image가 연결되지 않았습니다.");
+            return;
+        }
+
+        Sprite selectedSprite = null;
+
+        if (playerColor == StoneColor.Black)
+        {
+            selectedSprite = blackDeckSlotContainerSprite;
+        }
+        else if (playerColor == StoneColor.White)
+        {
+            selectedSprite = whiteDeckSlotContainerSprite;
+        }
+
+        if (selectedSprite == null)
+        {
+            Debug.LogWarning($"[GameSession] {playerColor.ToKorean()}용 DeckSlotContainer Sprite가 연결되지 않았습니다.");
+            return;
+        }
+
+        deckSlotContainerImage.sprite = selectedSprite;
     }
 
     #endregion
 
     #region 스킬 선택
 
-    //private int[] _selectedSkillIDs = new int[] { -1, -1, -1 }; // -1 = 비어있음
-
     private void InitSkillButtons()
     {
+        if (gameHUD == null)
+        {
+            Debug.LogError("[GameSession] GameHUD가 연결되지 않았습니다.");
+            return;
+        }
+
+        if (skillManager == null)
+        {
+            Debug.LogError("[GameSession] SkillManager가 연결되지 않았습니다.");
+            return;
+        }
+
+        if (gameHUD.skillSelectButtons == null || gameHUD.skillSelectButtons.Length == 0)
+        {
+            Debug.LogError("[GameSession] GameHUD의 skillSelectButtons 배열이 비어 있습니다.");
+            return;
+        }
+
         for (int i = 0; i < gameHUD.skillSelectButtons.Length; i++)
         {
+            if (gameHUD.skillSelectButtons[i] == null)
+            {
+                Debug.LogError($"[GameSession] skillSelectButtons[{i}] 버튼이 연결되지 않았습니다.");
+                continue;
+            }
+
             int skillId = i + 1;
-            // 
+
             gameHUD.skillSelectButtons[i].onClick.RemoveAllListeners();
             gameHUD.skillSelectButtons[i].onClick.AddListener(() =>
-            skillManager.OnSkillSelected(skillId));
+                skillManager.OnSkillSelected(skillId));
         }
     }
-
-    // private void OnSkillButtonClicked(int skillId)
-    // {
-    //     for (int slot = 0; slot < 3; slot++)
-    //     {
-    //         if (_selectedSkillIDs[slot] == skillId)
-    //         {
-    //             _selectedSkillIDs[slot] = -1;
-    //             skillManager.OnSkillSelected(-1);
-    //             return;
-    //         }
-    //     }
-
-    //     for (int slot = 0; slot < 3; slot++)
-    //     {
-    //         if (_selectedSkillIDs[slot] == -1)
-    //         {
-    //             _selectedSkillIDs[slot] = skillId;
-    //             skillManager.OnSkillSelected(skillId);
-    //             return;
-    //         }
-    //     }
-
-    //     Debug.Log($"[GameSession] 스킬 3개 이미 선택됨 / 현재 선택: [{string.Join(", ", _selectedSkillIDs)}]");
-    // }
-    //스킬매니저에서 가져오기만 하도록
 
     #endregion
 
@@ -153,24 +195,30 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         // 닉네임 세팅 전에 PlayerList 확인
         int blackActorNumber = (int)data[0];
-        float serverTime     = (float)data[1];
+        float serverTime = (float)data[1];
 
-        // 내가 흑인지 백인지 판별 (1: 흑, 2: 백)
+        // 내가 흑인지 백인지 판별
         StoneColor myColor = (PhotonNetwork.LocalPlayer.ActorNumber == blackActorNumber)
-            ? StoneColor.Black : StoneColor.White;
+            ? StoneColor.Black
+            : StoneColor.White;
+
         // GameManager에 세팅
         gameManager.localPlayerColor = myColor;
-        gameManager.currentMode = PlayMode.Multiplayer; // 자동으로 멀티 모드 전환
+        gameManager.currentMode = PlayMode.Multiplayer;
 
         // 닉네임 세팅
         foreach (Player player in PhotonNetwork.PlayerList)
         {
-        if (player.IsLocal)
-            gameManager.localPlayerName = player.NickName;
-        else
-            gameManager.remotePlayerName = player.NickName;
+            if (player.IsLocal)
+            {
+                gameManager.localPlayerName = player.NickName;
+            }
+            else
+            {
+                gameManager.remotePlayerName = player.NickName;
+            }
         }
-        
+
         Debug.Log($"[GameSession] 내 색: {myColor.ToKorean()}");
 
         if (gameHUD)
@@ -178,6 +226,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             gameHUD.ShowRoleAssigned(myColor);
             gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
             gameHUD.DisplayMyRole(myColor);
+            ApplyDeckSlotContainerTheme(myColor);
             gameHUD.ShowSkillSelectPanel();
             timerManager.StartSkillSelectTimer();
         }
@@ -194,7 +243,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         StoneColor receivedColor = (StoneColor)(int)data[0];
         int x = (int)data[1];
         int y = (int)data[2];
-        int seq = (int)data[3]; // 스킬 대비용 시퀀스 넘버
+        int seq = (int)data[3];
 
         // GameManager로 색상과 순서까지 전부 넘겨서 안전하게 처리
         gameManager.ReceiveNetworkMove(x, y, receivedColor, seq);
@@ -224,51 +273,22 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     // 4. 스킬 선택 완료 후 Ready 버튼 클릭 시 호출
     private void HandleSyncPlayerInfo(object[] data)
     {
-        string oppNickname  = (string)data[0];
-        int[]  oppSkillIDs  = (int[])data[1];
+        string oppNickname = (string)data[0];
+        int[] oppSkillIDs = (int[])data[1];
 
         // 상대방 닉네임 저장
         gameManager.remotePlayerName = oppNickname;
 
         // 상대방 스킬 덱 등록
         skillManager.InitializeSkillDeck(false, oppSkillIDs);
-        skillManager.SetPlayerReady(false); // 한 줄로 교체
-        // 상대방 정보만 저장, SetPlayerReady는 내가 Ready 버튼 눌렀을 때만
-        // skillManager.isRemotePlayerReady = true;
-
-        // Debug.Log($"[GameSession] 상대방 정보 수신 / 내 Ready: {skillManager.isLocalPlayerReady}");
-
-        // // 내가 이미 Ready 상태면 게임 시작
-        // if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
-        // {   
-        //     gameHUD?.HideSkillSelectPanel();
-        //     gameManager.StartGameAfterSelection();
-        // }    
-
-        
+        skillManager.SetPlayerReady(false);
     }
-
-    //private void HandleUndoRequest()
-    //{
-    //gameManager.ReceiveNetworkUndoRequest();
-    //}
-
-    //private void HandleUndoReply(object[] data)
-    //{
-    //bool isAccepted = (bool)data[0];
-    //// 결과 보여주고 타이머 재개하는 함수
-    //    if (gameHUD != null)
-    //    {
-    //        gameHUD.ShowUndoResultAndClose(isAccepted);
-    //    }
-    //    gameManager.ReceiveNetworkUndoReply(isAccepted);
-    //}
 
     private void HandleSyncTimer(object[] data)
     {
-        float serverTime     = (float)data[0];
-        float elapsed        = (float)(PhotonNetwork.Time - serverTime);
-        float remainingTime  = timerManager.turnLimit - elapsed;
+        float serverTime = (float)data[0];
+        float elapsed = (float)(PhotonNetwork.Time - serverTime);
+        float remainingTime = timerManager.turnLimit - elapsed;
 
         timerManager.SyncTimerFromServer(remainingTime);
     }
@@ -276,10 +296,10 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     // 스킬 사용 수신
     private void HandleUseSkill(object[] data)
     {
-        int   skillId = (int)data[0];
-        int[] xs      = (int[])data[1];
-        int[] ys      = (int[])data[2];
-        int   turnCount = (int)data[3]; // [추가]
+        int skillId = (int)data[0];
+        int[] xs = (int[])data[1];
+        int[] ys = (int[])data[2];
+        int turnCount = (int)data[3];
 
         // SkillManager에게 넘겨서 상대방 화면에서도 똑같이 실행하게 함
         if (skillManager != null)
@@ -287,33 +307,25 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             skillManager.ReceiveOpponentSkill(skillId, xs, ys, turnCount);
         }
     }
-    
-    // private void HandleExtraPlacement(object[] data)
-    // {
-    // StoneColor color = (StoneColor)(int)data[0];
-    // int x = (int)data[1];
-    // int y = (int)data[2];
 
-    // gameManager.ReceiveExtraPlacement(x, y, color);
-    // }
-    
     #endregion
 
-    #region Photon이벤트 발신
-    
-    // [발신] 내 착수 데이터 전송 (Color, X, Y, Seq)
+    #region Photon 이벤트 발신
+
+    // [발신] 내 착수 데이터 전송
     private void SendPlaceStoneEvent(int x, int y, int seq)
     {
-        // 1. 돌 색상, X, Y, 순서(seq) 배열에 담기
         object[] data = new object[] { (int)gameManager.localPlayerColor, x, y, seq };
 
-        // 2. 이미 내 화면엔 돌이 렌더링 됐으므로 '나 빼고(Others)' 전송
+        // 이미 내 화면엔 돌이 렌더링 됐으므로 나 빼고 전송
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(PhotonEventCodes.PlaceStone, data, opts, SendOptions.SendReliable);
-        
-        // 내가 착수했으니 타이머 동기화 (방장만)
+
+        // 내가 착수했으니 타이머 동기화
         if (PhotonNetwork.IsMasterClient)
+        {
             SendSyncTimer();
+        }
 
         // 타이머 재시작
         timerManager?.StartTurnTimer();
@@ -328,22 +340,32 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     }
 
     // Ready 버튼 클릭 시 호출
-    private bool _isReadySent = false;//중복전송차단 플래그
     public void SendSyncPlayerInfo()
-    {   
-         //  슬롯에 -1(선택X)이 하나라도 있으면 전송 차단
+    {
+        // 슬롯에 -1(선택X)이 하나라도 있으면 전송 차단
         for (int i = 0; i < skillManager.mySkillsID.Length; i++)
         {
             if (skillManager.mySkillsID[i] == -1)
             {
                 Debug.Log($"[GameSession] {i + 1}번 슬롯이 비어있습니다. 스킬을 3개 모두 선택해 주세요.");
-                return; // 전송 안 함
+                return;
             }
         }
 
-        //검증 통과했으면 중복 전송 방지 플래그 체크
-        if (_isReadySent) return;
-        _isReadySent = true;
+        // 검증 통과했으면 중복 전송 방지 플래그 체크
+        if (_isReadySent)
+        {
+            return;
+        }
+        else
+        {
+            _isReadySent = true;
+
+            if (readyButtonImage != null && readyButtonSelectedSprite != null)
+            {
+                readyButtonImage.sprite = readyButtonSelectedSprite;
+            }
+        }
 
         object[] data = new object[]
         {
@@ -357,35 +379,15 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         // 내 Ready 처리
         skillManager.InitializeSkillDeck(true, skillManager.mySkillsID);
         skillManager.SetPlayerReady(true);
-        // skillManager.isLocalPlayerReady = true;
-
-        // // 상대방이 이미 Ready면 게임 시작
-        // if (skillManager.isLocalPlayerReady && skillManager.isRemotePlayerReady)
-        // {
-        //     gameHUD?.HideSkillSelectPanel();
-        //     gameManager.StartGameAfterSelection();
-        // }
     }
-
-    //무르기 요청 이벤트 발신
-    //private void SendUndoRequestEvent()
-    //{
-    //RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-    //PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoRequest, null, opts, SendOptions.SendReliable);
-    //}
-
-    //무르기 수락/거절 이벤트 발신
-    //private void SendUndoReplyEvent(bool isAccepted)
-    //{
-    //object[] data = new object[] { isAccepted };
-    //RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-    //PhotonNetwork.RaiseEvent(PhotonEventCodes.UndoReply, data, opts, SendOptions.SendReliable);
-    //}
 
     // 타이머 동기화 - 방장이 턴 시작 시 호출
     public void SendSyncTimer()
     {
-        if (!PhotonNetwork.IsMasterClient) return;
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
 
         object[] data = new object[] { (float)PhotonNetwork.Time };
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
@@ -393,27 +395,23 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     }
 
     // 스킬 사용 - 발신자 측에서 좌표 미리 계산 후 전송
-    public void SendUseSkill(int skillId, int[] xs, int[] ys,int turnCount)
+    public void SendUseSkill(int skillId, int[] xs, int[] ys, int turnCount)
     {
         object[] data = new object[] { skillId, xs, ys, turnCount };
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(PhotonEventCodes.UseSkill, data, opts, SendOptions.SendReliable);
     }
-    
-    // Double Down 스킬로 AI가 랜덤 착수했을 때 발신
-    // private void SendDoubleDownExtraEvent(int x, int y, int seq)
-    // {
-    // object[] data = new object[] { (int)gameManager.localPlayerColor, x, y, seq };
-    // RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-    // PhotonNetwork.RaiseEvent(PhotonEventCodes.ExtraPlacement, data, opts, SendOptions.SendReliable);
-    // }
 
     // ── 재도전(Rematch) ──────────────────────────────────────
 
-/// <summary>결과 화면에서 "다시하기" 누르면 GameHUD → 여기로 옴</summary>
+    /// <summary>결과 화면에서 "다시하기" 누르면 GameHUD → 여기로 옴</summary>
     public void RequestRematch()
     {
-        if (_isRematchRequested) return;
+        if (_isRematchRequested)
+        {
+            return;
+        }
+
         _isRematchRequested = true;
 
         // 요청 패킷 전송
@@ -421,7 +419,10 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         PhotonNetwork.RaiseEvent(PhotonEventCodes.RematchRequest, null, opts, SendOptions.SendReliable);
 
         // 요청자 화면: 대기 패널 표시
-        if (gameHUD != null) gameHUD.ShowRematchWaitingPanel();
+        if (gameHUD != null)
+        {
+            gameHUD.ShowRematchWaitingPanel();
+        }
 
         Debug.Log("[GameSession] 재도전 요청 전송");
     }
@@ -437,7 +438,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     public void OnRematchDeclined()
     {
         SendRematchReply(false);
-        if (gameHUD != null) gameHUD.HideRematchPanel();
+
+        if (gameHUD != null)
+        {
+            gameHUD.HideRematchPanel();
+        }
     }
 
     private void SendRematchReply(bool isAccepted)
@@ -450,7 +455,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     /// <summary>상대방이 재도전 요청을 보내왔을 때</summary>
     private void HandleRematchRequest()
     {
-        if (gameHUD != null) gameHUD.ShowRematchReceivedPanel();
+        if (gameHUD != null)
+        {
+            gameHUD.ShowRematchReceivedPanel();
+        }
+
         Debug.Log("[GameSession] 재도전 요청 수신");
     }
 
@@ -466,8 +475,12 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         }
         else
         {
-            // 거절 메시지 표시 (resultPanel은 유지)
-            if (gameHUD != null) gameHUD.ShowRematchDeclinedMessage();
+            // 거절 메시지 표시
+            if (gameHUD != null)
+            {
+                gameHUD.ShowRematchDeclinedMessage();
+            }
+
             Debug.Log("[GameSession] 재도전 거절 수신");
         }
     }
@@ -479,18 +492,23 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
     private void ExecuteFullReset()
     {
         // 패널/플래그 초기화
-        if (gameHUD != null) gameHUD.HideRematchPanel();
-        _isReadySent        = false;
-        //_selectedSkillIDs   = new int[] { -1, -1, -1 };
+        if (gameHUD != null)
+        {
+            gameHUD.HideRematchPanel();
+        }
+
+        _isReadySent = false;
         _isRematchRequested = false;
 
         // 게임 로직 초기화
         skillManager.ResetForRematch();
         gameManager.ResetForRematch();
 
-        // 스킬 선택창 UI 리셋 (버튼 선택 상태 등)
+        // 스킬 선택창 UI 리셋
         if (gameHUD != null)
-            gameHUD.skillSelectPanel?.SetActive(false); // HandleAssignRoles에서 다시 열림
+        {
+            gameHUD.skillSelectPanel?.SetActive(false);
+        }
 
         // Master Client가 역할 재배정 → 양쪽 모두 HandleAssignRoles 수신 후 스킬 선택 시작
         if (PhotonNetwork.IsMasterClient)
@@ -500,9 +518,11 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         Debug.Log("[GameSession] ExecuteFullReset 완료 — 역할 재배정 대기");
     }
+
     #endregion
-    
+
     #region Photon 이벤트 수신
+
     // ==========================================
     // [수신] 서버에서 이벤트(패킷)가 날아왔을 때
     // ==========================================
@@ -521,57 +541,64 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
             case PhotonEventCodes.GameOver:
                 HandleGameOver((object[])photonEvent.CustomData);
                 break;
+
             case PhotonEventCodes.SyncPlayerInfo:
                 HandleSyncPlayerInfo((object[])photonEvent.CustomData);
                 break;
+
             case PhotonEventCodes.SyncTimer:
                 HandleSyncTimer((object[])photonEvent.CustomData);
                 break;
+
             case PhotonEventCodes.UseSkill:
                 HandleUseSkill((object[])photonEvent.CustomData);
                 break;
-            //case PhotonEventCodes.UndoRequest:
-            //    HandleUndoRequest();
-            //    break;
-            //case PhotonEventCodes.UndoReply:
-            //    HandleUndoReply((object[])photonEvent.CustomData);
-            //    break;
-            // case PhotonEventCodes.ExtraPlacement:
-            //     HandleExtraPlacement((object[])photonEvent.CustomData); // 착수 처리 로직 재활용
-            //     break;
+
             case PhotonEventCodes.RematchRequest:
                 HandleRematchRequest();
                 break;
+
             case PhotonEventCodes.RematchReply:
                 HandleRematchReply((object[])photonEvent.CustomData);
                 break;
-            }
         }
-    #endregion  
+    }
+
+    #endregion
 
     #region Photon 콜백
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
-         Debug.Log($"[GameSession] {otherPlayer.NickName} 나감 / 현재 상태: {gameManager.currentState}");
-        // [추가] 재도전 대기 중이었다면 패널 닫기
-        if (gameHUD != null) gameHUD.HideRematchPanel();
-        _isRematchRequested = false; // 플래그 초기화 추가
-       
+        Debug.Log($"[GameSession] {otherPlayer.NickName} 나감 / 현재 상태: {gameManager.currentState}");
+
+        // 재도전 대기 중이었다면 패널 닫기
+        if (gameHUD != null)
+        {
+            gameHUD.HideRematchPanel();
+        }
+
+        _isRematchRequested = false;
+
         gameManager.currentState = GameState.GameOver;
-        if (gameHUD) gameHUD.ShowOpponentLeft();
-        
+
+        if (gameHUD)
+        {
+            gameHUD.ShowOpponentLeft();
+        }
     }
 
-    private void OnApplicationQuit()//게임 세션이 종료될 때 네트워크 연결 끊기(유니티 기본 콜백)
+    private void OnApplicationQuit()
     {
-    if (PhotonNetwork.IsConnected)
-        PhotonNetwork.Disconnect();
-    }   
+        if (PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.Disconnect();
+        }
+    }
 
     public override void OnLeftRoom()
     {
-        PhotonNetwork.LoadLevel("Lobby");; // 로비 씬 이름이 다르면 수정
+        PhotonNetwork.LoadLevel("Lobby");
     }
 
     #endregion
