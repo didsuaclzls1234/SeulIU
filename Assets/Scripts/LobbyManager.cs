@@ -192,7 +192,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
 
     public void OnClick_VS_AI()
     {
-        Debug.Log("[Scene] VS_AI 씬으로 이동");
+        //Debug.Log("[Scene] VS_AI 씬으로 이동");
 
         SelectedMode = PlayMode.AI; // AI 모드 저장
         SceneManager.LoadScene("VS_Player"); // 동일한 씬으로 이동

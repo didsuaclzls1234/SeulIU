@@ -3,6 +3,8 @@ using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using System.Collections;
 
 public class LobbyMenuViewController : MonoBehaviourPunCallbacks
 {
@@ -27,6 +29,24 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
     [Header("씬")]
     [SerializeField] private string gameSceneName = "VS_Player";
 
+    [Header("인트로")]
+    [SerializeField] private GameObject pressAnyKeyObject;
+
+    [Header("로고 이미지 (A)")]
+    [SerializeField] private RectTransform logoRect;
+    [SerializeField] private Vector2 logoEndPos;       // 목표 위치 (인스펙터)
+    [SerializeField] private Vector2 logoEndSize;      // 목표 크기 (인스펙터)
+    [SerializeField] private float logoAnimDuration = 1f; // 이동 시간 (인스펙터)
+
+    [Header("배경 이미지 (B)")]
+    [SerializeField] private Image backgroundImage;
+    [SerializeField] private float backgroundTargetAlpha = 0f; // 목표 투명도 (인스펙터)
+    [SerializeField] private float backgroundFadeDuration = 0f; // 0이면 즉시 (인스펙터)
+
+    private bool isIntroPhase = false;
+    private Vector2 logoStartPos;
+    private Vector2 logoStartSize;
+
     private static readonly int AnimateParameter = Animator.StringToHash("Animate");
     private static string savedNickname = "";
 
@@ -36,19 +56,60 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
     private bool isCancelRequested;
 
     private void Start()
-    {
-        if (nicknameInputField != null && !string.IsNullOrEmpty(savedNickname))
+    {   
+        SoundManager.Instance.PlayBGM("LobbyBGM");
+
+        // if (nicknameInputField != null && !string.IsNullOrEmpty(savedNickname))
+        // {
+        //     nicknameInputField.text = savedNickname;
+        // }
+        
+        // ShowOptionsCanvas();
+
+        if (!string.IsNullOrEmpty(savedNickname))
         {
-            nicknameInputField.text = savedNickname;
+            // 재진입 시 인트로 스킵
+            if (nicknameInputField != null)
+                nicknameInputField.text = savedNickname;
+            SkipIntro();
+        }
+        else
+        {
+            StartIntro();
         }
 
-        ShowOptionsCanvas();
         ClearErrorText();
         StopWaitingTimer();
+        StartCoroutine(DelayedStart());
     }
-
-    private void Update()
+    private IEnumerator DelayedStart()
     {
+        yield return null; // Animator 초기화 후 한 프레임 대기
+
+        mainMenu?.SetActive(false);
+        playMenu?.SetActive(false);
+        optionsCanvas?.SetActive(false);
+        matchingCanvas?.SetActive(false);
+
+        if (!string.IsNullOrEmpty(savedNickname))
+        {
+            if (nicknameInputField != null)
+                nicknameInputField.text = savedNickname;
+            SkipIntro();
+        }
+        else
+        {
+            StartIntro();
+        }
+    }
+    private void Update()
+    {   
+        if (isIntroPhase && Input.anyKeyDown)
+        {
+            isIntroPhase = false;
+            StartCoroutine(IntroTransitionRoutine());
+        }
+        
         if (!isWaitingForOpponent)
         {
             return;
@@ -62,8 +123,104 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
             int seconds = Mathf.FloorToInt(waitingTime % 60f);
             waitingTimerText.text = $"{minutes:00}:{seconds:00}";
         }
+
+        
+    }
+    private void StartIntro()
+    {   
+        isIntroPhase = true;
+        pressAnyKeyObject?.SetActive(true);
+        // 현재 위치/크기를 시작값으로 저장
+        if (logoRect != null)
+        {
+            logoStartPos = logoRect.anchoredPosition;
+            logoStartSize = logoRect.sizeDelta;
+        }
     }
 
+    private void SkipIntro()
+    {
+        isIntroPhase = false;
+        pressAnyKeyObject?.SetActive(false);
+
+        // 로고 즉시 최종 위치로
+        if (logoRect != null)
+        {
+            logoRect.anchoredPosition = logoEndPos;
+            logoRect.sizeDelta = logoEndSize;
+        }
+
+        // 배경 즉시 투명도 적용
+        if (backgroundImage != null)
+        {
+            Color c = backgroundImage.color;
+            c.a = backgroundTargetAlpha;
+            backgroundImage.color = c;
+        }
+        mainMenu?.SetActive(true);
+        ShowOptionsCanvas();
+    }
+
+    private IEnumerator IntroTransitionRoutine()
+    {
+        // Press Any Key 비활성화
+        pressAnyKeyObject?.SetActive(false);
+
+        // 배경 투명도 처리
+        if (backgroundImage != null)
+        {
+            if (backgroundFadeDuration <= 0f)
+            {
+                // 즉시 적용
+                Color c = backgroundImage.color;
+                c.a = backgroundTargetAlpha;
+                backgroundImage.color = c;
+            }
+            else
+            {
+                StartCoroutine(FadeBackgroundRoutine());
+            }
+        }
+
+        // 로고 이동/크기 애니메이션
+        if (logoRect != null && logoAnimDuration > 0f)
+        {
+            float elapsed = 0f;
+            while (elapsed < logoAnimDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / logoAnimDuration);
+                logoRect.anchoredPosition = Vector2.Lerp(logoStartPos, logoEndPos, t);
+                logoRect.sizeDelta = Vector2.Lerp(logoStartSize, logoEndSize, t);
+                yield return null;
+            }
+            logoRect.anchoredPosition = logoEndPos;
+            logoRect.sizeDelta = logoEndSize;
+        }
+        mainMenu?.SetActive(true);
+        ShowOptionsCanvas();
+    }
+
+    private IEnumerator FadeBackgroundRoutine()
+    {
+        float elapsed = 0f;
+        float startAlpha = backgroundImage.color.a;
+
+        while (elapsed < backgroundFadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / backgroundFadeDuration);
+            Color c = backgroundImage.color;
+            c.a = Mathf.Lerp(startAlpha, backgroundTargetAlpha, t);
+            backgroundImage.color = c;
+            yield return null;
+        }
+
+        Color final = backgroundImage.color;
+        final.a = backgroundTargetAlpha;
+        backgroundImage.color = final;
+    }
+        
     public void TrySelectAiMode()
     {
         if (!TrySaveNickname())
