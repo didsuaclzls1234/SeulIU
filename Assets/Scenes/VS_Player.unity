@@ -1533,6 +1533,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 6738501777672623599}
     - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: myPanelImage
+      value: 
+      objectReference: {fileID: 8808941037126726718}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: skillManager
       value: 
       objectReference: {fileID: 8247444172213492632}
@@ -1540,6 +1544,10 @@ PrefabInstance:
       propertyPath: timerManager
       value: 
       objectReference: {fileID: 6446585498521817047}
+    - target: {fileID: 1505202184148402454, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: oppPanelImage
+      value: 
+      objectReference: {fileID: 8808941037126726717}
     - target: {fileID: 1570687888634542569, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0.5
@@ -3087,6 +3095,28 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
+--- !u!114 &8808941037126726717 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6180131112650371521, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+  m_PrefabInstance: {fileID: 8808941037126726712}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+--- !u!114 &8808941037126726718 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3451227215296013581, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+  m_PrefabInstance: {fileID: 8808941037126726712}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
