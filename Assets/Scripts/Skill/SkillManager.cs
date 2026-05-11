@@ -165,7 +165,7 @@ public class SkillManager : MonoBehaviour
     {
         if (type == PlacementType.SkillInduced) return;
 
-        //  ** 일반 착수를 완료했을 때, 삭제 예약된 돌이 있다면 쾅 터뜨림!
+        // 일반 착수를 완료했을 때, 삭제 예약된 돌이 있다면 쾅 터뜨림!
         if (pendingRemoveTarget.x != -1 && pendingRemoveTarget.y != -1)
         {
             int rx = pendingRemoveTarget.x;
@@ -504,10 +504,10 @@ public class SkillManager : MonoBehaviour
 
         // 기획자님 의도대로 AI는 3번(이중착수)과 본인 전용 패시브만 확정으로 들고 갑니다.
         // 플레이어가 흑(1)이면 AI는 백이므로 11번(신성화), 플레이어가 백(2)이면 AI는 흑이므로 10번(파괴)
-        int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 11 : 10;
+        //int aiPassiveId = (gameManager.localPlayerColor == StoneColor.Black) ? 11 : 10;
 
         oppSkillsID[0] = 3;           // 이중착수 확정
-        oppSkillsID[1] = aiPassiveId; // 패시브 확정
+        oppSkillsID[1] = -1; //aiPassiveId; // 패시브 확정
         oppSkillsID[2] = -1;          // 나머지 한 칸은 비워둠 (혹은 다른 스킬 넣어도 됨)
 
         // AI는 스킬 고르자마자 바로 준비 완료 처리
@@ -628,6 +628,11 @@ public class SkillManager : MonoBehaviour
         {
             StartCoroutine(gameManager.board.BlinkAndHideRoutine(newStone, opponentColor, false));
         }
+        else if (newStone != null)
+        {
+            //  투명화가 아니면 무조건 새빨간색으로 강렬하게 3번 점멸!
+            StartCoroutine(gameManager.board.HighlightExtraStoneRoutine(newStone, gameManager.board.visualSettings.extraPlaceBlinkColor));
+        }
     }
     //  2번스킬 추가
     private void ReceiveSkill_Seal(int[] xs, int[] ys)
@@ -641,30 +646,33 @@ public class SkillManager : MonoBehaviour
     //  3번스킬 추가
     private void ReceiveSkill_DoubleDown(int[] xs, int[] ys)
     {
-        // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만 (기존)
+        // 첫 번째 패킷: xs[0] == -1 → 스킬 선언만
         // 두 번째 패킷: xs[0] != -1 → 랜덤 착수 좌표 수신
         if (xs[0] != -1)
         {
             StoneColor oppColor = gameManager.localPlayerColor.Opponent();
             gameManager.ExecutePlaceStonePublic(xs[0], ys[0], oppColor, PlacementType.SkillInduced);
 
-            // 상대방이 투명화 상태라면 (그리고 이번이 마지막 턴이 아니라면) 깜빡인 후 숨김 처리
+            // 상대방이 투명화 상태라면 깜빡인 후 숨김 처리
             if (oppInvisibilityTurns > 0)
             {
                 GameObject extraStone = gameManager.board.GetStoneObjectAt(xs[0], ys[0]);
                 if (extraStone != null) StartCoroutine(gameManager.board.BlinkAndHideRoutine(extraStone, oppColor, false));
             }
+            else
+            {
+                //  약한 점멸 대신 새빨간색 점멸 코루틴 호출!
+                GameObject extraStone = gameManager.board.GetStoneObjectAt(xs[0], ys[0]);
+                if (extraStone != null) StartCoroutine(gameManager.board.HighlightExtraStoneRoutine(extraStone, gameManager.board.visualSettings.extraPlaceBlinkColor));
+            }
 
-            // moveHistory는 안 건드림 (SkillInduced이므로)
             Debug.Log($"[Network] DoubleDown 추가 착수 수신: ({xs[0]},{ys[0]})");
-            return; // 
+            return;
         }
         else
         {
             Debug.Log("[Network] DoubleDown 수신 — B타입 스킬, 착수 패킷 대기");
         }
-        // gameManager.pendingExtraPlacement = true;       
-        // pendingExtraPlacement 제거됨
     }
     //  4번스킬 추가
     
@@ -1391,10 +1399,10 @@ public class SkillManager : MonoBehaviour
                     }
                     else
                     {
-                        // 노란색 점멸 복구
+                        // 내 화면에서도 돌이 튀어나올 때 새빨갛게 점멸!
                         GameObject extraStone = gameManager.board.GetStoneObjectAt(rand.x, rand.y);
-                        if (extraStone != null) gameManager.board.BlinkStoneEffect(extraStone, gameManager.board.visualSettings.extraPlaceBlinkColor);
-                    }
+                        if (extraStone != null) StartCoroutine(gameManager.board.HighlightExtraStoneRoutine(extraStone, gameManager.board.visualSettings.extraPlaceBlinkColor));
+                        }
                     // 방금 강제로 튀어나온 랜덤 돌에도 안티매직 등 버프 색상을 즉시 묻혀줌!
                     gameManager.board.RefreshAllStonesVisuals();
                     
