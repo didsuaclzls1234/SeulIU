@@ -67,4 +67,9 @@ public class CameraSwitcher : MonoBehaviour
         topCameraFixedPos = topCamera.transform.position;
         topCameraFixedRot = topCamera.transform.rotation;
     }
+    //타임아웃시 강제로 탑뷰 전환
+    public void ForceTopView()
+    {
+        if (!isTopView) SetTopView(true);
+    }
 }
