@@ -516,6 +516,7 @@ public class GameManager : MonoBehaviour
         }
 
         board.UpdateForbiddenMarks(StoneColor.Black);
+        SoundManager.Instance.PlayBGM("LobbyBGM");
         Debug.Log("[GameManager] ResetForRematch 완료 — 스킬 선택 대기 상태로 복귀");
     }
 

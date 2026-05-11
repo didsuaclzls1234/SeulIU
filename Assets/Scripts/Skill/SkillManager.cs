@@ -807,6 +807,13 @@ public class SkillManager : MonoBehaviour
         // mySkillsID[slotIndex] = skillId;
         // Debug.Log($"{slotIndex}번 슬롯에 {skillId}번 스킬 장착");
         // [추가] 이미 선택된 스킬인지 확인
+        // ↓ 추가: 준비 완료 후 선택 차단
+        if (isLocalPlayerReady)
+        {
+            gameManager.gameHUD?.ShowSkillSelectMessage("준비 완료 후 변경할 수 없습니다.");
+            return;
+        }
+
         for (int i = 0; i < mySkillsID.Length; i++)
         {
             if (mySkillsID[i] == skillId)
@@ -853,6 +860,12 @@ public class SkillManager : MonoBehaviour
     // DeckSlot_2 → OnDeckSlotClicked(2)
     public void OnDeckSlotClicked(int slotIndex)
     {
+        // ↓ 추가: 준비 완료 후 취소 차단
+        if (isLocalPlayerReady)
+        {
+            gameManager.gameHUD?.ShowSkillSelectMessage("준비 완료 후 변경할 수 없습니다.");
+            return;
+        }
         if (slotIndex < 0 || slotIndex >= mySkillsID.Length) return;
         if (mySkillsID[slotIndex] == -1) return; // 이미 비어있음
  
