@@ -125,6 +125,9 @@ public class BoardManager : MonoBehaviour
     private Dictionary<Vector2Int, GameObject> activeShieldMarkers = new Dictionary<Vector2Int, GameObject>();
     public Dictionary<Vector2Int, GameObject> activeKnifeObjects = new Dictionary<Vector2Int, GameObject>();
 
+    // ** 승리한 돌들을 담아둘 리스트
+    private List<GameObject> winningStones = new List<GameObject>();
+
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
     public struct SealInfo
@@ -316,23 +319,24 @@ public class BoardManager : MonoBehaviour
         System.Array.Clear(sealedGrid, 0, sealedGrid.Length); // 추가
 
         blinkingStones.Clear();
+        winningStones.Clear();
 
         isConsecrationActive = false;
         Debug.Log("[BoardManager] 바둑판 데이터 및 바둑돌 초기화 완료!");
     }
 
     // 1. 전체 방향을 검사하는 메인 함수
-    public bool CheckWin(int x, int y, StoneColor playerColor)
-    {
-        int currentWinCond = ruleManager.GetWinCondition((int)playerColor);
+    //public bool CheckWin(int x, int y, StoneColor playerColor)
+    //{
+    //    int currentWinCond = ruleManager.GetWinCondition((int)playerColor);
 
-        if (CountStones(x, y, 1, 0, playerColor) >= currentWinCond) return true; // 가로
-        if (CountStones(x, y, 0, 1, playerColor) >= currentWinCond) return true; // 세로
-        if (CountStones(x, y, 1, 1, playerColor) >= currentWinCond) return true; // 우상향
-        if (CountStones(x, y, 1, -1, playerColor) >= currentWinCond) return true; // 우하향
+    //    if (CountStones(x, y, 1, 0, playerColor) >= currentWinCond) return true; // 가로
+    //    if (CountStones(x, y, 0, 1, playerColor) >= currentWinCond) return true; // 세로
+    //    if (CountStones(x, y, 1, 1, playerColor) >= currentWinCond) return true; // 우상향
+    //    if (CountStones(x, y, 1, -1, playerColor) >= currentWinCond) return true; // 우하향
 
-        return false;
-    }
+    //    return false;
+    //}
 
     // 2. 특정 방향(벡터)으로 돌이 몇 개 이어졌는지 세는 코어 로직
     private int CountStones(int startX, int startY, int dirX, int dirY, StoneColor playerColor)
@@ -914,11 +918,19 @@ public class BoardManager : MonoBehaviour
 
     public void ApplyStoneBuffVisuals(GameObject stoneObj, StoneVisualController svc)
     {
+        // 1순위: 승리한 돌 (가장 중요하므로 무조건 빨간 굵은 테두리 유지)
+        if (winningStones.Contains(stoneObj))
+        {
+            svc.SetConsecration(true, Color.red, 2f, 8f);
+            svc.SetOverlay(Color.black, 0f); // 혹시 모를 색깔 제거
+            return;
+        }
+
         int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
         int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
         StoneColor stoneColor = (StoneColor)grid[x, y];
 
-        // --- A. 신성화 테두리 로직 (백돌 시전자 기준) ---
+        // --- A. 신성화 테두리 (백돌 시전자 기준) ---
         if (isConsecrationActive && gameManager.localPlayerColor == StoneColor.White && stoneColor == StoneColor.White)
         {
             svc.SetConsecration(true, visualSettings.consecrationOutlineColor, visualSettings.consecrationThickness, visualSettings.consecrationGlow);
@@ -928,19 +940,15 @@ public class BoardManager : MonoBehaviour
             svc.SetConsecration(false, Color.black);
         }
 
-        // --- B. 삭제 예약(빨간색) 및 안티매직(하늘색) 로직 ---
+        // --- B. 오버레이(색상) 덮어쓰기 로직 ---
         bool isPendingRemove = false;
         bool shouldShowAntiMagic = false;
 
         if (gameManager.skillManager != null)
         {
-            // 1. 현재 이 돌이 삭제 예약된 상태인지 체크
             if (gameManager.skillManager.pendingRemoveTarget.x == x && gameManager.skillManager.pendingRemoveTarget.y == y)
-            {
                 isPendingRemove = true;
-            }
 
-            // 2. 안티매직 상태 체크
             if (stoneColor == gameManager.localPlayerColor)
             {
                 foreach (var eff in gameManager.skillManager.activeEffects)
@@ -957,17 +965,17 @@ public class BoardManager : MonoBehaviour
         // 마우스 호버 중이 아닐 때만 버프 색상 표시
         if (currentHoveredStone != stoneObj)
         {
-            // 1순위: 삭제 대기 중인 돌은 강제로 진한 빨간색 표시!
+            // 2순위: 삭제 대기 중인 돌 (진한 빨간색 오버레이)
             if (isPendingRemove)
             {
                 svc.SetOverlay(Color.red, 0.8f);
             }
-            // 2순위: 안티매직 (하늘색)
+            // 3순위: 안티매직 (하늘색 오버레이)
             else if (shouldShowAntiMagic)
             {
                 svc.SetOverlay(visualSettings.antiMagicOverlayColor, visualSettings.antiMagicOverlayBlend);
             }
-            // 3순위: 버프 없음
+            // 4순위: 버프 없음 (기본 상태)
             else
             {
                 svc.SetOverlay(Color.black, 0f);
@@ -1044,6 +1052,89 @@ public class BoardManager : MonoBehaviour
             boardClickTextObj.transform.rotation = Quaternion.Euler(localColor == StoneColor.Black ? blackTextRotation : whiteTextRotation);
         }
     }
+
+    // 승리한 돌 좌표들만 쏙 뽑아오는 함수 (기존 AI 코드를 망치지 않기 위함)
+    public List<Vector2Int> GetWinningStones(int x, int y, StoneColor playerColor)
+    {
+        int currentWinCond = ruleManager.GetWinCondition((int)playerColor);
+
+        List<Vector2Int> result = GetLineStones(x, y, 1, 0, playerColor);
+        if (result.Count >= currentWinCond) return result;
+
+        result = GetLineStones(x, y, 0, 1, playerColor);
+        if (result.Count >= currentWinCond) return result;
+
+        result = GetLineStones(x, y, 1, 1, playerColor);
+        if (result.Count >= currentWinCond) return result;
+
+        result = GetLineStones(x, y, 1, -1, playerColor);
+        if (result.Count >= currentWinCond) return result;
+
+        return null;
+    }
+
+    private List<Vector2Int> GetLineStones(int startX, int startY, int dirX, int dirY, StoneColor playerColor)
+    {
+        List<Vector2Int> line = new List<Vector2Int>();
+        line.Add(new Vector2Int(startX, startY));
+        int playerInt = (int)playerColor;
+
+        int nx = startX + dirX; int ny = startY + dirY;
+        while (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize && grid[nx, ny] == playerInt)
+        {
+            line.Add(new Vector2Int(nx, ny));
+            nx += dirX; ny += dirY;
+        }
+
+        nx = startX - dirX; ny = startY - dirY;
+        while (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize && grid[nx, ny] == playerInt)
+        {
+            line.Add(new Vector2Int(nx, ny));
+            nx -= dirX; ny -= dirY;
+        }
+        return line;
+    }
+
+    // 승리한 돌에 굵은 빨간 테두리 씌우기
+    public void HighlightWinningStones(List<Vector2Int> winningCoords)
+    {
+        foreach (Vector2Int pos in winningCoords)
+        {
+            GameObject stone = GetStoneObjectAt(pos.x, pos.y);
+            if (stone != null)
+            {
+                winningStones.Add(stone);
+                StoneVisualController svc = stone.GetComponent<StoneVisualController>();
+                if (svc != null)
+                {
+                    // 완전 진한 빨간색 테두리를 굵게 입힘 (신성화 연출 재활용)
+                    svc.SetConsecration(true, Color.red, 2f, 8f);
+                }
+            }
+        }
+    }
+
+    // ** 이중착수 시 확실하게 번쩍거리는 전용 코루틴
+    public IEnumerator HighlightExtraStoneRoutine(GameObject stone, Color blinkColor)
+    {
+        StoneVisualController svc = stone.GetComponent<StoneVisualController>();
+        if (svc == null) yield break;
+
+        blinkingStones.Add(stone); // 깜빡이는 동안 렌더 갱신 차단
+
+        // 1.5초 동안 지정한 색상(빨간색 등)으로 크고 강하게 3번 점멸!
+        for (int i = 0; i < 3; i++)
+        {
+            svc.SetOverlay(blinkColor, 0.9f); // 0.9f면 엄청 찐합니다
+            yield return new WaitForSeconds(0.25f);
+            svc.SetOverlay(Color.black, 0f);
+            yield return new WaitForSeconds(0.25f);
+        }
+
+        blinkingStones.Remove(stone);
+        RefreshAllStonesVisuals(); // 점멸 끝나면 버프 원상복구
+    }
+
     // ------------------------------------------------------------
     // ** 개발자용 격자 그리기
     void OnDrawGizmos()
@@ -1083,7 +1174,7 @@ public class BoardManager : MonoBehaviour
         {
             if (stoneObj == null || !stoneObj.activeSelf) continue;
 
-            // 핵심 추가: 0.6초간 100% 불투명하게 깜빡이는 중인 돌은 덮어쓰지 않고 무시
+            // 핵심 추가: 깜빡이는 연출이 진행 중인 돌은 새로고침에서 제외 (깜빡임 끝난 후 스스로 호출함)
             if (blinkingStones.Contains(stoneObj)) continue;
 
             StoneVisualController svc = stoneObj.GetComponent<StoneVisualController>();

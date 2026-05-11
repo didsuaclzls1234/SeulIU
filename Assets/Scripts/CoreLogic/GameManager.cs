@@ -155,44 +155,6 @@ public class GameManager : MonoBehaviour
         // BoardManager한테 돌을 두어도 되는지 물어봄
         if (board.IsValidMove(x, y, currentTurnColor))
         {
-            // bool hasExtraPlacement = extraPlacementCount > 0;
-            // // 실제 돌 놓는 코어 로직 실행
-            // ExecutePlaceStone(x, y, currentTurnColor);
-
-            // // 1. 승리 여부와 상관없이 '마지막 돌' 패킷은 무조건 먼저 보냅니다!
-            // if (currentMode == PlayMode.Multiplayer)
-            //     OnStonePlacedLocally?.Invoke(x, y, moveHistory.Count - 1);
-
-            // // 2. 상대방에게 돌을 보냈으니, 이제 게임이 끝났다면 여기서 중단합니다.
-            // if (currentState == GameState.GameOver) return;
-
-            // // 3. 추가 착수 체크 + 4. 랜덤 착수 + 5. 패킷 전송
-            // if (hasExtraPlacement)
-            // {
-            //     extraPlacementCount--;
-            //     Vector2Int randomMove = board.GetRandomValidMove(currentTurnColor);
-            //     if (randomMove.x != -1)
-            //     {
-            //         // * 새로 추가 착수되는 돌을 받아서 깜빡임 이펙트 적용!
-            //         ExecutePlaceStone(randomMove.x, randomMove.y, currentTurnColor);
-
-            //         // 스택의 맨 위에 방금 놓은 돌이 있으므로 가져옴
-            //         MoveRecord extraRec = moveHistory.Peek();
-            //         board.BlinkStoneEffect(extraRec.stoneObj, Color.yellow); // 추가된 돌 노란색 깜빡임
-
-            //         if (currentMode == PlayMode.Multiplayer)
-            //             OnDoubleDownExtraPlaced?.Invoke(randomMove.x, randomMove.y, moveHistory.Count - 1);
-
-            //         if (currentState == GameState.GameOver) return;
-            //     }
-            // }
-
-            // // 6. 턴 넘기기
-            // if (currentState != GameState.GameOver)
-            // {
-            //     PassTurn(currentTurnColor);
-            // }
-
              // [수정] PlacementType.PlayerManual 명시, extraPlacementCount 분기 제거
             ExecutePlaceStone(x, y, currentTurnColor, PlacementType.PlayerManual);
  
@@ -237,9 +199,12 @@ public class GameManager : MonoBehaviour
         // 2. 히스토리에 방금 둔 돌 정보 기록 (무르기를 위해)
         moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = playerColor, stoneObj = placedStone });
 
-        // 3. 승패 판정 (방금 놓은 돌 좌표 기준)
-        if (board.CheckWin(x, y, playerColor))
+        // 3. 🧹 [리팩토링] 승패 판정 로직 통합 (CheckWin 삭제, GetWinningStones 재활용)
+        var winningCoords = board.GetWinningStones(x, y, playerColor);
+        if (winningCoords != null)
         {
+            // 이긴 돌들 좌표를 찾아 빨간 테두리 씌우기!
+            board.HighlightWinningStones(winningCoords);
             EndGame(playerColor);
             return; // 더 이상 턴을 넘기지 않고 함수 종료
         }

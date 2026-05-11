@@ -1435,7 +1435,7 @@ PrefabInstance:
       objectReference: {fileID: 603740961}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: shieldYOffset
-      value: 1.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: knifeRotation.z
@@ -1544,6 +1544,18 @@ PrefabInstance:
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: visualSettings.blackHoverMetallic
       value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: visualSettings.extraPlaceBlinkColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: visualSettings.extraPlaceBlinkColor.g
+      value: 0.030305512
+      objectReference: {fileID: 0}
+    - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
+      propertyPath: visualSettings.extraPlaceBlinkColor.r
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1780991742913023864, guid: 095f85cc354c447459b27b6dd825509f, type: 3}
       propertyPath: visualSettings.myHoverHighlightColor.b

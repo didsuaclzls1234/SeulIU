@@ -102,6 +102,10 @@ public class Skill_1_StoneShift : SkillBase
         {
             gm.StartCoroutine(board.BlinkAndHideRoutine(newStone, gm.localPlayerColor, true));
         }
+        else if (newStone != null) // 투명화가 아닐 땐 붉은 점멸
+        {
+            gm.StartCoroutine(board.HighlightExtraStoneRoutine(newStone, board.visualSettings.extraPlaceBlinkColor));
+        }
 
         Debug.Log($"[StoneShift] ({tx},{ty}) → ({destX},{destY}) 이동 완료!");
 
