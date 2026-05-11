@@ -928,13 +928,19 @@ public class BoardManager : MonoBehaviour
             svc.SetConsecration(false, Color.black);
         }
 
-        // --- B. 안티매직 반투명 하늘색 오버레이 (조건 강화) ---
+        // --- B. 삭제 예약(빨간색) 및 안티매직(하늘색) 로직 ---
+        bool isPendingRemove = false;
         bool shouldShowAntiMagic = false;
 
         if (gameManager.skillManager != null)
         {
-            // 1. 내 돌이어야 함 (stoneColor == gameManager.localPlayerColor)
-            // 2. 내가 안티매직을 시전한 상태여야 함 (eff.casterColor == gameManager.localPlayerColor)
+            // 1. 현재 이 돌이 삭제 예약된 상태인지 체크
+            if (gameManager.skillManager.pendingRemoveTarget.x == x && gameManager.skillManager.pendingRemoveTarget.y == y)
+            {
+                isPendingRemove = true;
+            }
+
+            // 2. 안티매직 상태 체크
             if (stoneColor == gameManager.localPlayerColor)
             {
                 foreach (var eff in gameManager.skillManager.activeEffects)
@@ -951,14 +957,19 @@ public class BoardManager : MonoBehaviour
         // 마우스 호버 중이 아닐 때만 버프 색상 표시
         if (currentHoveredStone != stoneObj)
         {
-            if (shouldShowAntiMagic)
+            // 1순위: 삭제 대기 중인 돌은 강제로 진한 빨간색 표시!
+            if (isPendingRemove)
             {
-                // 인스펙터에서 설정한 하늘색 오버레이 적용
+                svc.SetOverlay(Color.red, 0.8f);
+            }
+            // 2순위: 안티매직 (하늘색)
+            else if (shouldShowAntiMagic)
+            {
                 svc.SetOverlay(visualSettings.antiMagicOverlayColor, visualSettings.antiMagicOverlayBlend);
             }
+            // 3순위: 버프 없음
             else
             {
-                // 버프 없으면 오버레이 해제
                 svc.SetOverlay(Color.black, 0f);
             }
         }
