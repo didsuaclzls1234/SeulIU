@@ -23,10 +23,13 @@ public class GameHUD : MonoBehaviour
     [Header("인게임 UI 묶음")]
     public GameObject inGameUI;
 
-    [Header("인게임 표시")]
-    public TextMeshProUGUI turnText;
-    public TextMeshProUGUI myColorText;
-
+    //[Header("인게임 표시")]
+    //public TextMeshProUGUI turnText;
+    //public TextMeshProUGUI myColorText;
+    [Header("턴 표시 이미지")]
+    public Image turnImage;
+    [Header("턴 이미지 밝기")]
+    [Range(0f, 1f)] public float dimAlpha = 0.3f;
     //[Header("인게임 버튼 (상단/하단)")]
     //public Button undoButton;
     //public Button restartButton; // 솔로 전용
@@ -114,6 +117,11 @@ public class GameHUD : MonoBehaviour
     public ScrollRect skillLogScrollRect;
     private List<string> _logEntries = new List<string>();
 
+    // 필드 추가
+    [Header("상대방 스킬 덱 표시")]
+    public Image[] oppDeckSlotImages;
+
+
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
@@ -187,27 +195,36 @@ public class GameHUD : MonoBehaviour
     //    if (restartButton) restartButton.gameObject.SetActive(false); // 멀티에선 중간 재시작 금지
     //}
 
-    public void ShowRoleAssigned(StoneColor myColor)
-    {
-        if (myColorText)
-            myColorText.text = $"나: {myColor.ToKorean()}";
-    }
+    // public void ShowRoleAssigned(StoneColor myColor)
+    // {
+    //     // if (myColorText)
+    //     //     myColorText.text = $"나: {myColor.ToKorean()}";
+    // }
 
     public void UpdateTurnDisplay(StoneColor currentTurn, bool isMyTurn)
     {
-        if (turnText == null) return;
+        // if (turnText == null) return;
+        if (turnImage == null) return;
 
         // 1. 멀티플레이 모드일 때는 '나' 위주로 표시
         if (gameManager.currentMode == PlayMode.Multiplayer)
         {
             string whose = isMyTurn ? "내 차례" : "상대 차례";
-            turnText.text = $"{currentTurn.ToKorean()} — {whose}";
+            // turnText.text = $"{currentTurn.ToKorean()} — {whose}";
+            // 내 차례: 밝게 / 상대 차례: 어둡게
+            turnImage.color = isMyTurn
+                ? Color.white
+                : new Color(1f, 1f, 1f, dimAlpha);
         }
         // 2. 솔로/AI 모드일 때는 '돌의 색상' 위주로 표시
         else
         {
             string modeSuffix = (gameManager.currentMode == PlayMode.AI && !isMyTurn) ? " (AI)" : "";
-            turnText.text = $"{currentTurn.ToKorean()}돌 차례{modeSuffix}";
+            //turnText.text = $"{currentTurn.ToKorean()}돌 차례{modeSuffix}";
+            // 내 차례: 밝게 / 상대 차례: 어둡게
+            turnImage.color = isMyTurn
+                ? Color.white
+                : new Color(1f, 1f, 1f, dimAlpha);
         }
     }
 
@@ -677,7 +694,32 @@ public class GameHUD : MonoBehaviour
             }
         }
     }
+    // 메서드 추가-상대 덱 슬롯 갱신 (내 덱과 거의 동일한 로직, 단 상대는 이름 텍스트 없이 아이콘만 표시)
+    public void RefreshOppDeckSlots(int[] oppSkillsID, Dictionary<int, SkillData> skillDatabase)
+    {
+        for (int i = 0; i < oppDeckSlotImages.Length; i++)
+        {
+            int skillId = (i < oppSkillsID.Length) ? oppSkillsID[i] : -1;
+            bool hasSkill = skillId != -1;
 
+            oppDeckSlotImages[i].gameObject.SetActive(hasSkill);
+            if (!hasSkill) continue;
+
+            // 기존 skillIcons 배열에서 스프라이트 가져와서 적용
+            Sprite icon = GetSkillIcon(skillId);
+            if (icon != null) oppDeckSlotImages[i].sprite = icon;
+
+            // 호버 툴팁 연결
+            if (skillDatabase.TryGetValue(skillId, out SkillData data))
+            {
+                SkillTooltipTrigger trigger = oppDeckSlotImages[i].GetComponent<SkillTooltipTrigger>();
+                if (trigger == null)
+                    trigger = oppDeckSlotImages[i].gameObject.AddComponent<SkillTooltipTrigger>();
+                trigger.SetData(data);
+            }
+        }
+    }
+    
     // ── 확정 버튼 활성화 제어 ───────────────────────────────────────
     public void SetReadyButtonInteractable(bool interactable)
     {

@@ -82,7 +82,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         gameManager.remotePlayerName = "알파오목(AI)";
 
         // 2. UI 표시
-        gameHUD.ShowRoleAssigned(playerColor);
+        //gameHUD.ShowRoleAssigned(playerColor);
         gameHUD.SetPlayerNames("나", "AI");
         gameHUD.DisplayMyRole(playerColor);
         ApplyDeckSlotContainerTheme(playerColor);
@@ -223,7 +223,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         if (gameHUD)
         {
-            gameHUD.ShowRoleAssigned(myColor);
+            //gameHUD.ShowRoleAssigned(myColor);
             gameHUD.SetPlayerNames(gameManager.localPlayerName, gameManager.remotePlayerName);
             gameHUD.DisplayMyRole(myColor);
             ApplyDeckSlotContainerTheme(myColor);

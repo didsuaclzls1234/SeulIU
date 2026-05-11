@@ -297,6 +297,8 @@ public class SkillManager : MonoBehaviour
         else
         {
             oppSkillsID = selectedIDs;
+             // ↓ 추가
+            gameManager.gameHUD?.RefreshOppDeckSlots(oppSkillsID, skillDatabase);
             Debug.Log($"[Skill] 상대 스킬 덱 설정 완료: {string.Join(", ", oppSkillsID)}");
         }
 
@@ -924,6 +926,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.SetOpponentSilencedUI(false);
             gameManager.gameHUD.ResetSkillLog();
             gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
+            gameManager.gameHUD?.RefreshOppDeckSlots(new int[] { -1, -1, -1 }, skillDatabase);
         }
         Debug.Log("[SkillManager] ResetForRematch 완료");
     }
