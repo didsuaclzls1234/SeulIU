@@ -283,7 +283,10 @@ public class GameHUD : MonoBehaviour
             resultText.text = $"{winner.ToKorean()}돌 승리!";
         }
 
-        SoundManager.Instance.StopBGM(); // ↓ 추가
+        //SoundManager.Instance.StopBGM(); // ↓ 추가
+
+        // BattleBGM과 SFX 동시 재생
+        SoundManager.Instance.PlayBGM("BattleBGM");
          bool isWin = (winner == myColor);
         if (isWin)
             SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
@@ -817,7 +820,7 @@ public class GameHUD : MonoBehaviour
     {
         skillSelectPanel?.SetActive(true);
         inGameUI?.SetActive(false);
-        SoundManager.Instance.PlayBGM("BattleBGM");
+        //SoundManager.Instance.PlayBGM("BattleBGM");
     }
 
     public void HideSkillSelectPanel()
