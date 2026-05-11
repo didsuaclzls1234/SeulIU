@@ -59,6 +59,9 @@ public class SkillManager : MonoBehaviour
     // 상대방이 안티매직을 썼는지 여부(남은 턴수)
     public int sealedTurnsRemaining = 0;
 
+    // 턴 종료 시 파괴할 제거 스킬 타겟 좌표 (기본값 -1, -1)
+    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1);
+
     // UI가 구독할 이벤트들 (데이터만 던져줌)
     public event Action<int> OnSPChanged; // SP가 변했을 때 (내 SP 던져줌)
     public event Action<List<ActiveEffect>> OnActiveEffectsChanged; // 버프/디버프 리스트가 갱신됐을 때
@@ -161,7 +164,28 @@ public class SkillManager : MonoBehaviour
     public void OnStonePlaced(StoneColor placedColor, PlacementType type)
     {
         if (type == PlacementType.SkillInduced) return;
- 
+
+        //  ** 일반 착수를 완료했을 때, 삭제 예약된 돌이 있다면 쾅 터뜨림!
+        if (pendingRemoveTarget.x != -1 && pendingRemoveTarget.y != -1)
+        {
+            int rx = pendingRemoveTarget.x;
+            int ry = pendingRemoveTarget.y;
+
+            // 터지기 전 원래 돌 색깔 파악 (깜빡임 이펙트용)
+            StoneColor deadStoneColor = (StoneColor)gameManager.board.grid[rx, ry];
+
+            // 데이터 및 오브젝트 삭제
+            gameManager.board.grid[rx, ry] = 0;
+            gameManager.board.RemoveStoneObjectAt(rx, ry);
+
+            // 기존에 쓰던 빨간색 점멸 이펙트 호출 (자리에 빈 이펙트 띄우기)
+            gameManager.board.BlinkEmptySpaceEffect(rx, ry, gameManager.board.visualSettings.removeBlinkColor, deadStoneColor);
+
+            // 예약 초기화
+            pendingRemoveTarget = new Vector2Int(-1, -1);
+            Debug.Log($"[SkillManager] 예약되었던 돌({rx},{ry}) 파괴 완료!");
+        }
+
         // 1. 쿨타임 감소 — 착수한 플레이어 쪽 스킬들
         List<SkillBase> targetSkills = (placedColor == gameManager.localPlayerColor) ? mySkills : oppSkills;
         foreach (var skill in targetSkills) skill.OnTurnPassed();
@@ -660,19 +684,11 @@ public class SkillManager : MonoBehaviour
     // 5번스킬 분리
     private void ReceiveSkill_Erase(int[] xs, int[] ys)
     {
-        for (int i = 0; i < xs.Length; i++)
+        if (xs[0] != -1 && ys[0] != -1)
         {
-            if (xs[i] != -1 && ys[i] != -1)
-            {
-                // 지우기 전에 무슨 색 돌이었는지 킵하기
-                StoneColor deadStoneColor = (StoneColor)gameManager.board.grid[xs[i], ys[i]];
-
-                gameManager.board.grid[xs[i], ys[i]] = 0;
-                gameManager.board.RemoveStoneObjectAt(xs[i], ys[i]);
-
-                // 수신자(돌 주인)의 화면에서는 무조건 빨간색 깜빡임 연출
-                gameManager.board.BlinkEmptySpaceEffect(xs[i], ys[i], gameManager.board.visualSettings.removeBlinkColor, deadStoneColor);
-            }
+            // 상대방이 제거 스킬을 쓰면 즉시 지우지 않고 예약 상태로 만듦
+            pendingRemoveTarget = new Vector2Int(xs[0], ys[0]);
+            Debug.Log($"[Network] 제거 스킬 예약 수신: ({xs[0]}, {ys[0]}) - 상대가 착수 시 파괴됨");
         }
     }
 
