@@ -83,6 +83,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b9d919843dc559345ac873165db17d3c, type: 3}
       insertIndex: -1
       addedObject: {fileID: -40331361042051885}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b9d919843dc559345ac873165db17d3c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3939140519930190346}
   m_SourcePrefab: {fileID: 100100000, guid: b9d919843dc559345ac873165db17d3c, type: 3}
 --- !u!1 &375456540994023728 stripped
 GameObject:
@@ -101,3 +104,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4575ed82c8ea3e143840fc755e422e85, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StoneVisualController
+--- !u!95 &3939140519930190346
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 375456540994023728}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 0e67290712f3b1c4b8e6666e418357cf, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

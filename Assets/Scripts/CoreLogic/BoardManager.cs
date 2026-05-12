@@ -238,6 +238,10 @@ public class BoardManager : MonoBehaviour
                 }
             }
 
+            // 생성된 직후 "착수 애니메이션" 
+            Animator anim = newStone.GetComponent<Animator>();
+            if (anim != null) anim.SetTrigger("DoChaksu");
+
             Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
             return newStone;
         }
@@ -1112,6 +1116,35 @@ public class BoardManager : MonoBehaviour
                 }
             }
         }
+
+        // 빨간 테두리를 칠한 직후, "1초 뒤"에 튕겨나가고 점프하는 마스터 코루틴 실행
+        StartCoroutine(VictoryCinematicRoutine(winningStones));
+    }
+
+    // 1초 대기 후 시각 효과들을 순차적으로 터뜨리는 시네마틱 헬퍼
+    private IEnumerator VictoryCinematicRoutine(List<GameObject> winners)
+    {
+        // 1. 빨간 테두리가 씌워진 상태로 1초간 여운 감상
+        yield return new WaitForSeconds(1.0f);
+
+        // 2. 패배한 돌들 사방으로 썅! 날려버리기
+        StartCoroutine(BlowUpDefeatedStones(winners));
+
+        // 3. 승리한 돌들 0.15초 간격으로 차례대로 점프 애니메이션 실행!
+        foreach (var stone in winners)
+        {
+            if (stone != null)
+            {
+                // 돌 프리팹에 달린 Animator를 가져옵니다. (자식에 달려있다면 GetComponentInChildren 사용)
+                Animator anim = stone.GetComponent<Animator>();
+                if (anim != null)
+                {
+                    // 흑돌이든 백돌이든 파라미터 이름을 DoWin으로 통일했기 때문에 한 줄이면 됨!
+                    anim.SetTrigger("DoWin");
+                }
+            }
+            yield return new WaitForSeconds(0.15f); // 0.15초 간격으로 파도타기 점프!
+        }
     }
 
     // ** 이중착수 시 확실하게 번쩍거리는 전용 코루틴
@@ -1134,6 +1167,78 @@ public class BoardManager : MonoBehaviour
         blinkingStones.Remove(stone);
         RefreshAllStonesVisuals(); // 점멸 끝나면 버프 원상복구
     }
+
+    // =========================================================
+    //  패배 돌 튕겨내기 연출 (시네마틱)
+    // =========================================================
+    public IEnumerator BlowUpDefeatedStones(List<GameObject> winners)
+    {
+        // 1. 승리한 돌들을 제외한 나머지 돌들 리스트 추출
+        List<GameObject> losers = new List<GameObject>();
+        foreach (var stone in activeStones)
+        {
+            if (!winners.Contains(stone)) losers.Add(stone);
+        }
+
+        // 2. 각 패배한 돌에 가짜 물리 연출 부여
+        foreach (var stone in losers)
+        {
+            StartCoroutine(StoneFlyRoutine(stone));
+        }
+
+        yield return null;
+    }
+
+    private IEnumerator StoneFlyRoutine(GameObject stone)
+    {
+        // 돌의 메쉬를 끄지 않고, 콜라이더만 꺼서 서로 안 부딪히게 함 (성능 최적화)
+        if (stone.TryGetComponent<Collider>(out var col)) col.enabled = false;
+
+        // 랜덤한 비행 방향 설정 (바깥쪽으로 퍼지게 + 위로 솟구치게)
+        Vector3 flyDirection = new Vector3(
+            UnityEngine.Random.Range(-1f, 1f),
+            UnityEngine.Random.Range(1.5f, 2.5f), // 위로 솟구치는 힘
+            UnityEngine.Random.Range(-1f, 1f)
+        ).normalized;
+
+        float speed = UnityEngine.Random.Range(8f, 15f); // 날아가는 속도
+        float rotationSpeed = UnityEngine.Random.Range(300f, 600f); // 빙글빙글 회전 속도
+        Vector3 rotAxis = UnityEngine.Random.onUnitSphere; // 회전축 랜덤
+
+        float elapsed = 0f;
+        while (elapsed < 2f) // 2초 동안 날아감
+        {
+            elapsed += Time.deltaTime;
+
+            // 중력 가속도 계산 (점점 아래로 떨어지게)
+            flyDirection += Vector3.down * Time.deltaTime * 2.5f;
+
+            // 위치 이동
+            stone.transform.position += flyDirection * speed * Time.deltaTime;
+
+            // 빙글빙글 회전
+            stone.transform.Rotate(rotAxis, rotationSpeed * Time.deltaTime);
+
+            // 점점 작아지면서 사라지는 효과 (선택 사항)
+            stone.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.zero, elapsed / 2f);
+
+            yield return null;
+        }
+
+        stone.SetActive(false); // 마지막에 비활성화
+    }
+
+    // 승리한 돌들의 "중심점"과 "정면" 계산하기 (시네머신 준비)
+    public Vector3 GetWinningLineCenter(List<Vector2Int> winningCoords)
+    {
+        Vector3 sum = Vector3.zero;
+        foreach (var pos in winningCoords)
+        {
+            sum += new Vector3(pos.x * gridSize, stoneYOffset, pos.y * gridSize);
+        }
+        return sum / winningCoords.Count; // 평균 위치 (중심점)
+    }
+
 
     // ------------------------------------------------------------
     // ** 개발자용 격자 그리기

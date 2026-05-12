@@ -264,14 +264,24 @@ public class GameHUD : MonoBehaviour
 
     public void ShowGameOver(StoneColor winner, StoneColor myColor)
     {
+        StartCoroutine(ShowGameOverRoutine(winner, myColor));
+    }
+
+    // ** 게임 오버 연출(테두리, 튕겨나감, 점프)을 볼 시간을 벌어주는 대기 코루틴
+    private IEnumerator ShowGameOverRoutine(StoneColor winner, StoneColor myColor)
+    {
+        // 결과창 뜨기 전까지 2.5초 대기 (1초 테두리 감상 + 1.5초 튕겨나가고 점프하는 시간)
+        yield return new WaitForSeconds(2.5f);
+
+        // --- 2.5초 뒤에 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText == null) return;
+        if (resultText == null) yield break;
 
         // 무승부 공통
         if (winner == StoneColor.None)
         {
             resultText.text = "무승부!";
-            return;
+            yield break;
         }
 
         // 1. 멀티플레이: 승리/패배로 표시
@@ -290,11 +300,9 @@ public class GameHUD : MonoBehaviour
             resultText.text = $"{winner.ToKorean()}돌 승리!";
         }
 
-        //SoundManager.Instance.StopBGM(); // ↓ 추가
-
-        // BattleBGM과 SFX 동시 재생
+        // BattleBGM과 SFX 동시 재생 (이것도 결과창 뜰 때 똭! 소리 나게)
         SoundManager.Instance.PlayBGM("BattleBGM");
-         bool isWin = (winner == myColor);
+        bool isWin = (winner == myColor);
         if (isWin)
             SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
         else
