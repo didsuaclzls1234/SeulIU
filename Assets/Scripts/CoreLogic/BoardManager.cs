@@ -1144,7 +1144,7 @@ public class BoardManager : MonoBehaviour
         Vector3 centerPos = GetWinningLineCenter(winningCoords);
         if (gameManager.cameraSwitcher != null)
         {
-            StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor));
+            StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
         }
 
         // [D] 돌 정리 (진 돌 날리기 등)
@@ -1154,6 +1154,25 @@ public class BoardManager : MonoBehaviour
         foreach (var stone in winners)
         {
             stone.GetComponent<StoneVisualController>()?.SetConsecration(false, Color.black);
+        }
+
+        // ** 돌들이 카메라 렌즈를 쳐다보게 회전
+        if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
+        {
+            Vector3 camPos = gameManager.cameraSwitcher.victoryCamera.transform.position;
+
+            foreach (var stone in winners)
+            {
+                if (stone != null)
+                {
+                    // 돌에서 카메라를 바라보는 방향 계산
+                    Vector3 lookDir = camPos - stone.transform.position;
+                    lookDir.y = 0; // 캐릭터가 하늘을 보며 뒤로 눕지 않게 Y축 회전만 고정!
+
+                    // 자연스럽게 휙! 하고 돌아봄
+                    stone.transform.rotation = Quaternion.LookRotation(lookDir);
+                }
+            }
         }
 
         // [F] 주인공들 파도타기 점프 (7목이든 뭐든 리스트 순서대로 뜀)
