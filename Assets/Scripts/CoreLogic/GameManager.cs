@@ -240,6 +240,10 @@ public class GameManager : MonoBehaviour
         // 6. [추가] 턴 감소를 SkillManager에 위임
         skillManager?.OnStonePlaced(playerColor, type);
         SoundManager.Instance.PlaySFX("PlaceStone");
+
+        //로그기록용
+        string who = (playerColor == localPlayerColor) ? "나" : "상대";
+        gameHUD?.RecordMoveLog(CurrentMoveCount, who, x, y, playerColor);
     }
 
     // [추가] SkillManager에서 SkillInduced 착수 시 호출할 public 래퍼
