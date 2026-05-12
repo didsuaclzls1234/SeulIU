@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-
+using UnityEngine.UI;
 /// <summary>
 /// 스킬 툴팁을 띄울 UI 요소(버튼/아이콘)에 붙이는 트리거.
 /// SetData() 또는 SetEffect()로 표시할 데이터를 주입하면 됩니다.
@@ -17,12 +17,13 @@ public class SkillTooltipTrigger : MonoBehaviour,
     private SkillData?    _skillData   = null;
     private ActiveEffect  _activeEffect = null;
     private bool          _useEffect   = false;
-
+    private Sprite       _icon         = null;
     /// <summary>SkillData 주입 (스킬 선택 화면 / 인게임 버튼)</summary>
-    public void SetData(SkillData data)
+    public void SetData(SkillData data,Sprite icon = null)
     {
         _skillData  = data;
         _useEffect  = false;
+        _icon      = icon;
     }
 
     /// <summary>ActiveEffect 주입 (버프/디버프 아이콘)</summary>
@@ -45,7 +46,7 @@ public class SkillTooltipTrigger : MonoBehaviour,
         if (_useEffect && _activeEffect != null)
             SkillTooltipUI.Instance.Show(_activeEffect);
         else if (_skillData.HasValue)
-            SkillTooltipUI.Instance.Show(_skillData.Value);
+            SkillTooltipUI.Instance.Show(_skillData.Value, _icon);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -53,4 +54,5 @@ public class SkillTooltipTrigger : MonoBehaviour,
         if (SkillTooltipUI.Instance == null) return;
         SkillTooltipUI.Instance.Hide();
     }
+    public Sprite GetIcon() => _icon;
 }

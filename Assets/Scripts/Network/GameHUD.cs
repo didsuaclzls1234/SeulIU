@@ -59,9 +59,13 @@ public class GameHUD : MonoBehaviour
 
     [Header("결과 패널")]
     public GameObject resultPanel;
-    public TextMeshProUGUI resultText;
+    //public TextMeshProUGUI resultText;
     public Button rematchButton;
     public Button exitButton;
+    [Header("결과 이미지")]
+    public Image resultImage;           // 인스펙터에서 Image 오브젝트 연결
+    public Sprite victorySprite;        // 승리 이미지
+    public Sprite defeatSprite;         // 패배 이미지
 
     [Header("스킬 선택창 UI (Pre-Game)")]
     public TextMeshProUGUI skillSelectTimerText; // 스킬창 전용 타이머
@@ -112,10 +116,10 @@ public class GameHUD : MonoBehaviour
     // [추가] GameSession 참조 (Rematch 버튼 콜백용)
     public GameSession gameSession;
 
-    [Header("스킬 로그")]
-    public TextMeshProUGUI skillLogText;      // Content 오브젝트의 TMP
-    public ScrollRect skillLogScrollRect;
-    private List<string> _logEntries = new List<string>();
+    // [Header("스킬 로그")]
+    // public TextMeshProUGUI skillLogText;      // Content 오브젝트의 TMP
+    // //public ScrollRect skillLogScrollRect;
+    // private List<string> _logEntries = new List<string>();
 
     // 필드 추가
     [Header("상대방 스킬 덱 표시")]
@@ -133,6 +137,7 @@ public class GameHUD : MonoBehaviour
     public Sprite blackPlayerSprite;    // 흑돌용 이미지
     public Sprite whitePlayerSprite;    // 백돌용 이미지
 
+    
     // 스킬 이펙트 스프라이트 매핑용 클래스
     [System.Serializable]
     public class SkillEffectSprite
@@ -147,12 +152,26 @@ public class GameHUD : MonoBehaviour
     public SkillEffectSprite[] skillEffectSprites; // 인스펙터에서 11개 등록
     private Coroutine _skillEffectCoroutine;
 
+    [Header("게임 종료 결과 문구")]
+    public TextMeshProUGUI gameOverResultTitleText;    // 위풍당당한 승리입니다! / 아쉬운 패배입니다!
+    public TextMeshProUGUI gameOverResultSubText;      // 최종 21턴 승리 / 최종 21턴 패배
+
     [Header("게임 종료 로그")]
     public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
     public Transform gameOverLogContent;          // ScrollRect의 Content
     public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
     public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
-    [System.Serializable]
+    ///[System.Serializable]
+    [Header("게임 로그")]
+    public GameObject gameLogPanel;           // 결과 패널 안의 로그 영역
+    public Transform gameLogContent;          // ScrollRect의 Content
+    // public GameObject gameLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
+    public TextMeshProUGUI gameLogText;       // 로그 텍스트 UI
+    public ScrollRect gameLogScrollRect;
+    // 임시 저장용 필드 추가
+    private string _pendingSkillWho;
+    private string _pendingSkillName;
+
     public class TurnLogEntry
     {
         public int turnNumber;
@@ -301,52 +320,83 @@ public class GameHUD : MonoBehaviour
 
     // ** 게임 오버 연출(테두리, 튕겨나감, 점프)을 볼 시간을 벌어주는 대기 코루틴
     private IEnumerator ShowGameOverRoutine(StoneColor winner, StoneColor myColor)
-    {
-        // 결과창 뜨기 전까지 2.5초 대기 (1초 테두리 감상 + 1.5초 튕겨나가고 점프하는 시간)
-        yield return new WaitForSeconds(2.5f);
+    {   
+        inGameUI?.SetActive(false);
+        // 1. 빨간 테두리를 감상하는 3초 동안 대기 (이때까진 기존 브금 유지)
+        yield return new WaitForSeconds(3.0f);
 
-        // --- 2.5초 뒤에 여기서부터 기존 결과창 UI 띄우기 시작 ---
+        // 2. 테두리가 끝나고 돌이 날아가며 카메라가 움직이기 시작할 때 브금 변경!
+        SoundManager.Instance.PlayBGM("BattleBGM");
+
+        // 3. 나머지 시네마틱 연출(카메라 워킹, 폴짝 점프 등)이 끝날 때까지 5.5초 더 대기 (총 8.5초)
+        yield return new WaitForSeconds(5.5f);
+
+        // --- 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText == null) yield break;
+        //SetGameOverResultTexts(winner, myColor);
+        //if (resultText == null) yield break;
 
         // 무승부 공통
         if (winner == StoneColor.None)
         {
-            resultText.text = "무승부!";
+            //resultText.text = "무승부!";
+            if (resultImage != null)
+            {
+                resultImage.sprite = null; // 무승부일 경우 이미지 비우기
+            }
             yield break;
         }
-
-        // 1. 멀티플레이: 승리/패배로 표시
-        if (gameManager.currentMode == PlayMode.Multiplayer)
-        {
-            resultText.text = (winner == myColor) ? "승리!" : "패배...";
-        }
-        // 2. AI 모드: 플레이어/AI 승리로 표시
-        else if (gameManager.currentMode == PlayMode.AI)
-        {
-            resultText.text = (winner == myColor) ? "플레이어 승리!" : "AI 승리!";
-        }
-        // 3. 솔로 모드: 흑/백 승리로 표시
-        else
-        {
-            resultText.text = $"{winner.ToKorean()}돌 승리!";
-        }
-
-        // BattleBGM과 SFX 동시 재생 (이것도 결과창 뜰 때 똭! 소리 나게)
-        SoundManager.Instance.PlayBGM("BattleBGM");
         bool isWin = (winner == myColor);
+        
+        // // 1. 멀티플레이: 승리/패배로 표시
+        // if (gameManager.currentMode == PlayMode.Multiplayer)
+        // {
+        //     // resultText.text = (winner == myColor) ? "승리!" : "패배...";
+        //     if (resultImage != null)
+        //     {
+        //         resultImage.gameObject.SetActive(true);
+        //         resultImage.sprite = isWin ? victorySprite : defeatSprite;
+        //     }
+        // }
+        // // 2. AI 모드: 플레이어/AI 승리로 표시
+        // else if (gameManager.currentMode == PlayMode.AI)
+        // {
+        //     // resultText.text = (winner == myColor) ? "플레이어 승리!" : "AI 승리!";
+        //     if (resultImage != null)
+        //     {
+        //         resultImage.gameObject.SetActive(true);
+        //         resultImage.sprite = isWin ? victorySprite : defeatSprite;
+        //     }
+        // }
+        // // 3. 솔로 모드: 흑/백 승리로 표시
+        // else
+        // {
+        //     resultText.text = $"{winner.ToKorean()}돌 승리!";
+        // }
+        // 솔로 모드는 흑 기준
+        if (gameManager.currentMode == PlayMode.Solo)
+            isWin = (winner == StoneColor.Black);
+
+        // resultText 대신 resultImage로 교체
+        if (resultImage != null)
+        {
+            resultImage.gameObject.SetActive(true);
+            resultImage.sprite = isWin ? victorySprite : defeatSprite;
+        }
+        // BattleBGM과 SFX 동시 재생 (이것도 결과창 뜰 때 똭! 소리 나게)
+        
         if (isWin)
             SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
         else
             SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
         
-        PopulateGameOverLog();
+        UpdateGameLog();
     }
 
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText) resultText.text = "상대방이 나갔습니다.";
+        //if (resultText) resultText.text = "상대방이\n나갔습니다.";
         if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
@@ -656,7 +706,7 @@ public class GameHUD : MonoBehaviour
     {
         if (rematchPopupPanel == null) return;
         rematchPopupPanel.SetActive(true);
-        if (rematchPopupText)    rematchPopupText.text = "상대방의 재도전 수락을 기다리는 중...";
+        if (rematchPopupText)    rematchPopupText.text = "상대방의 재도전 수락을\n기다리는 중...";
         if (rematchAcceptButton)  rematchAcceptButton.gameObject.SetActive(false);
         if (rematchDeclineButton) rematchDeclineButton.gameObject.SetActive(false);
     }
@@ -666,7 +716,7 @@ public class GameHUD : MonoBehaviour
     {
         if (rematchPopupPanel == null) return;
         rematchPopupPanel.SetActive(true);
-        if (rematchPopupText)    rematchPopupText.text = "상대방이 재도전을 요청했습니다!";
+        if (rematchPopupText)    rematchPopupText.text = "상대방이 재도전을\n요청했습니다!";
         if (rematchAcceptButton)  rematchAcceptButton.gameObject.SetActive(true);
         if (rematchDeclineButton) rematchDeclineButton.gameObject.SetActive(true);
     }
@@ -683,31 +733,31 @@ public class GameHUD : MonoBehaviour
         HideRematchPanel();
         // resultPanel은 그대로 유지하고, 시스템 메시지만 띄움
         // resultPanel은 이미 열려있으므로 텍스트만 교체
-        if (resultText) resultText.text = "상대방이 도망쳤습니다!!";
+        //if (resultText) resultText.text = "상대방이\n도망쳤습니다!!";
         // 거절 후엔 리매치 버튼 클릭 막기 (더 이상 요청 못 하게)
         if (rematchButton) rematchButton.interactable = false;
     }
     // ── 스킬 로그 ─────────────────────────────────────────
 
-    public void AddSkillLog(string userName, string skillName, int turnCount)
-    {
-        if (skillLogText == null) return;
+    // public void AddSkillLog(string userName, string skillName, int turnCount)
+    // {
+    //     if (skillLogText == null) return;
 
-        skillLogText.richText = true;
+    //     skillLogText.richText = true;
 
-        string safeUserName = SanitizeRichText(userName);
-        string safeSkillName = SanitizeRichText(skillName);
+    //     string safeUserName = SanitizeRichText(userName);
+    //     string safeSkillName = SanitizeRichText(skillName);
 
-        string logEntry =
-            $"<pos=5><color=#FFA500>[{turnCount}턴]</color>" +
-            $"<pos=90>{safeUserName}" +
-            $"<pos=180>{safeSkillName}";
+    //     string logEntry =
+    //         $"<pos=5><color=#FFA500>[{turnCount}턴]</color>" +
+    //         $"<pos=90>{safeUserName}" +
+    //         $"<pos=180>{safeSkillName}";
 
-        _logEntries.Add(logEntry);
-        skillLogText.text = string.Join("\n", _logEntries);
+    //     _logEntries.Add(logEntry);
+    //     skillLogText.text = string.Join("\n", _logEntries);
 
-        StartCoroutine(ScrollToBottom());
-    }
+    //     StartCoroutine(ScrollToBottom());
+    // }
 
     private string SanitizeRichText(string text)
     {
@@ -720,11 +770,11 @@ public class GameHUD : MonoBehaviour
             .Replace("<", "＜")
             .Replace(">", "＞");
     }
-    private IEnumerator ScrollToBottom()
-    {
-        yield return new WaitForEndOfFrame();
-        skillLogScrollRect.verticalNormalizedPosition = 0f;
-    }
+    // private IEnumerator ScrollToBottom()
+    // {
+    //     yield return new WaitForEndOfFrame();
+    //     skillLogScrollRect.verticalNormalizedPosition = 0f;
+    // }
 
      // ── 덱 슬롯 UI 갱신 ─────────────────────────────────────────────
     // 스킬 추가/제거/정렬될 때마다 호출
@@ -795,7 +845,7 @@ public class GameHUD : MonoBehaviour
                 SkillTooltipTrigger trigger = oppDeckSlotImages[i].GetComponent<SkillTooltipTrigger>();
                 if (trigger == null)
                     trigger = oppDeckSlotImages[i].gameObject.AddComponent<SkillTooltipTrigger>();
-                trigger.SetData(data);
+                trigger.SetData(data,icon);
             }
         }
     }
@@ -808,7 +858,7 @@ public class GameHUD : MonoBehaviour
     }
  
     // ── 아이콘 안전 로드 (이미지 없어도 null 반환으로 예외 처리) ────
-    private Sprite GetSkillIcon(int skillId)
+    public Sprite GetSkillIcon(int skillId)
     {
         // 1순위: 인스펙터에서 직접 연결한 배열
         int index = skillId - 1;
@@ -896,12 +946,12 @@ public class GameHUD : MonoBehaviour
         inGameUI?.SetActive(true);
     }
     //스킬로그 초기화 함수
-    public void ResetSkillLog()
-    {
-        _logEntries.Clear();
-        if (skillLogText != null) skillLogText.text = "";
-        _turnLogs.Clear();
-    }
+    // public void ResetSkillLog()
+    // {
+    //     _logEntries.Clear();
+    //     if (skillLogText != null) skillLogText.text = "";
+    //     _turnLogs.Clear();
+    // }
 
     // 스킬 사용 시 이펙트 보여주는 함수
     public void ShowSkillEffect(int skillId)
@@ -937,17 +987,44 @@ public class GameHUD : MonoBehaviour
     // 스킬 기록
     public void RecordSkillLog(int turnNumber, string who, string skillName)
     {
-        TurnLogEntry entry = GetOrCreateEntry(turnNumber);
-        entry.skillUsed = $"{who} — {skillName}";
+        // TurnLogEntry entry = GetOrCreateEntry(turnNumber);
+        // entry.skillUsed = $"{who} — {skillName}";
+        // UpdateGameLog();
+         _pendingSkillWho = who;
+        _pendingSkillName = skillName;
     }
+    public void ForceCommitPendingLog(int turnCount)
+    {
+        if (string.IsNullOrEmpty(_pendingSkillName)) return;
+
+        // 현재 턴의 로그 엔트리를 생성하거나 가져옴
+        TurnLogEntry entry = GetOrCreateEntry(turnCount);
+        entry.skillUsed = _pendingSkillName;
+        entry.who = _pendingSkillWho;
+
+        // 중요: 소모했으므로 즉시 초기화 (나중에 돌이 놓여도 중복 출력 안 됨)
+        _pendingSkillName = null;
+        _pendingSkillWho = null;
+
+        UpdateGameLog();
+    }
+    
     // 착수 기록
     public void RecordMoveLog(int turnNumber, string who, int x, int y, StoneColor color)
     {
         TurnLogEntry entry = GetOrCreateEntry(turnNumber);
+        // pending 스킬이 있으면 같은 턴에 기록
+        if (!string.IsNullOrEmpty(_pendingSkillName))
+        {
+            entry.skillUsed = $"{_pendingSkillWho} — {_pendingSkillName}";
+            _pendingSkillWho = null;
+            _pendingSkillName = null;
+        }
         entry.who = who;
         entry.stoneX = x;
         entry.stoneY = y;
         entry.color = color;
+        UpdateGameLog();
     }
     private TurnLogEntry GetOrCreateEntry(int turnNumber)
     {
@@ -959,9 +1036,9 @@ public class GameHUD : MonoBehaviour
         }
         return entry;
     }
-        public void PopulateGameOverLog()
+    public void UpdateGameLog()
     {
-        if (gameOverLogText == null) return;
+        if (gameLogText == null) return;
 
         _turnLogs.Sort((a, b) => a.turnNumber.CompareTo(b.turnNumber));
 
@@ -969,7 +1046,7 @@ public class GameHUD : MonoBehaviour
 
         foreach (TurnLogEntry entry in _turnLogs)
         {
-            sb.AppendLine($"── {entry.turnNumber}턴 ──");
+            sb.AppendLine($"<align=\"center\">── {entry.turnNumber}턴 ──</align>");
 
             if (!string.IsNullOrEmpty(entry.skillUsed))
                 sb.AppendLine($"  스킬 : {entry.skillUsed}");
@@ -978,6 +1055,16 @@ public class GameHUD : MonoBehaviour
                 sb.AppendLine($"  착수 : {entry.who}({entry.color.ToKorean()}) ({entry.stoneX}, {entry.stoneY})");
         }
 
-        gameOverLogText.text = sb.ToString();
+    gameLogText.text = sb.ToString();
+        // 최신 로그가 보이도록 맨 아래로 스크롤
+    StartCoroutine(ScrollToBottom());
     }
-}   
+    
+    private IEnumerator ScrollToBottom()
+    {
+        yield return null;
+            if (gameLogScrollRect != null)
+                gameLogScrollRect.verticalNormalizedPosition = 0f;
+    }
+    
+}  

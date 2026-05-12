@@ -14,7 +14,7 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: 03d83e39d83e9af428ba08134eefd729, type: 2}
     - target: {fileID: -8679921383154817045, guid: 3a46731ec7e72b3448acbd3d324732a8, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.63856
+      value: 8.27
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3a46731ec7e72b3448acbd3d324732a8, type: 3}
       propertyPath: m_LocalPosition.y
@@ -67,5 +67,50 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3a46731ec7e72b3448acbd3d324732a8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4419035596747710112}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3a46731ec7e72b3448acbd3d324732a8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5143555601387705687}
   m_SourcePrefab: {fileID: 100100000, guid: 3a46731ec7e72b3448acbd3d324732a8, type: 3}
+--- !u!1 &7526873232780960348 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3a46731ec7e72b3448acbd3d324732a8, type: 3}
+  m_PrefabInstance: {fileID: 7256911444657250061}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &4419035596747710112
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7526873232780960348}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: b2c1f8aaeeb9661409264f52b9ccd46b, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5143555601387705687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7526873232780960348}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e53c231409d28c499123877746958b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudienceController

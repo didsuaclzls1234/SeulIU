@@ -29,7 +29,7 @@ public class SkillTooltipUI : MonoBehaviour
     public TextMeshProUGUI skillTypeText;
     public TextMeshProUGUI spCostText;
     public TextMeshProUGUI cooldownText;
-    public TextMeshProUGUI durationText;     // 지속 턴 (없으면 숨김)
+    public TextMeshProUGUI durationText; 
     public TextMeshProUGUI descriptionText;
 
     [Header("Follow Settings")]
@@ -58,21 +58,37 @@ public class SkillTooltipUI : MonoBehaviour
     // ──────────────────────────────────────────────
 
     /// <summary>SkillData로 툴팁 표시 (스킬 선택 화면 / 인게임 버튼)</summary>
-    public void Show(SkillData data)
+    [SerializeField] private Image skillIconImage; 
+    public void Show(SkillData data, Sprite icon = null)
     {
-        skillNameText.text  = data.skillName;
-        skillTypeText.text  = $"[{data.type}]";
-        spCostText.text     = data.spCost == 0 ? "SP : -" : $"SP : {data.spCost}";
-        cooldownText.text   = data.cooldown == 0 ? "쿨타임 : 없음" : $"쿨타임 : {data.cooldown}턴";
+        skillNameText.text  = $"<color=#F4E2B0>{data.skillName}</color>";
+        skillTypeText.text  = $"<color=#D6B56D>{data.type}</color>";
+        spCostText.text     = data.spCost == 0
+            ? "<color=#E8DFC9>SP</color> <color=#B8AA8A>-</color>"
+            : $"<color=#E8DFC9>SP</color> <color=#D6B56D>{data.spCost}</color>";
+
+        cooldownText.text   = data.cooldown == 0
+            ? "<color=#B8AA8A>쿨타임 없음</color>"
+            : $"<color=#E8DFC9>쿨타임</color> <color=#D6B56D>{data.cooldown}턴</color>";
 
         bool hasDuration = data.durationTurn > 0;
         if (durationText != null)
         {
-            durationText.gameObject.SetActive(hasDuration);
-            if (hasDuration) durationText.text = $"지속 : {data.durationTurn}턴";
+            if (hasDuration)
+                durationText.text = $"<color=#E8DFC9>지속</color> <color=#D6B56D>{data.durationTurn}턴</color>";
+            else
+                durationText.text = "<color=#B8AA8A>지속 없음</color>";
+
+            durationText.gameObject.SetActive(true);
         }
 
-        descriptionText.text = data.description;
+        descriptionText.text = $"<color=#EDE6D5>{data.description}</color>";
+        // ↓ 아이콘 처리
+        if (skillIconImage != null)
+        {
+            skillIconImage.sprite = icon;
+            skillIconImage.gameObject.SetActive(icon != null);
+        }
         tooltipPanel.SetActive(true);
     }
 
