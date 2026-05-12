@@ -302,10 +302,16 @@ public class GameHUD : MonoBehaviour
     // ** 게임 오버 연출(테두리, 튕겨나감, 점프)을 볼 시간을 벌어주는 대기 코루틴
     private IEnumerator ShowGameOverRoutine(StoneColor winner, StoneColor myColor)
     {
-        // 결과창 뜨기 전까지 2.5초 대기 (1초 테두리 감상 + 1.5초 튕겨나가고 점프하는 시간)
-        yield return new WaitForSeconds(2.5f);
+        // 1. 빨간 테두리를 감상하는 3초 동안 대기 (이때까진 기존 브금 유지)
+        yield return new WaitForSeconds(3.0f);
 
-        // --- 2.5초 뒤에 여기서부터 기존 결과창 UI 띄우기 시작 ---
+        // 2. 테두리가 끝나고 돌이 날아가며 카메라가 움직이기 시작할 때 브금 변경!
+        SoundManager.Instance.PlayBGM("BattleBGM");
+
+        // 3. 나머지 시네마틱 연출(카메라 워킹, 폴짝 점프 등)이 끝날 때까지 5.5초 더 대기 (총 8.5초)
+        yield return new WaitForSeconds(5.5f);
+
+        // --- 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);
         if (resultText == null) yield break;
 
@@ -333,7 +339,6 @@ public class GameHUD : MonoBehaviour
         }
 
         // BattleBGM과 SFX 동시 재생 (이것도 결과창 뜰 때 똭! 소리 나게)
-        SoundManager.Instance.PlayBGM("BattleBGM");
         bool isWin = (winner == myColor);
         if (isWin)
             SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);

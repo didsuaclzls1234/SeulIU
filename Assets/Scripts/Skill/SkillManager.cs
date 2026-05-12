@@ -960,6 +960,9 @@ public class SkillManager : MonoBehaviour
         selectedSkillSlot     = -1;
         activeEffects.Clear();
 
+        //  제거 스킬 예약 좌표 초기화! (이거 안 하면 다음 판에 엉뚱한 돌이 터집니다)
+        pendingRemoveTarget = new Vector2Int(-1, -1);
+
         // 준비 상태 초기화
         isLocalPlayerReady  = false;
         isRemotePlayerReady = false;
