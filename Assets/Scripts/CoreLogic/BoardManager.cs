@@ -1127,8 +1127,9 @@ public class BoardManager : MonoBehaviour
         // 1. 빨간 테두리가 씌워진 상태로 1초간 여운 감상
         yield return new WaitForSeconds(1.0f);
 
-        // 2. 패배한 돌들 사방으로 썅! 날려버리기
-        StartCoroutine(BlowUpDefeatedStones(winners));
+        // 2.\상대방(패배자)의 색상을 같이 넘겨줌
+        StoneColor loserColor = gameManager.currentTurnColor.Opponent();
+        StartCoroutine(BlowUpDefeatedStones(winners, loserColor));
 
         // 3. 승리한 돌들 0.15초 간격으로 차례대로 점프 애니메이션 실행!
         foreach (var stone in winners)
@@ -1171,21 +1172,33 @@ public class BoardManager : MonoBehaviour
     // =========================================================
     //  패배 돌 튕겨내기 연출 (시네마틱)
     // =========================================================
-    public IEnumerator BlowUpDefeatedStones(List<GameObject> winners)
+    public IEnumerator BlowUpDefeatedStones(List<GameObject> winners, StoneColor loserColor)
     {
-        // 1. 승리한 돌들을 제외한 나머지 돌들 리스트 추출
-        List<GameObject> losers = new List<GameObject>();
+        int loserInt = (int)loserColor;
+
         foreach (var stone in activeStones)
         {
-            if (!winners.Contains(stone)) losers.Add(stone);
-        }
+            // 승리한 5목 돌이면 무시
+            if (winners.Contains(stone)) continue;
 
-        // 2. 각 패배한 돌에 가짜 물리 연출 부여
-        foreach (var stone in losers)
-        {
-            StartCoroutine(StoneFlyRoutine(stone));
-        }
+            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
 
+            // 🚨 "진 돌(패배자 색상)"만 날려버리기
+            if (grid[x, y] == loserInt)
+            {
+                // 1. 가짜 돌(더미) 생성 (원래 돌 위치/회전 그대로)
+                string poolTag = (loserColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
+                GameObject fakeStone = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
+
+                // 2. 가짜 돌 날리기!
+                if (fakeStone != null) StartCoroutine(StoneFlyRoutine(fakeStone));
+
+                // 3. (선택) 보드에 남아있는 진짜 돌은 살짝 어둡게(까맣게) 만들어서 죽은 돌 느낌 내기
+                StoneVisualController svc = stone.GetComponent<StoneVisualController>();
+                if (svc != null) svc.SetOverlay(Color.black, 0.6f);
+            }
+        }
         yield return null;
     }
 
