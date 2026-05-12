@@ -1430,7 +1430,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 845761893170784031, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 853410629372109029, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchorMax.y
@@ -2123,6 +2123,10 @@ PrefabInstance:
     - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_Name
       value: Canvas_Network
+      objectReference: {fileID: 0}
+    - target: {fileID: 4739459269573404672, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4742865565033136650, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchorMax.y
