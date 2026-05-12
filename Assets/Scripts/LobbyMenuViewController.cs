@@ -64,9 +64,11 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
         var settingsManager = FindFirstObjectByType<UISettingsManager>();
         if (settingsManager != null)
         {
-            settingsManager.bgmSlider = bgmSliderObject;  // 현재 씬의 슬라이더
-            settingsManager.sfxSlider = sfxSliderObject;
-            settingsManager.LoadAudioSettings();
+            // 단순히 = 로 대입하는 대신, 바인딩 메서드를 호출합니다.
+        settingsManager.SetSlidersAndBind(bgmSliderObject, sfxSliderObject);
+        
+        // 연결이 끝난 후 값을 로드하면, 슬라이더 값이 바뀌면서 사운드도 자동 적용됩니다.
+        settingsManager.LoadAudioSettings();
         }
         SoundManager.Instance.PlayBGM("LobbyBGM");
         // if (nicknameInputField != null && !string.IsNullOrEmpty(savedNickname))

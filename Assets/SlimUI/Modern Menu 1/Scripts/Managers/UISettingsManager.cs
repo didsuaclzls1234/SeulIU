@@ -446,6 +446,31 @@ namespace SlimUI.ModernMenu{
 	// 		texturehightextLINE.gameObject.SetActive(true);
 	// 	}
 	// }
+	public void SetSlidersAndBind(GameObject bgmObj, GameObject sfxObj)
+	{
+		bgmSlider = bgmObj;
+		sfxSlider = sfxObj;
+
+		if (bgmSlider != null)
+		{
+			Slider s = bgmSlider.GetComponent<Slider>();
+			// 1. 기존에 남아있을지 모를 리스너를 모두 제거 (중복 방지)
+			s.onValueChanged.RemoveAllListeners();
+			// 2. 사운드 매니저의 메서드와 직접 연결
+			s.onValueChanged.AddListener(SetBGM); 
+		}
+
+		if (sfxSlider != null)
+		{
+			Slider s = sfxSlider.GetComponent<Slider>();
+			s.onValueChanged.RemoveAllListeners();
+			s.onValueChanged.AddListener(SetSFX);
+		}
+	}
+
+	// 람다식 대신 명확한 래퍼 함수를 쓰면 관리가 편합니다.
+	private void SetBGM(float val) => SoundManager.Instance.SetBGMVolume(val);
+	private void SetSFX(float val) => SoundManager.Instance.SetSFXVolume(val);
 	public void LoadAudioSettings()
 	{
 		float bgm = PlayerPrefs.GetFloat("MusicVolume", 0.5f);
