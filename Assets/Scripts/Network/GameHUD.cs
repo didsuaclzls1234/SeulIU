@@ -147,6 +147,10 @@ public class GameHUD : MonoBehaviour
     public SkillEffectSprite[] skillEffectSprites; // 인스펙터에서 11개 등록
     private Coroutine _skillEffectCoroutine;
 
+    [Header("게임 종료 결과 문구")]
+    public TextMeshProUGUI gameOverResultTitleText;    // 위풍당당한 승리입니다! / 아쉬운 패배입니다!
+    public TextMeshProUGUI gameOverResultSubText;      // 최종 21턴 승리 / 최종 21턴 패배
+
     [Header("게임 종료 로그")]
     public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
     public Transform gameOverLogContent;          // ScrollRect의 Content
@@ -313,6 +317,7 @@ public class GameHUD : MonoBehaviour
 
         // --- 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);
+        SetGameOverResultTexts(winner, myColor);
         if (resultText == null) yield break;
 
         // 무승부 공통
@@ -351,7 +356,7 @@ public class GameHUD : MonoBehaviour
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText) resultText.text = "상대방이 나갔습니다.";
+        if (resultText) resultText.text = "상대방이\n나갔습니다.";
         if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
@@ -964,7 +969,7 @@ public class GameHUD : MonoBehaviour
         }
         return entry;
     }
-        public void PopulateGameOverLog()
+    public void PopulateGameOverLog()
     {
         if (gameOverLogText == null) return;
 
@@ -974,7 +979,7 @@ public class GameHUD : MonoBehaviour
 
         foreach (TurnLogEntry entry in _turnLogs)
         {
-            sb.AppendLine($"── {entry.turnNumber}턴 ──");
+            sb.AppendLine($"<align=\"center\">── {entry.turnNumber}턴 ──</align>");
 
             if (!string.IsNullOrEmpty(entry.skillUsed))
                 sb.AppendLine($"  스킬 : {entry.skillUsed}");
@@ -984,5 +989,52 @@ public class GameHUD : MonoBehaviour
         }
 
         gameOverLogText.text = sb.ToString();
+    }
+
+    private void SetGameOverResultTexts(StoneColor winner, StoneColor myColor)
+    {
+        if (gameOverResultTitleText == null && gameOverResultSubText == null)
+            return;
+
+        if (gameOverResultTitleText != null)
+        {
+            gameOverResultTitleText.richText = true;
+            gameOverResultTitleText.overrideColorTags = false;
+        }
+
+        if (gameOverResultSubText != null)
+        {
+            gameOverResultSubText.richText = true;
+            gameOverResultSubText.overrideColorTags = false;
+            gameOverResultSubText.color = Color.white;
+        }
+
+        if (winner == StoneColor.None)
+        {
+            if (gameOverResultTitleText != null)
+                gameOverResultTitleText.text = "승부를 가리지 못했습니다.";
+
+            if (gameOverResultSubText != null)
+            {
+                gameOverResultSubText.text = $"최종 <color=#D6B56D>{gameManager.CurrentMoveCount}턴</color> 무승부";
+                gameOverResultSubText.ForceMeshUpdate(true, true);
+            }
+
+            return;
+        }
+
+        bool isWin = winner == myColor;
+
+        if (gameOverResultTitleText != null)
+            gameOverResultTitleText.text = isWin ? "위풍당당한 승리입니다!" : "아쉬운 패배입니다!";
+
+        if (gameOverResultSubText != null)
+        {
+            gameOverResultSubText.text = isWin
+                ? $"최종 <color=#D6B56D>{gameManager.CurrentMoveCount}턴</color> 승리"
+                : $"최종 <color=#D6B56D>{gameManager.CurrentMoveCount}턴</color> 패배";
+
+            gameOverResultSubText.ForceMeshUpdate(true, true);
+        }
     }
 }   
