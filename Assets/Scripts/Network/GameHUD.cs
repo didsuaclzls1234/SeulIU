@@ -303,7 +303,7 @@ public class GameHUD : MonoBehaviour
     private IEnumerator ShowGameOverRoutine(StoneColor winner, StoneColor myColor)
     {
         // 결과창 뜨기 전까지 2.5초 대기 (1초 테두리 감상 + 1.5초 튕겨나가고 점프하는 시간)
-        yield return new WaitForSeconds(2.5f);
+        yield return new WaitForSeconds(8.5f);
 
         // --- 2.5초 뒤에 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);

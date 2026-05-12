@@ -203,10 +203,10 @@ public class GameManager : MonoBehaviour
         var winningCoords = board.GetWinningStones(x, y, playerColor);
         if (winningCoords != null)
         {
-            // 이긴 돌들 좌표를 찾아 빨간 테두리 씌우기!
-            board.HighlightWinningStones(winningCoords);
+            // 승리 좌표뿐만 아니라 승리한 돌의 색상(playerColor)도 넘겨줍니다.
+            board.HighlightWinningStones(winningCoords, playerColor);
             EndGame(playerColor);
-            return; // 더 이상 턴을 넘기지 않고 함수 종료
+            return;
         }
 
         // 4. 무승부 판정 (바둑판이 꽉 찼는가?): 돌을 둔 횟수가 (가로 x 세로) 칸 수와 같아지면 꽉 찬 것
@@ -476,6 +476,9 @@ public class GameManager : MonoBehaviour
         pendingSkillId       = -1;
         hasUsedSkillThisTurn = false;
 
+        // 시네마틱 카메라 끄고 원래 탑뷰로 강제 멱살 잡고 끌고 옴!
+        cameraSwitcher?.ForceTopView();
+
         // 게임 상태 초기화 (스킬 선택 대기로 복귀)
         _currentTurnColor = StoneColor.Black;
         currentState      = GameState.WaitingForSkillSelect;
@@ -537,7 +540,10 @@ public class GameManager : MonoBehaviour
         board.ClearBoard();
         moveHistory.Clear(); // 재시작 시 스택 비우기
         pendingSkillId = -1; // [수정] extraPlacementCount 대신 pendingSkillId 초기화
-        
+
+        // 솔로 플레이 등 즉시 재시작할 때도 카메라 강제 복귀
+        cameraSwitcher?.ForceTopView();
+
         // 2. 게임 상태와 턴을 흑돌로 초기화
         currentTurnColor = StoneColor.Black;
         currentState = GameState.Playing;
