@@ -152,6 +152,16 @@ public class GameHUD : MonoBehaviour
     public SkillEffectSprite[] skillEffectSprites; // 인스펙터에서 11개 등록
     private Coroutine _skillEffectCoroutine;
 
+    [Header("게임 종료 결과 문구")]
+    public TextMeshProUGUI gameOverResultTitleText;    // 위풍당당한 승리입니다! / 아쉬운 패배입니다!
+    public TextMeshProUGUI gameOverResultSubText;      // 최종 21턴 승리 / 최종 21턴 패배
+
+    [Header("게임 종료 로그")]
+    public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
+    public Transform gameOverLogContent;          // ScrollRect의 Content
+    public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
+    public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
+    [System.Serializable]
     [Header("게임 로그")]
     public GameObject gameLogPanel;           // 결과 패널 안의 로그 영역
     public Transform gameLogContent;          // ScrollRect의 Content
@@ -323,7 +333,8 @@ public class GameHUD : MonoBehaviour
 
         // --- 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);
-        //if (resultText == null) yield break;
+        SetGameOverResultTexts(winner, myColor);
+        if (resultText == null) yield break;
 
         // 무승부 공통
         if (winner == StoneColor.None)
@@ -385,7 +396,7 @@ public class GameHUD : MonoBehaviour
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultImage) resultImage.sprite = victorySprite; // 상대가 나갔으니 승리 이미지 띄우기
+        if (resultText) resultText.text = "상대방이\n나갔습니다.";
         if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
@@ -1025,7 +1036,7 @@ public class GameHUD : MonoBehaviour
         }
         return entry;
     }
-    public void UpdateGameLog()
+    public void PopulateGameOverLog()
     {
         if (gameLogText == null) return;
 
@@ -1035,7 +1046,7 @@ public class GameHUD : MonoBehaviour
 
         foreach (TurnLogEntry entry in _turnLogs)
         {
-            sb.AppendLine($"── {entry.turnNumber}턴 ──");
+            sb.AppendLine($"<align=\"center\">── {entry.turnNumber}턴 ──</align>");
 
             if (!string.IsNullOrEmpty(entry.skillUsed))
                 sb.AppendLine($"  스킬 : {entry.skillUsed}");
