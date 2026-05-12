@@ -656,7 +656,7 @@ public class GameHUD : MonoBehaviour
     {
         if (rematchPopupPanel == null) return;
         rematchPopupPanel.SetActive(true);
-        if (rematchPopupText)    rematchPopupText.text = "상대방의 재도전 수락을 기다리는 중...";
+        if (rematchPopupText)    rematchPopupText.text = "상대방의 재도전 수락을\n기다리는 중...";
         if (rematchAcceptButton)  rematchAcceptButton.gameObject.SetActive(false);
         if (rematchDeclineButton) rematchDeclineButton.gameObject.SetActive(false);
     }
@@ -666,7 +666,7 @@ public class GameHUD : MonoBehaviour
     {
         if (rematchPopupPanel == null) return;
         rematchPopupPanel.SetActive(true);
-        if (rematchPopupText)    rematchPopupText.text = "상대방이 재도전을 요청했습니다!";
+        if (rematchPopupText)    rematchPopupText.text = "상대방이 재도전을\n요청했습니다!";
         if (rematchAcceptButton)  rematchAcceptButton.gameObject.SetActive(true);
         if (rematchDeclineButton) rematchDeclineButton.gameObject.SetActive(true);
     }
@@ -683,7 +683,7 @@ public class GameHUD : MonoBehaviour
         HideRematchPanel();
         // resultPanel은 그대로 유지하고, 시스템 메시지만 띄움
         // resultPanel은 이미 열려있으므로 텍스트만 교체
-        if (resultText) resultText.text = "상대방이 도망쳤습니다!!";
+        if (resultText) resultText.text = "상대방이\n도망쳤습니다!!";
         // 거절 후엔 리매치 버튼 클릭 막기 (더 이상 요청 못 하게)
         if (rematchButton) rematchButton.interactable = false;
     }

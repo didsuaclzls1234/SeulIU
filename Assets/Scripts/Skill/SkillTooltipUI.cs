@@ -61,15 +61,16 @@ public class SkillTooltipUI : MonoBehaviour
     public void Show(SkillData data)
     {
         skillNameText.text  = data.skillName;
-        skillTypeText.text  = $"[{data.type}]";
-        spCostText.text     = data.spCost == 0 ? "SP : -" : $"SP : {data.spCost}";
-        cooldownText.text   = data.cooldown == 0 ? "쿨타임 : 없음" : $"쿨타임 : {data.cooldown}턴";
+        skillTypeText.text  = $"{data.type}";
+        spCostText.text     = data.spCost == 0 ? "SP -" : $"SP {data.spCost}";
+        cooldownText.text   = data.cooldown == 0 ? "쿨타임 없음" : $"쿨타임 {data.cooldown}턴";
 
         bool hasDuration = data.durationTurn > 0;
         if (durationText != null)
         {
             durationText.gameObject.SetActive(hasDuration);
-            if (hasDuration) durationText.text = $"지속 : {data.durationTurn}턴";
+            if (hasDuration) durationText.text = $"지속 {data.durationTurn}턴";
+            else durationText.text = "지속 -";
         }
 
         descriptionText.text = data.description;
