@@ -513,13 +513,14 @@ public class SkillManager : MonoBehaviour
         // AI는 스킬 고르자마자 바로 준비 완료 처리
         isRemotePlayerReady = true;
         Debug.Log($"[AI] 스킬 선택 및 준비 완료: {oppSkillsID[0]}, {oppSkillsID[1]}, 빈칸");
-
+        gameManager.gameHUD?.RefreshOppDeckSlots(oppSkillsID, skillDatabase);
         // 만약 플레이어가 이미 준비 완료 상태라면 곧바로 게임 시작
         if (isLocalPlayerReady)
         {
             gameManager.gameHUD?.HideSkillSelectPanel();
             gameManager.StartGameAfterSelection();
         }
+
     }
 
     // -----------------------------------------------------------------
@@ -531,12 +532,20 @@ public class SkillManager : MonoBehaviour
         if (skillId == 3 && xs[0] != -1)
         {
             ReceiveSkill_DoubleDown(xs, ys);
+             if (skillDatabase.TryGetValue(skillId, out SkillData data3))
+            {
+                gameManager.gameHUD?.AddSkillLog("상대방", data3.skillName, turnCount);
+            }
             return;
         }
         if (skillId == 6 && xs[0] != -1)
         {
             // 두 번째 패킷 — 실제 봉인 좌표, SP/로그 없이 처리
             ReceiveSkill_Bladefall(xs, ys);
+            if (skillDatabase.TryGetValue(skillId, out SkillData data6))
+            {
+                gameManager.gameHUD?.AddSkillLog("상대방", data6.skillName, turnCount);
+            }
             return;
         }
          // 1. 어떤 스킬인지 찾음 (ID 기반)
@@ -1308,8 +1317,15 @@ public class SkillManager : MonoBehaviour
         mySP -= skill.data.spCost;
         skill.currentCooldown = skill.data.cooldown;
         gameManager.hasUsedSkillThisTurn = true;
-        gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
-
+        //gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
+         // B타입은 ExecutePendingSkill에서 로그 기록
+        bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
+        if (!isBType)
+            {
+                gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
+                gameManager.gameHUD?.ShowSkillEffect(skill.data.skillId); // ← 함께 묶음
+                gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", skill.data.skillName);
+            }   
         // 버프 리스트 등록
         if (skill.data.durationTurn > 0)
         {
@@ -1329,7 +1345,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
         // B타입(이중착수, 칼날비)은 여기서 빈 패킷을 쏘지 않습니다 (나중에 좌표 확정 후 쏨)
-        bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
+        // bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
         if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
@@ -1346,6 +1362,7 @@ public class SkillManager : MonoBehaviour
         RefreshSkillButtonStates();
 
         gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
+        // gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", skill.data.skillName);//끝날때 로그용.
     }
 
     // =========================================================
@@ -1408,9 +1425,12 @@ public class SkillManager : MonoBehaviour
                     
                     // ↓ 추가
                     SkillBase doubleDown = mySkills.Find(s => s.data.skillId == 3);
+                     gameManager.gameHUD?.ShowSkillEffect(3); 
                     if (doubleDown != null)
-
-                    gameManager.gameHUD?.AddSkillLog("나", doubleDown.data.skillName, gameManager.CurrentMoveCount);
+                    {
+                        gameManager.gameHUD?.AddSkillLog("나", doubleDown.data.skillName, gameManager.CurrentMoveCount);
+                        gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", doubleDown.data.skillName);
+                    }
                     // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
                     StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
                     Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
@@ -1432,7 +1452,8 @@ public class SkillManager : MonoBehaviour
 
                  // ↓ 추가
                 gameManager.gameHUD?.AddSkillLog("나", bladefall.data.skillName, gameManager.CurrentMoveCount);
-
+                gameManager.gameHUD?.ShowSkillEffect(6);
+                gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", bladefall.data.skillName);
                 // 일반 착수 패킷 먼저 날아가도록 지연 전송
                 StartCoroutine(SendDeferredSkillPacket(6, bx, by, gameManager.CurrentMoveCount));
 
