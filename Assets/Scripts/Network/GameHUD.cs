@@ -132,6 +132,21 @@ public class GameHUD : MonoBehaviour
     [Header("패널 스프라이트")]
     public Sprite blackPlayerSprite;    // 흑돌용 이미지
     public Sprite whitePlayerSprite;    // 백돌용 이미지
+
+    // 스킬 이펙트 스프라이트 매핑용 클래스
+    [System.Serializable]
+    public class SkillEffectSprite
+    {
+        public int skillId;
+        public Sprite sprite;
+    }
+
+    [Header("스킬 사용 연출")]
+    public Image skillEffectImage;
+    [Range(0f, 3f)] public float skillEffectDuration = 1.5f;
+    public SkillEffectSprite[] skillEffectSprites; // 인스펙터에서 11개 등록
+    private Coroutine _skillEffectCoroutine;
+
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
@@ -858,5 +873,37 @@ public class GameHUD : MonoBehaviour
     {
         _logEntries.Clear();
         if (skillLogText != null) skillLogText.text = "";
+    }
+
+    // 스킬 사용 시 이펙트 보여주는 함수
+    public void ShowSkillEffect(int skillId)
+    {
+        Sprite sprite = GetSkillEffectSprite(skillId);
+        if (sprite == null || skillEffectImage == null) return;
+
+        if (_skillEffectCoroutine != null)
+            StopCoroutine(_skillEffectCoroutine);
+
+        _skillEffectCoroutine = StartCoroutine(SkillEffectRoutine(sprite));
+    }
+    // 스킬 ID에 맞는 이펙트 스프라이트를 안전하게 가져오는 함수
+    private Sprite GetSkillEffectSprite(int skillId)
+    {
+        foreach (SkillEffectSprite s in skillEffectSprites)
+        {
+            if (s.skillId == skillId) return s.sprite;
+        }
+        Debug.LogWarning($"[HUD] 스킬 {skillId}번 이펙트 스프라이트 없음");
+        return null;
+    }
+    // 스킬 이펙트 보여주는 코루틴: 지정된 시간 동안 스킬 이펙트 이미지 활성화 후 자동으로 숨김
+    private IEnumerator SkillEffectRoutine(Sprite sprite)
+    {
+        skillEffectImage.sprite = sprite;
+        skillEffectImage.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(skillEffectDuration);
+
+        skillEffectImage.gameObject.SetActive(false);
     }
 }

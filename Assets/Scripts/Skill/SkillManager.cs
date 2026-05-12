@@ -1308,8 +1308,11 @@ public class SkillManager : MonoBehaviour
         mySP -= skill.data.spCost;
         skill.currentCooldown = skill.data.cooldown;
         gameManager.hasUsedSkillThisTurn = true;
-        gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
-
+        //gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
+         // B타입은 ExecutePendingSkill에서 로그 기록
+        bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
+        if (!isBType)
+            gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
         // 버프 리스트 등록
         if (skill.data.durationTurn > 0)
         {
@@ -1329,7 +1332,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
         // B타입(이중착수, 칼날비)은 여기서 빈 패킷을 쏘지 않습니다 (나중에 좌표 확정 후 쏨)
-        bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
+        // bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
         if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
