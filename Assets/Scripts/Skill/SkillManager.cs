@@ -534,6 +534,10 @@ public class SkillManager : MonoBehaviour
             ReceiveSkill_DoubleDown(xs, ys);
              if (skillDatabase.TryGetValue(skillId, out SkillData data3))
             {
+                 // ↓ 추가: SP 차감 및 UI 갱신
+                oppSP -= data3.spCost;
+                if (gameManager.gameHUD != null)
+                    gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
                 gameManager.gameHUD?.AddSkillLog("상대방", data3.skillName, turnCount);
             }
             return;
