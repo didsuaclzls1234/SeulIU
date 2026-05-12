@@ -28,24 +28,24 @@ namespace SlimUI.ModernMenu{
         public ThemedUIData themeController;
 
         [Header("PANELS")]
-        [Tooltip("The UI Panel parenting all sub menus")]
-        public GameObject mainCanvas;
-        [Tooltip("The UI Panel that holds the CONTROLS window tab")]
-        public GameObject PanelControls;
-        [Tooltip("The UI Panel that holds the VIDEO window tab")]
-        public GameObject PanelVideo;
-        [Tooltip("The UI Panel that holds the GAME window tab")]
-        public GameObject PanelGame;
-        [Tooltip("The UI Panel that holds the KEY BINDINGS window tab")]
-        public GameObject PanelKeyBindings;
-        [Tooltip("The UI Sub-Panel under KEY BINDINGS for MOVEMENT")]
-        public GameObject PanelMovement;
-        [Tooltip("The UI Sub-Panel under KEY BINDINGS for COMBAT")]
-        public GameObject PanelCombat;
-        [Tooltip("The UI Sub-Panel under KEY BINDINGS for GENERAL")]
-        public GameObject PanelGeneral;
-        
-
+        // [Tooltip("The UI Panel parenting all sub menus")]
+        // public GameObject mainCanvas;
+        // [Tooltip("The UI Panel that holds the CONTROLS window tab")]
+        // public GameObject PanelControls;
+        // [Tooltip("The UI Panel that holds the VIDEO window tab")]
+        // public GameObject PanelVideo;
+        // [Tooltip("The UI Panel that holds the GAME window tab")]
+        // public GameObject PanelGame;
+        // [Tooltip("The UI Panel that holds the KEY BINDINGS window tab")]
+        // public GameObject PanelKeyBindings;
+        // [Tooltip("The UI Sub-Panel under KEY BINDINGS for MOVEMENT")]
+        // public GameObject PanelMovement;
+        // [Tooltip("The UI Sub-Panel under KEY BINDINGS for COMBAT")]
+        // public GameObject PanelCombat;
+        // [Tooltip("The UI Sub-Panel under KEY BINDINGS for GENERAL")]
+        // public GameObject PanelGeneral;
+        public GameObject PanelSound;
+	
         // highlights in settings screen
         [Header("SETTINGS SCREEN")]
         [Tooltip("Highlight Image for when GAME Tab is selected in Settings")]
@@ -157,68 +157,68 @@ namespace SlimUI.ModernMenu{
 		}
 
 		void DisablePanels(){
-			PanelControls.SetActive(false);
-			PanelVideo.SetActive(false);
-			PanelGame.SetActive(false);
-			PanelKeyBindings.SetActive(false);
+			// PanelControls.SetActive(false);
+			// PanelVideo.SetActive(false);
+			// PanelGame.SetActive(false);
+			// PanelKeyBindings.SetActive(false);
 
-			lineGame.SetActive(false);
-			lineControls.SetActive(false);
-			lineVideo.SetActive(false);
-			lineKeyBindings.SetActive(false);
+			// lineGame.SetActive(false);
+			// lineControls.SetActive(false);
+			// lineVideo.SetActive(false);
+			// lineKeyBindings.SetActive(false);
 
-			PanelMovement.SetActive(false);
-			lineMovement.SetActive(false);
-			PanelCombat.SetActive(false);
-			lineCombat.SetActive(false);
-			PanelGeneral.SetActive(false);
-			lineGeneral.SetActive(false);
+			// PanelMovement.SetActive(false);
+			// lineMovement.SetActive(false);
+			// PanelCombat.SetActive(false);
+			// lineCombat.SetActive(false);
+			// PanelGeneral.SetActive(false);
+			// lineGeneral.SetActive(false);
 		}
 
 		public void GamePanel(){
-			DisablePanels();
-			PanelGame.SetActive(true);
-			lineGame.SetActive(true);
+			// DisablePanels();
+			// //PanelGame.SetActive(true);
+			// lineGame.SetActive(true);
 		}
 
 		public void VideoPanel(){
-			DisablePanels();
-			PanelVideo.SetActive(true);
-			lineVideo.SetActive(true);
+			/* DisablePanels();
+			//PanelVideo.SetActive(true);
+			lineVideo.SetActive(true); */
 		}
 
 		public void ControlsPanel(){
-			DisablePanels();
-			PanelControls.SetActive(true);
-			lineControls.SetActive(true);
+			/* DisablePanels();
+			//PanelControls.SetActive(true);
+			lineControls.SetActive(true); */
 		}
 
 		public void KeyBindingsPanel(){
-			DisablePanels();
+			/* DisablePanels();
 			MovementPanel();
 			PanelKeyBindings.SetActive(true);
-			lineKeyBindings.SetActive(true);
+			lineKeyBindings.SetActive(true); */
 		}
 
 		public void MovementPanel(){
-			DisablePanels();
-			PanelKeyBindings.SetActive(true);
-			PanelMovement.SetActive(true);
-			lineMovement.SetActive(true);
+			/* DisablePanels();
+			//PanelKeyBindings.SetActive(true);
+			//PanelMovement.SetActive(true);
+			//lineMovement.SetActive(true); */
 		}
 
 		public void CombatPanel(){
-			DisablePanels();
+			/* DisablePanels();
 			PanelKeyBindings.SetActive(true);
 			PanelCombat.SetActive(true);
-			lineCombat.SetActive(true);
+			lineCombat.SetActive(true); */
 		}
 
 		public void GeneralPanel(){
-			DisablePanels();
+			/* DisablePanels();
 			PanelKeyBindings.SetActive(true);
 			PanelGeneral.SetActive(true);
-			lineGeneral.SetActive(true);
+			lineGeneral.SetActive(true); */
 		}
 
 		public void PlayHover(){
@@ -265,7 +265,7 @@ namespace SlimUI.ModernMenu{
 		IEnumerator LoadAsynchronously(string sceneName){ // scene name is just the name of the current scene being loaded
 			AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName);
 			operation.allowSceneActivation = false;
-			mainCanvas.SetActive(false);
+			/* mainCanvas.SetActive(false); */
 			loadingMenu.SetActive(true);
 
 			while (!operation.isDone){
