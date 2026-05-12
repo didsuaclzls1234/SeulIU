@@ -1304,10 +1304,10 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1995399452}
-        m_TargetAssemblyTypeName: SlimUI.ModernMenu.UISettingsManager, Assembly-CSharp
-        m_MethodName: BGMSlider
-        m_Mode: 1
+      - m_Target: {fileID: 1995399450}
+        m_TargetAssemblyTypeName: SoundManager, Assembly-CSharp
+        m_MethodName: SetBGMVolume
+        m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -2038,10 +2038,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3910976551821912484, guid: c3da91ffc57daee45b793be95304e660, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1995399452}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c3da91ffc57daee45b793be95304e660, type: 3}
 --- !u!1 &1818059578
 GameObject:
@@ -2487,36 +2484,17 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &1995399447 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3910976551821912484, guid: c3da91ffc57daee45b793be95304e660, type: 3}
-  m_PrefabInstance: {fileID: 1783701755}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &1995399450 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
   m_PrefabInstance: {fileID: 1783701755}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1995399447}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: beaf237588c135f4b8542a7ff5d88d74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SoundManager
---- !u!114 &1995399452
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1995399447}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8f6aa6586f77764fab668a0a62d8f7a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SlimUI.ModernMenu.UISettingsManager
-  bgmSlider: {fileID: 920970719}
-  sfxSlider: {fileID: 1126644903}
 --- !u!1 &2074112401
 GameObject:
   m_ObjectHideFlags: 0
@@ -2643,6 +2621,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2091639716}
   - component: {fileID: 2091639715}
+  - component: {fileID: 2091639717}
   m_Layer: 0
   m_Name: LobbyMenuViewController
   m_TagString: Untagged
@@ -2679,6 +2658,8 @@ MonoBehaviour:
   backgroundImage: {fileID: 293506062}
   backgroundTargetAlpha: 0.1
   backgroundFadeDuration: 0.1
+  bgmSliderObject: {fileID: 920970719}
+  sfxSliderObject: {fileID: 1126644903}
 --- !u!4 &2091639716
 Transform:
   m_ObjectHideFlags: 0
@@ -2694,6 +2675,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2091639717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2091639714}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8f6aa6586f77764fab668a0a62d8f7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SlimUI.ModernMenu.UISettingsManager
+  bgmSlider: {fileID: 920970719}
+  sfxSlider: {fileID: 1126644903}
 --- !u!1 &2133161277
 GameObject:
   m_ObjectHideFlags: 0
@@ -3362,6 +3357,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
+      propertyPath: extrasMenu
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: hoverSound
       value: 
       objectReference: {fileID: 0}
@@ -3370,11 +3369,19 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
+      propertyPath: loadingBar
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: PanelCombat
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: lineGeneral
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
+      propertyPath: loadingMenu
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
@@ -3399,6 +3406,10 @@ PrefabInstance:
       objectReference: {fileID: 287201315}
     - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: PanelMovement
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
+      propertyPath: loadPromptText
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 393194567867878790, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
@@ -3815,19 +3826,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 394417835470662142, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 394417835470662142, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 1995399452}
+      objectReference: {fileID: 1995399450}
     - target: {fileID: 394417835470662142, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: SFXSlider
+      value: SetSFXVolume
       objectReference: {fileID: 0}
     - target: {fileID: 394417835470662142, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SlimUI.ModernMenu.UISettingsManager, Assembly-CSharp
+      value: SoundManager, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 394446295563700034, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       propertyPath: m_textAlignment
@@ -4410,6 +4421,7 @@ PrefabInstance:
     - {fileID: 353452697866409506, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
     - {fileID: 353412523533774890, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
     - {fileID: 351642387022362943, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
+    - {fileID: 352860444287884944, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 355529388823523236, guid: 0a68be1bd13d8694e8d8fe85574ac075, type: 3}
       insertIndex: 4
