@@ -197,7 +197,10 @@ public class GameManager : MonoBehaviour
         GameObject placedStone = board.PlaceStone(x, y, playerColor);
 
         // 2. 히스토리에 방금 둔 돌 정보 기록 (무르기를 위해)
-        moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = playerColor, stoneObj = placedStone });
+        if (type == PlacementType.PlayerManual)
+        {
+            moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = playerColor, stoneObj = placedStone });
+        }
 
         // 3. [리팩토링] 승패 판정 로직 통합 (CheckWin 삭제, GetWinningStones 재활용)
         var winningCoords = board.GetWinningStones(x, y, playerColor);
@@ -242,8 +245,12 @@ public class GameManager : MonoBehaviour
         SoundManager.Instance.PlaySFX("PlaceStone");
 
         //로그기록용
-        string who = (playerColor == localPlayerColor) ? "나" : "상대";
-        gameHUD?.RecordMoveLog(CurrentMoveCount, who, x, y, playerColor);
+        if (type == PlacementType.PlayerManual)
+        {
+            string who = (playerColor == localPlayerColor) ? "나" : "상대";
+            gameHUD?.RecordMoveLog(CurrentMoveCount, who, x, y, playerColor);
+            gameHUD?.UpdateGameLog();
+        }
     }
 
     // [추가] SkillManager에서 SkillInduced 착수 시 호출할 public 래퍼
@@ -487,7 +494,7 @@ public class GameManager : MonoBehaviour
         if (gameHUD != null)
         {
             gameHUD.resultPanel.SetActive(false);
-            gameHUD.ResetSkillLog(); // 스킬 로그도 싹 비워줍니다.
+            //gameHUD.ResetSkillLog(); // 스킬 로그도 싹 비워줍니다.
         }
 
         // 승리 조건 초기화 (오목이니까 5로 복구)
