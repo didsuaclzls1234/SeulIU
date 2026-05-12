@@ -161,7 +161,7 @@ public class GameHUD : MonoBehaviour
     public Transform gameOverLogContent;          // ScrollRect의 Content
     public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
     public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
-    [System.Serializable]
+    ///[System.Serializable]
     [Header("게임 로그")]
     public GameObject gameLogPanel;           // 결과 패널 안의 로그 영역
     public Transform gameLogContent;          // ScrollRect의 Content
@@ -333,8 +333,8 @@ public class GameHUD : MonoBehaviour
 
         // --- 여기서부터 기존 결과창 UI 띄우기 시작 ---
         if (resultPanel) resultPanel.SetActive(true);
-        SetGameOverResultTexts(winner, myColor);
-        if (resultText == null) yield break;
+        //SetGameOverResultTexts(winner, myColor);
+        //if (resultText == null) yield break;
 
         // 무승부 공통
         if (winner == StoneColor.None)
@@ -396,7 +396,7 @@ public class GameHUD : MonoBehaviour
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
-        if (resultText) resultText.text = "상대방이\n나갔습니다.";
+        //if (resultText) resultText.text = "상대방이\n나갔습니다.";
         if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
 
@@ -1036,7 +1036,7 @@ public class GameHUD : MonoBehaviour
         }
         return entry;
     }
-    public void PopulateGameOverLog()
+    public void UpdateGameLog()
     {
         if (gameLogText == null) return;
 
