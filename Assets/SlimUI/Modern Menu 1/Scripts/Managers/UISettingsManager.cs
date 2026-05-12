@@ -201,17 +201,7 @@ namespace SlimUI.ModernMenu{
 			// 	texturemedtextLINE.gameObject.SetActive(false);
 			// 	texturehightextLINE.gameObject.SetActive(true);
 			// }
-			float bgm = PlayerPrefs.GetFloat("MusicVolume", 0.5f);
-            float sfx = PlayerPrefs.GetFloat("SFXVolume", 0.5f);
-
-            if (bgmSlider != null)
-                bgmSlider.GetComponent<Slider>().value = bgm;
-
-            if (sfxSlider != null)
-                sfxSlider.GetComponent<Slider>().value = sfx;
-
-            SoundManager.Instance.SetBGMVolume(bgm);
-            SoundManager.Instance.SetSFXVolume(sfx);
+			LoadAudioSettings();
 		}
 
 		public void Update (){
@@ -456,5 +446,20 @@ namespace SlimUI.ModernMenu{
 	// 		texturehightextLINE.gameObject.SetActive(true);
 	// 	}
 	// }
+		public void LoadAudioSettings()
+		{
+			float bgm = PlayerPrefs.GetFloat("MusicVolume", 0.5f);
+			float sfx = PlayerPrefs.GetFloat("SFXVolume", 0.5f);
+
+			if (bgmSlider != null)
+				bgmSlider.GetComponent<Slider>().value = bgm;
+
+			if (sfxSlider != null)
+				sfxSlider.GetComponent<Slider>().value = sfx;
+
+			SoundManager.Instance.SetBGMVolume(bgm);
+			SoundManager.Instance.SetSFXVolume(sfx);
+		}
+			
 	}
 }
