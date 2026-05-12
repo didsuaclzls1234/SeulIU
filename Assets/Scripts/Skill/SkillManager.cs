@@ -513,13 +513,14 @@ public class SkillManager : MonoBehaviour
         // AI는 스킬 고르자마자 바로 준비 완료 처리
         isRemotePlayerReady = true;
         Debug.Log($"[AI] 스킬 선택 및 준비 완료: {oppSkillsID[0]}, {oppSkillsID[1]}, 빈칸");
-
+        gameManager.gameHUD?.RefreshOppDeckSlots(oppSkillsID, skillDatabase);
         // 만약 플레이어가 이미 준비 완료 상태라면 곧바로 게임 시작
         if (isLocalPlayerReady)
         {
             gameManager.gameHUD?.HideSkillSelectPanel();
             gameManager.StartGameAfterSelection();
         }
+
     }
 
     // -----------------------------------------------------------------
