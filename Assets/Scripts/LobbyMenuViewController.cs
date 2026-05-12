@@ -490,7 +490,13 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log($"[Photon] 방 참가 성공. 현재 인원: {PhotonNetwork.CurrentRoom.PlayerCount}");
-
+        // ↓ 추가: 2명 매칭 시 비마스터 클라이언트도 문구 표시
+        if (PhotonNetwork.CurrentRoom.PlayerCount == 2)
+        {   
+            isWaitingForOpponent = false; // ← 타이머 정지
+            if (waitingTimerText != null)
+                waitingTimerText.text = "매칭완료!";
+        }
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount == 2)
         {
             LoadMultiplayerScene();
@@ -500,7 +506,12 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         Debug.Log($"[Photon] {newPlayer.NickName} 입장. 현재 인원: {PhotonNetwork.CurrentRoom.PlayerCount}");
-
+        if (PhotonNetwork.CurrentRoom.PlayerCount == 2)
+        {
+            // 양쪽 모두 문구 표시
+            if (waitingTimerText != null)
+                waitingTimerText.text = "매칭완료!";
+        }
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount == 2)
         {
             LoadMultiplayerScene();
@@ -538,9 +549,19 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
         }
 
         isMatchmakingRequested = false;
+        isWaitingForOpponent = false;
         StopWaitingTimer();
+        
+        StartCoroutine(LoadSceneWithDelay());
+    }
+    private IEnumerator LoadSceneWithDelay()
+    {
+        // 매칭완료 문구 표시
+        if (waitingTimerText != null)
+            waitingTimerText.text = "매칭완료!";
 
-        Debug.Log("[Photon] 2명 매칭 완료 - 게임 씬 이동");
+        yield return new WaitForSeconds(2f);
+
         PhotonNetwork.LoadLevel(gameSceneName);
     }
 }
