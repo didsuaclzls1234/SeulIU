@@ -199,7 +199,7 @@ public class GameManager : MonoBehaviour
         // 2. 히스토리에 방금 둔 돌 정보 기록 (무르기를 위해)
         moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = playerColor, stoneObj = placedStone });
 
-        // 3. 🧹 [리팩토링] 승패 판정 로직 통합 (CheckWin 삭제, GetWinningStones 재활용)
+        // 3. [리팩토링] 승패 판정 로직 통합 (CheckWin 삭제, GetWinningStones 재활용)
         var winningCoords = board.GetWinningStones(x, y, playerColor);
         if (winningCoords != null)
         {
