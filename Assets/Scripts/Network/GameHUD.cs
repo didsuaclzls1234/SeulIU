@@ -147,6 +147,23 @@ public class GameHUD : MonoBehaviour
     public SkillEffectSprite[] skillEffectSprites; // 인스펙터에서 11개 등록
     private Coroutine _skillEffectCoroutine;
 
+    [Header("게임 종료 로그")]
+    public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
+    public Transform gameOverLogContent;          // ScrollRect의 Content
+    public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
+    public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
+    [System.Serializable]
+    public class TurnLogEntry
+    {
+        public int turnNumber;
+        public string skillUsed;   // null이면 스킬 미사용
+        public string who;         // "나" or "상대"
+        public int stoneX;
+        public int stoneY;
+        public StoneColor color;
+    }
+    private List<TurnLogEntry> _turnLogs = new List<TurnLogEntry>();
+
     private void Start()
     {
         // 시작할 때 패널들 닫아두기
@@ -314,6 +331,8 @@ public class GameHUD : MonoBehaviour
             SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
         else
             SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
+        
+        PopulateGameOverLog();
     }
 
     public void ShowOpponentLeft()
@@ -873,6 +892,7 @@ public class GameHUD : MonoBehaviour
     {
         _logEntries.Clear();
         if (skillLogText != null) skillLogText.text = "";
+        _turnLogs.Clear();
     }
 
     // 스킬 사용 시 이펙트 보여주는 함수
@@ -906,4 +926,50 @@ public class GameHUD : MonoBehaviour
 
         skillEffectImage.gameObject.SetActive(false);
     }
-}
+    // 스킬 기록
+    public void RecordSkillLog(int turnNumber, string who, string skillName)
+    {
+        TurnLogEntry entry = GetOrCreateEntry(turnNumber);
+        entry.skillUsed = $"{who} — {skillName}";
+    }
+    // 착수 기록
+    public void RecordMoveLog(int turnNumber, string who, int x, int y, StoneColor color)
+    {
+        TurnLogEntry entry = GetOrCreateEntry(turnNumber);
+        entry.who = who;
+        entry.stoneX = x;
+        entry.stoneY = y;
+        entry.color = color;
+    }
+    private TurnLogEntry GetOrCreateEntry(int turnNumber)
+    {
+        TurnLogEntry entry = _turnLogs.Find(e => e.turnNumber == turnNumber);
+        if (entry == null)
+        {
+            entry = new TurnLogEntry { turnNumber = turnNumber };
+            _turnLogs.Add(entry);
+        }
+        return entry;
+    }
+        public void PopulateGameOverLog()
+    {
+        if (gameOverLogText == null) return;
+
+        _turnLogs.Sort((a, b) => a.turnNumber.CompareTo(b.turnNumber));
+
+        var sb = new System.Text.StringBuilder();
+
+        foreach (TurnLogEntry entry in _turnLogs)
+        {
+            sb.AppendLine($"── {entry.turnNumber}턴 ──");
+
+            if (!string.IsNullOrEmpty(entry.skillUsed))
+                sb.AppendLine($"  스킬 : {entry.skillUsed}");
+
+            if (entry.who != null)
+                sb.AppendLine($"  착수 : {entry.who}({entry.color.ToKorean()}) ({entry.stoneX}, {entry.stoneY})");
+        }
+
+        gameOverLogText.text = sb.ToString();
+    }
+}   
