@@ -156,11 +156,11 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI gameOverResultTitleText;    // 위풍당당한 승리입니다! / 아쉬운 패배입니다!
     public TextMeshProUGUI gameOverResultSubText;      // 최종 21턴 승리 / 최종 21턴 패배
 
-    [Header("게임 종료 로그")]
-    public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
-    public Transform gameOverLogContent;          // ScrollRect의 Content
-    public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
-    public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
+    // [Header("게임 종료 로그")]
+    // public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
+    // public Transform gameOverLogContent;          // ScrollRect의 Content
+    // public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
+    // public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
     ///[System.Serializable]
     [Header("게임 로그")]
     public GameObject gameLogPanel;           // 결과 패널 안의 로그 영역
@@ -999,8 +999,7 @@ public class GameHUD : MonoBehaviour
 
         // 현재 턴의 로그 엔트리를 생성하거나 가져옴
         TurnLogEntry entry = GetOrCreateEntry(turnCount);
-        entry.skillUsed = _pendingSkillName;
-        entry.who = _pendingSkillWho;
+        entry.skillUsed = $"{_pendingSkillWho} — {_pendingSkillName}";
 
         // 중요: 소모했으므로 즉시 초기화 (나중에 돌이 놓여도 중복 출력 안 됨)
         _pendingSkillName = null;
