@@ -532,12 +532,20 @@ public class SkillManager : MonoBehaviour
         if (skillId == 3 && xs[0] != -1)
         {
             ReceiveSkill_DoubleDown(xs, ys);
+             if (skillDatabase.TryGetValue(skillId, out SkillData data3))
+            {
+                gameManager.gameHUD?.AddSkillLog("상대방", data3.skillName, turnCount);
+            }
             return;
         }
         if (skillId == 6 && xs[0] != -1)
         {
             // 두 번째 패킷 — 실제 봉인 좌표, SP/로그 없이 처리
             ReceiveSkill_Bladefall(xs, ys);
+            if (skillDatabase.TryGetValue(skillId, out SkillData data6))
+            {
+                gameManager.gameHUD?.AddSkillLog("상대방", data6.skillName, turnCount);
+            }
             return;
         }
          // 1. 어떤 스킬인지 찾음 (ID 기반)
