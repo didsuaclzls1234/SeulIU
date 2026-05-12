@@ -641,7 +641,7 @@ public class GameHUD : MonoBehaviour
         HideRematchPanel();
         // resultPanel은 그대로 유지하고, 시스템 메시지만 띄움
         // resultPanel은 이미 열려있으므로 텍스트만 교체
-        if (resultText) resultText.text = "상대방이 재도전 요청을 거절했습니다.";
+        if (resultText) resultText.text = "상대방이 도망쳤습니다!!";
         // 거절 후엔 리매치 버튼 클릭 막기 (더 이상 요청 못 하게)
         if (rematchButton) rematchButton.interactable = false;
     }
