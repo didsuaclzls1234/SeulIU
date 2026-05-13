@@ -470,7 +470,7 @@ public class SkillManager : MonoBehaviour
         oppSP -= skill.data.spCost;
         skill.currentCooldown = skill.data.cooldown;
         gameManager.hasUsedSkillThisTurn = true;
-        gameManager.gameHUD?.AddSkillLog("AI", skill.data.skillName, gameManager.CurrentMoveCount);
+        //gameManager.gameHUD?.AddSkillLog("AI", skill.data.skillName, gameManager.CurrentMoveCount);
 
         // 버프 효과 등록
         if (skill.data.durationTurn > 0)
@@ -486,7 +486,7 @@ public class SkillManager : MonoBehaviour
             });
             gameManager.gameHUD?.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
         }
-
+        
         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
         // B타입 스킬(이중착수, 칼날비)의 지연 발동을 위해 pendingSkillId 세팅 (멀티플레이 코드와 동일)
@@ -496,6 +496,7 @@ public class SkillManager : MonoBehaviour
             // Execute 내부에서 이미 pendingSkillId를 3으로 설정했으므로 여기서 냅둬도 됨
             Debug.Log($"[AI] B타입 스킬 {skill.data.skillName} 예약 완료. 일반 착수 후 발동 대기.");
         }
+        gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount + 1, "AI", skill.data.skillName);
     }
 
     public void AI_AutoSelectSkills()
@@ -528,26 +529,70 @@ public class SkillManager : MonoBehaviour
     // (네트워크 수신용) 상대방이 스킬을 썼을 때
     public void ReceiveOpponentSkill(int skillId, int[] xs, int[] ys,int turnCount)
     {   
-        // DoubleDown 두 번째 패킷 (랜덤 추가 착수) — SP/로그 없이 착수만
+        SkillData data = skillDatabase[skillId];
+        string opponentName = "상대";
+        // 1. 공통: 일단 데이터 예약
+        gameManager.gameHUD?.RecordSkillLog(0, opponentName,data.skillName);
+        if (skillId == 3 || skillId == 6)
+        {
+            // 돌 놓기 패킷이 오기 전에 로그창에 "상대: [스킬명]"을 먼저 띄움
+            gameManager.gameHUD.ForceCommitPendingLog(turnCount);
+        }
+        // DoubleDown 두 번째 패킷 (랜덤 추가 착수) — 로그 없이 착수만
+        // if (skillId == 3 && xs[0] != -1)
+        // {
+        //     ReceiveSkill_DoubleDown(xs, ys);
+        //      if (skillDatabase.TryGetValue(skillId, out SkillData data3))
+        //     {
+        //          // ↓ 추가: SP 차감 및 UI 갱신
+        //         oppSP -= data3.spCost;
+        //         gameManager.gameHUD?.UpdateSPUI(mySP, oppSP);
+        //         // ↓ turnCount로 기존 엔트리에 직접 기록
+        //         gameManager.gameHUD?.RecordSkillLog(turnCount, "상대방", data3.skillName);
+        //         gameManager.gameHUD?.UpdateGameLog();
+        //         //gameManager.gameHUD?.AddSkillLog("상대방", data3.skillName, turnCount);
+        //     }
+        //     return;
+        // }
+        // if (skillId == 6 && xs[0] != -1)
+        // {
+        //     // 두 번째 패킷 — 실제 봉인 좌표, 로그 없이 처리
+        //     ReceiveSkill_Bladefall(xs, ys);
+        //     if (skillDatabase.TryGetValue(skillId, out SkillData data6))
+        //     {   // ↓ 추가: SP 차감 및 UI 갱신
+        //         oppSP -= data6.spCost;
+        //          gameManager.gameHUD?.UpdateSPUI(mySP, oppSP);
+        //         // ↓ 동일
+        //         gameManager.gameHUD?.RecordSkillLog(turnCount, "상대방", data6.skillName);
+        //         gameManager.gameHUD?.UpdateGameLog();
+        //         //gameManager.gameHUD?.AddSkillLog("상대방", data6.skillName, turnCount);
+        //     }
+        //     return;
+        // }
+         // ─── B타입 첫 번째 패킷 (xs[0] == -1) : 스킬 선언 → Pending 저장 ───
+        if ((skillId == 3 || skillId == 6) && xs[0] == -1)
+        {
+            if (skillDatabase.TryGetValue(skillId, out SkillData declData))
+            {
+                oppSP -= declData.spCost;
+                gameManager.gameHUD?.UpdateSPUI(mySP, oppSP);
+                gameManager.gameHUD?.RecordSkillLog(turnCount, "상대방", declData.skillName);
+            }
+            return;
+        }
+
+        // ─── B타입 두 번째 패킷 (xs[0] != -1) : 보드 효과만 적용, 로그는 이미 처리됨 ───
         if (skillId == 3 && xs[0] != -1)
         {
             ReceiveSkill_DoubleDown(xs, ys);
-             if (skillDatabase.TryGetValue(skillId, out SkillData data3))
-            {
-                gameManager.gameHUD?.AddSkillLog("상대방", data3.skillName, turnCount);
-            }
             return;
         }
         if (skillId == 6 && xs[0] != -1)
         {
-            // 두 번째 패킷 — 실제 봉인 좌표, SP/로그 없이 처리
             ReceiveSkill_Bladefall(xs, ys);
-            if (skillDatabase.TryGetValue(skillId, out SkillData data6))
-            {
-                gameManager.gameHUD?.AddSkillLog("상대방", data6.skillName, turnCount);
-            }
             return;
         }
+
          // 1. 어떤 스킬인지 찾음 (ID 기반)
         //SkillBase skillObj = CreateSkillByID(skillId);완전한 객체 생성 불필요. 정보만 가져오면 됨.
         //if (skillObj == null) return;
@@ -607,7 +652,9 @@ public class SkillManager : MonoBehaviour
         gameManager.board.RefreshAllStonesVisuals();
 
         Debug.Log($"[Network] 상대방이 {skillData.skillName}을 사용했습니다.");
-        gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
+        gameManager.gameHUD?.RecordSkillLog(turnCount, "상대방", skillData.skillName);
+        //gameManager.gameHUD?.UpdateGameLog();
+        //gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
 
         gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
     }
@@ -973,7 +1020,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(0, 0);
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
             gameManager.gameHUD.SetOpponentSilencedUI(false);
-            gameManager.gameHUD.ResetSkillLog();
+            //gameManager.gameHUD.ResetSkillLog();
             gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
             gameManager.gameHUD?.RefreshOppDeckSlots(new int[] { -1, -1, -1 }, skillDatabase);
         }
@@ -1013,8 +1060,7 @@ public class SkillManager : MonoBehaviour
                         Button btn = gameManager.gameHUD.activeSkillButtons[i];
                         SkillTooltipTrigger trigger = btn.GetComponent<SkillTooltipTrigger>();
                         if (trigger == null) trigger = btn.gameObject.AddComponent<SkillTooltipTrigger>();
-                        trigger.SetData(newSkill.data);
-
+                       trigger.SetData(newSkill.data, gameManager.gameHUD.GetSkillIcon(newSkill.data.skillId));
                         // 인게임 버튼에 아이콘 전달
                         gameManager.gameHUD?.ApplySkillIconToActiveButton(i, mySkillsID[i]);
                     }
@@ -1325,7 +1371,6 @@ public class SkillManager : MonoBehaviour
         bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
         if (!isBType)
             {
-                gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
                 gameManager.gameHUD?.ShowSkillEffect(skill.data.skillId); // ← 함께 묶음
                 gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", skill.data.skillName);
             }   
@@ -1352,6 +1397,7 @@ public class SkillManager : MonoBehaviour
         if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
+            //gameSession.SendUseSkill(skill.data.skillId, new int[]{-1}, new int[]{-1}, gameManager.CurrentMoveCount);
         }
 
         // ** 안티매직 시전 즉시 모든 내 돌에 하늘색 오버레이를 입히기 위해 호출!
@@ -1377,7 +1423,8 @@ public class SkillManager : MonoBehaviour
         switch (skillId)
         {
             case 3: // DoubleDown — placedX,Y 제외 랜덤 착수
-            {
+            {   
+                int logTurn = gameManager.CurrentMoveCount;
                 List<Vector2Int> candidates = new List<Vector2Int>();
                 int radius = 2; // 반경 2칸 이내 제한 
 
@@ -1431,17 +1478,18 @@ public class SkillManager : MonoBehaviour
                      gameManager.gameHUD?.ShowSkillEffect(3); 
                     if (doubleDown != null)
                     {
-                        gameManager.gameHUD?.AddSkillLog("나", doubleDown.data.skillName, gameManager.CurrentMoveCount);
-                        gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", doubleDown.data.skillName);
+                        //gameManager.gameHUD?.AddSkillLog("나", doubleDown.data.skillName, gameManager.CurrentMoveCount);
+                        gameManager.gameHUD?.RecordSkillLog(logTurn, "나", doubleDown.data.skillName);
                     }
                     // 일반 착수 패킷이 먼저 날아가도록 프레임 끝까지 지연 전송 (이슈 6 해결)
-                    StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, gameManager.CurrentMoveCount));
+                    StartCoroutine(SendDeferredSkillPacket(3, new int[] { rand.x, -1 }, new int[] { rand.y, -1 }, logTurn));
                     Debug.Log($"[DoubleDown] 추가 착수: ({rand.x},{rand.y})");
                 }
                 break;
             }
             case 6: // Bladefall — placedX,Y 제외 봉인 20칸
             {
+                int logTurn = gameManager.CurrentMoveCount;
                 SkillBase bladefall = mySkills.Find(s => s.data.skillId == 6);
                 if (bladefall == null) break;
  
@@ -1454,11 +1502,11 @@ public class SkillManager : MonoBehaviour
                 bladefall.Execute(bx, by, gameManager, gameManager.board);
 
                  // ↓ 추가
-                gameManager.gameHUD?.AddSkillLog("나", bladefall.data.skillName, gameManager.CurrentMoveCount);
+                //gameManager.gameHUD?.AddSkillLog("나", bladefall.data.skillName, gameManager.CurrentMoveCount);
                 gameManager.gameHUD?.ShowSkillEffect(6);
-                gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", bladefall.data.skillName);
+                gameManager.gameHUD?.RecordSkillLog(logTurn, "나", bladefall.data.skillName);
                 // 일반 착수 패킷 먼저 날아가도록 지연 전송
-                StartCoroutine(SendDeferredSkillPacket(6, bx, by, gameManager.CurrentMoveCount));
+                StartCoroutine(SendDeferredSkillPacket(6, bx, by, logTurn));
 
                 Debug.Log("[Bladefall] 착수 후 봉인 발동 완료");
                 break;

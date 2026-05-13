@@ -88,7 +88,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
         ApplyDeckSlotContainerTheme(playerColor);
         gameHUD.ShowSkillSelectPanel();
         timerManager.StartSkillSelectTimer();
-
+        
         // 3. AI가 스킬을 랜덤으로 고를 시간을 줌
         yield return new WaitForSeconds(1.5f);
 

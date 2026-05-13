@@ -58,7 +58,8 @@ public class SkillTooltipUI : MonoBehaviour
     // ──────────────────────────────────────────────
 
     /// <summary>SkillData로 툴팁 표시 (스킬 선택 화면 / 인게임 버튼)</summary>
-    public void Show(SkillData data)
+    [SerializeField] private Image skillIconImage; 
+    public void Show(SkillData data, Sprite icon = null)
     {
         skillNameText.text  = $"<color=#F4E2B0>{data.skillName}</color>";
         skillTypeText.text  = $"<color=#D6B56D>{data.type}</color>";
@@ -82,6 +83,12 @@ public class SkillTooltipUI : MonoBehaviour
         }
 
         descriptionText.text = $"<color=#EDE6D5>{data.description}</color>";
+        // ↓ 아이콘 처리
+        if (skillIconImage != null)
+        {
+            skillIconImage.sprite = icon;
+            skillIconImage.gameObject.SetActive(icon != null);
+        }
         tooltipPanel.SetActive(true);
     }
 

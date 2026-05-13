@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
+using SlimUI.ModernMenu;
 
 public class LobbyMenuViewController : MonoBehaviourPunCallbacks
 {
@@ -55,10 +56,21 @@ public class LobbyMenuViewController : MonoBehaviourPunCallbacks
     private bool isMatchmakingRequested;
     private bool isCancelRequested;
 
+    [Header("사운드 설정 슬라이더")]
+    [SerializeField] private GameObject bgmSliderObject;
+    [SerializeField] private GameObject sfxSliderObject;
     private void Start()
     {   
+        var settingsManager = FindFirstObjectByType<UISettingsManager>();
+        if (settingsManager != null)
+        {
+            // 단순히 = 로 대입하는 대신, 바인딩 메서드를 호출합니다.
+        settingsManager.SetSlidersAndBind(bgmSliderObject, sfxSliderObject);
+        
+        // 연결이 끝난 후 값을 로드하면, 슬라이더 값이 바뀌면서 사운드도 자동 적용됩니다.
+        settingsManager.LoadAudioSettings();
+        }
         SoundManager.Instance.PlayBGM("LobbyBGM");
-
         // if (nicknameInputField != null && !string.IsNullOrEmpty(savedNickname))
         // {
         //     nicknameInputField.text = savedNickname;
