@@ -1467,10 +1467,17 @@ public class SkillManager : MonoBehaviour
 
         // B타입(이중착수, 칼날비)은 여기서 빈 패킷을 쏘지 않습니다 (나중에 좌표 확정 후 쏨)
         // bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
-        if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+        // if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+        // {
+        //     gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
+        //     //gameSession.SendUseSkill(skill.data.skillId, new int[]{-1}, new int[]{-1}, gameManager.CurrentMoveCount);
+        // }
+        if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
-            gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
-            //gameSession.SendUseSkill(skill.data.skillId, new int[]{-1}, new int[]{-1}, gameManager.CurrentMoveCount);
+            if (isBType)
+                gameSession.SendUseSkill(skill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+            else
+                gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
         }
 
         // ** 안티매직 시전 즉시 모든 내 돌에 하늘색 오버레이를 입히기 위해 호출!
