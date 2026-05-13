@@ -19,6 +19,9 @@ public class Skill_11_Consecration : SkillBase
         // 보드 매니저에 신성화 모드 ON!
         board.ActivateConsecration();
 
+        // 🚨 내 화면 연출 폭발!
+        SkillVFXManager.Instance.PlayConsecrationVFX();
+
         if (gm.gameHUD != null)
             gm.gameHUD.ShowSystemMessage("신성화 발동! 모든 돌이 백돌의 모습으로 나타납니다.");
 

@@ -53,11 +53,14 @@ public class Skill_9_GodBless : SkillBase
             }
         }
 
-        // 4. 보호막 적용 (타겟 1 + 랜덤 타겟 1)
+        // 4. 보호막 적용 + 샤라랄라 이펙트 (타겟 1 + 랜덤 타겟 1)
         board.ApplyShield(tx, ty);
+        SkillVFXManager.Instance.PlayPrimitiveShield(board.GetWorldPosition(tx, ty), Color.cyan); // 🚨 추가
+
         if (randomX != -1 && randomY != -1)
         {
             board.ApplyShield(randomX, randomY);
+            SkillVFXManager.Instance.PlayPrimitiveShield(board.GetWorldPosition(randomX, randomY), Color.cyan); // 🚨 추가
         }
 
         return true;

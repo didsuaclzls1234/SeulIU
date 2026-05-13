@@ -12,6 +12,10 @@ public class Skill_7_Invisibility : SkillBase
         // 2. 내 화면에 있는 내 돌들을 반투명(Ghost) 상태로 싹 바꿈
         board.SetStoneInvisibility(gm.currentTurnColor, false, true);
 
+        // 🚨 시전 시 깜빡 + 구름 필터 생성
+        SkillVFXManager.Instance.PlayScreenFlash(Color.white, 0.2f);
+        SkillVFXManager.Instance.ToggleOverlay(SkillVFXManager.Instance.invisibilityOverlayImage, true);
+
         if (gm.gameHUD != null)
             gm.gameHUD.ShowSystemMessage("투명화 발동! 내 돌이 유령처럼 변합니다.");
 

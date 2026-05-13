@@ -21,6 +21,10 @@ public class Skill_2_Seal : SkillBase
         // 내가 쏘든 상대가 쏘든 정확한 주인의 색상으로 자물쇠가 걸림
         board.ApplySeal(tx, ty, data.durationTurn, casterColor);
 
+        // 🚨 봉인 이펙트 발동!
+        Vector3 pos = board.GetWorldPosition(tx, ty);
+        SkillVFXManager.Instance.PlayPrimitiveShield(pos, Color.yellow);
+
         // 3. 네트워크 동기화를 위한 배열 세팅
         // (타겟이 1개이므로 1번 인덱스는 -1로 둠)
         targetX[1] = -1;
