@@ -23,23 +23,11 @@ public class GameHUD : MonoBehaviour
     [Header("인게임 UI 묶음")]
     public GameObject inGameUI;
 
-    //[Header("인게임 표시")]
-    //public TextMeshProUGUI turnText;
-    //public TextMeshProUGUI myColorText;
     [Header("턴 표시 이미지")]
     public Image turnImage;
     [Header("턴 이미지 밝기")]
     [Range(0f, 1f)] public float dimAlpha = 0.3f;
-    //[Header("인게임 버튼 (상단/하단)")]
-    //public Button undoButton;
-    //public Button restartButton; // 솔로 전용
-
-    //[Header("무르기(Undo) 요청 팝업")]
-    //public GameObject undoPopupPanel;
-    //public TextMeshProUGUI undoRequestText;
-    //public Button undoAcceptButton; 
-    //public Button undoRefuseButton;
-
+   
     [Header("코어 매니저 연결")]
     public GameManager gameManager;
     public TimerManager timerManager;
@@ -55,7 +43,6 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI mySPText;        // 내 SP 표시
     public TextMeshProUGUI oppSPText;        // 상대방 SP 표시용 (신규)
     public GameObject[] skillButtons;      // 스킬 버튼들 (비활성화/쿨타임 표시용)
-    // public GameObject[] skillButtons; ... 등등
 
     [Header("결과 패널")]
     public GameObject resultPanel;
@@ -73,10 +60,6 @@ public class GameHUD : MonoBehaviour
     public Button[] skillSelectButtons;      // 선택 가능한 10개 버튼 (임시)
     public Button readyButton;               // 선택 완료 버튼
     public TextMeshProUGUI skillSelectRoleText;
-    //public Image[] skillRowIcons;            // 각 행의 아이콘 Image 배열
-    //public TextMeshProUGUI[] skillRowNameTexts;  // 각 행의 스킬명 TMP
-    //public TextMeshProUGUI[] skillRowSPTexts;    // 각 행의 SP 비용 TMP
-    //public TextMeshProUGUI[] skillRowDescTexts;  // 각 행의 설명 TMP
     public TextMeshProUGUI skillSelectMessageText; // 스킬 선택창 전용 메시지
 
     [Header("스킬 선택창 UI - 덱 슬롯")]
@@ -84,8 +67,6 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI[] deckSlotNameTexts; // 각 슬롯의 스킬명 TMP(이름이 필요 없다면 삭제 가능)
 
     [Header("스킬 아이콘 (Resources 폴더 없을 경우 null 허용)")]
-    // Resources/SkillIcons/skill_1.png ~ skill_10.png 로 관리
-    // 아직 이미지가 없으면 인스펙터에서 비워둬도 무관 — 예외처리로 막음
     public Sprite[] skillIcons;              // 인덱스 0 = 스킬 1번, 9 = 스킬 10번
 
     [Header("인게임 스킬 UI(우측 하단 위치)")]
@@ -116,11 +97,6 @@ public class GameHUD : MonoBehaviour
     // [추가] GameSession 참조 (Rematch 버튼 콜백용)
     public GameSession gameSession;
 
-    // [Header("스킬 로그")]
-    // public TextMeshProUGUI skillLogText;      // Content 오브젝트의 TMP
-    // //public ScrollRect skillLogScrollRect;
-    // private List<string> _logEntries = new List<string>();
-
     // 필드 추가
     [Header("상대방 스킬 덱 표시")]
     public Image[] oppDeckSlotImages;
@@ -137,7 +113,6 @@ public class GameHUD : MonoBehaviour
     public Sprite blackPlayerSprite;    // 흑돌용 이미지
     public Sprite whitePlayerSprite;    // 백돌용 이미지
 
-    
     // 스킬 이펙트 스프라이트 매핑용 클래스
     [System.Serializable]
     public class SkillEffectSprite
@@ -156,16 +131,9 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI gameOverResultTitleText;    // 위풍당당한 승리입니다! / 아쉬운 패배입니다!
     public TextMeshProUGUI gameOverResultSubText;      // 최종 21턴 승리 / 최종 21턴 패배
 
-    // [Header("게임 종료 로그")]
-    // public GameObject gameOverLogPanel;           // 결과 패널 안의 로그 영역
-    // public Transform gameOverLogContent;          // ScrollRect의 Content
-    // public GameObject gameOverLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
-    // public TextMeshProUGUI gameOverLogText;       // 로그 텍스트 UI
-    ///[System.Serializable]
     [Header("게임 로그")]
     public GameObject gameLogPanel;           // 결과 패널 안의 로그 영역
     public Transform gameLogContent;          // ScrollRect의 Content
-    // public GameObject gameLogEntryPrefab;     // 로그 항목 프리팹 (TMP)
     public TextMeshProUGUI gameLogText;       // 로그 텍스트 UI
     public ScrollRect gameLogScrollRect;
     // 임시 저장용 필드 추가
@@ -252,18 +220,6 @@ public class GameHUD : MonoBehaviour
         if (mySPText) mySPText.text = $"SP: {currentMySP}";
         if (oppSPText) oppSPText.text = $"상대 SP: {currentOppSP}";
     }
-
-    // 멀티플레이 모드일 때 GameSession에서 호출하여 불필요한 버튼 숨기기
-    //public void SetupForMultiplayer()
-    //{
-    //    if (restartButton) restartButton.gameObject.SetActive(false); // 멀티에선 중간 재시작 금지
-    //}
-
-    // public void ShowRoleAssigned(StoneColor myColor)
-    // {
-    //     // if (myColorText)
-    //     //     myColorText.text = $"나: {myColor.ToKorean()}";
-    // }
 
     public void UpdateTurnDisplay(StoneColor currentTurn, bool isMyTurn)
     {
@@ -354,31 +310,6 @@ public class GameHUD : MonoBehaviour
         }
         bool isWin = (winner == myColor);
         
-        // // 1. 멀티플레이: 승리/패배로 표시
-        // if (gameManager.currentMode == PlayMode.Multiplayer)
-        // {
-        //     // resultText.text = (winner == myColor) ? "승리!" : "패배...";
-        //     if (resultImage != null)
-        //     {
-        //         resultImage.gameObject.SetActive(true);
-        //         resultImage.sprite = isWin ? victorySprite : defeatSprite;
-        //     }
-        // }
-        // // 2. AI 모드: 플레이어/AI 승리로 표시
-        // else if (gameManager.currentMode == PlayMode.AI)
-        // {
-        //     // resultText.text = (winner == myColor) ? "플레이어 승리!" : "AI 승리!";
-        //     if (resultImage != null)
-        //     {
-        //         resultImage.gameObject.SetActive(true);
-        //         resultImage.sprite = isWin ? victorySprite : defeatSprite;
-        //     }
-        // }
-        // // 3. 솔로 모드: 흑/백 승리로 표시
-        // else
-        // {
-        //     resultText.text = $"{winner.ToKorean()}돌 승리!";
-        // }
         // 솔로 모드는 흑 기준
         if (gameManager.currentMode == PlayMode.Solo)
             isWin = (winner == StoneColor.Black);
@@ -405,90 +336,6 @@ public class GameHUD : MonoBehaviour
         //if (resultText) resultText.text = "상대방이\n나갔습니다.";
         if (rematchButton) rematchButton.interactable = false; // 나갔는데 리매치는 불가
     }
-
-    //// (1) 상대방이 Undo 요청했을 때 (버튼 ON)
-    //public void ShowUndoPopup()
-    //{   
-    //    inputManager?.HideHover();
-    //    inputManager?.BlockInput();
-    //    undoPopupPanel.SetActive(true);
-    //    undoRequestText.text = $"상대방이 무르기를 요청했습니다.";
-    //    if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(true);
-    //    if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(true);
-
-    //    // 요청을 받는 즉시 타이머 일시정지
-    //    if (timerManager != null) timerManager.PauseTimer();
-    //}
-
-    //// (2) 내가 Undo 요청하고 기다릴 때 (버튼 OFF)
-    //public void ShowUndoWaitingPopup()
-    //{
-    //    inputManager?.HideHover();
-    //    inputManager?.BlockInput();
-    //    undoPopupPanel.SetActive(true);
-    //    undoRequestText.text = "상대방의 응답을 기다리는 중...";
-    //    if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
-    //    if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
-
-    //    // [네트워크 동기화] 내가 요청을 보낸 순간 내 타이머도 멈춤!
-    //    if (timerManager != null) timerManager.PauseTimer();
-    //}
-
-    //// (3) 상대방이 응답했을 때 결과를 잠깐 보여주고 닫기 (버튼 OFF 유지)
-    //public async void ShowUndoResultAndClose(bool isAccepted)
-    //{
-    //    if (!undoPopupPanel.activeSelf) undoPopupPanel.SetActive(true);
-
-    //    if (undoAcceptButton) undoAcceptButton.gameObject.SetActive(false);
-    //    if (undoRefuseButton) undoRefuseButton.gameObject.SetActive(false);
-
-    //    undoRequestText.text = isAccepted ? "상대방이 무르기를 수락했습니다!" : "상대방이 무르기를 거절했습니다.";
-
-    //    // 수락/거절 결과에 따라 타이머 처리
-    //    if (timerManager != null)
-    //    {
-    //        if (isAccepted) timerManager.RestartTurnTimer(); // 수락 시 턴 초기화
-    //        else timerManager.ResumeTimer(); // 거절 시 남은 시간부터 재개
-    //    }
-
-    //    // 1.5초 동안 결과 텍스트 보여주고 팝업 닫기
-    //    await Task.Delay(1500);
-
-    //    if (undoPopupPanel != null) undoPopupPanel.SetActive(false);
-    //    inputManager?.UnblockInput();
-    //}
-
-    //public void HideUndoRequestPopup()
-    //{
-    //    inputManager?.UnblockInput();
-    //    undoPopupPanel.SetActive(false);
-    //}
-
-    //// ── 팝업 버튼 콜백 (인스펙터 연결 전용) ──────────────────
-
-    //// 1. [수락] 버튼
-    //public void OnAcceptUndoClicked()
-    //{   
-    //    inputManager?.UnblockInput();
-    //    if (undoPopupPanel) undoPopupPanel.SetActive(false);
-
-    //    // 내가 수락했으니 턴이 뒤로 감 -> 타이머도 처음부터(30초) 다시 시작
-    //    if (timerManager != null) timerManager.RestartTurnTimer();
-
-    //    gameManager.ReplyToUndoRequest(true); // GameManager에게 'true(수락)' 토스
-    //}
-
-    //// 2. [거절] 버튼
-    //public void OnRefuseUndoClicked()
-    //{
-    //    inputManager?.UnblockInput();
-    //    if (undoPopupPanel) undoPopupPanel.SetActive(false);
-
-    //    // 내가 거절했으니 턴은 그대로 유지 -> 멈췄던 타이머를 다시 흐르게 함
-    //    if (timerManager != null) timerManager.ResumeTimer();
-
-    //    gameManager.ReplyToUndoRequest(false); // GameManager에게 'false(거절)' 토스
-    //}
 
     // ── 결과 패널 버튼 콜백 ────────────────────────────────────────────────
     public void OnClickRematch()
@@ -540,24 +387,6 @@ public class GameHUD : MonoBehaviour
         }
     }
 
-    // 시스템 로그 띄우는 텍스트
-    // public void ShowSystemMessage(string message)
-    // {
-    //     if (systemMessageText == null) return;
-
-    //     systemMessageText.text = message;
-    //     systemMessageText.gameObject.SetActive(true);
-
-    //     StopAllCoroutines(); // 기존에 떠있던 메시지가 있다면 취소하고 새로 시작
-    //     StartCoroutine(FadeOutMessage());
-    // }
-
-    // private IEnumerator FadeOutMessage()
-    // {
-    //     // 2초 대기 후 서서히 사라짐
-    //     yield return new WaitForSeconds(2.0f);
-    //     systemMessageText.gameObject.SetActive(false);
-    // }
     public void ShowSystemMessage(string message)
     {
         if (systemMessageText == null) return;
@@ -615,11 +444,6 @@ public class GameHUD : MonoBehaviour
             // CSV 데이터 가져오기
             SkillData data = default(SkillData);
             if (skillManager != null && !skillManager.skillDatabase.TryGetValue(skillId, out data)) continue;
-            // {
-            //     SkillTooltipTrigger trigger = skillSelectButtons[i].GetComponent<SkillTooltipTrigger>();
-            //     if (trigger == null) trigger = skillSelectButtons[i].gameObject.AddComponent<SkillTooltipTrigger>();
-            //     trigger.SetData(data);
-            // }
 
             // CSV 데이터 스킬 리스트에 뿌려주기
             Transform btnTransform = skillSelectButtons[i].transform;
@@ -644,26 +468,7 @@ public class GameHUD : MonoBehaviour
             // 설명
             TextMeshProUGUI descText = btnTransform.Find("DescText")?.GetComponent<TextMeshProUGUI>();
             if (descText != null) descText.text = data.description;
-            // 3. 툴팁 연결 제거 → 표 데이터 채우기로 교체
-            //// 아이콘
-            //if (skillRowIcons != null && i < skillRowIcons.Length && skillRowIcons[i] != null)
-            //{
-            //    Sprite icon = GetSkillIcon(skillId);
-            //    skillRowIcons[i].sprite = icon;
-            //    skillRowIcons[i].gameObject.SetActive(icon != null);
-            //}
-
-            //// 스킬명
-            //if (skillRowNameTexts != null && i < skillRowNameTexts.Length && skillRowNameTexts[i] != null)
-            //    skillRowNameTexts[i].text = data.skillName;
-
-            //// SP
-            //if (skillRowSPTexts != null && i < skillRowSPTexts.Length && skillRowSPTexts[i] != null)
-            //    skillRowSPTexts[i].text = data.type == "전용" ? "패시브" : $"{data.spCost} SP";
-
-            //// 설명
-            //if (skillRowDescTexts != null && i < skillRowDescTexts.Length && skillRowDescTexts[i] != null)
-            //    skillRowDescTexts[i].text = data.description;
+           
             bool isBlack = (myColor == StoneColor.Black);
 
             if (myPanelImage != null)
@@ -701,14 +506,6 @@ public class GameHUD : MonoBehaviour
         }
     }
 
-    // -------------------------------------------------------
-    // AI가 생각 중일 때 버튼들을 클릭 못 하게(회색으로) 막는 함수
-    //public void SetInteractableButtons(bool isInteractable)
-    //{
-    //    if (restartButton != null) restartButton.interactable = isInteractable;
-    //    if (undoButton != null) undoButton.interactable = isInteractable;
-    //}
-
     // ── Rematch 팝업 ─────────────────────────────────────────
 
     /// <summary>재도전 요청을 보낸 쪽: "대기 중" 패널 표시</summary>
@@ -741,33 +538,9 @@ public class GameHUD : MonoBehaviour
     public void ShowRematchDeclinedMessage()
     {
         HideRematchPanel();
-        // resultPanel은 그대로 유지하고, 시스템 메시지만 띄움
-        // resultPanel은 이미 열려있으므로 텍스트만 교체
-        //if (resultText) resultText.text = "상대방이\n도망쳤습니다!!";
-        // 거절 후엔 리매치 버튼 클릭 막기 (더 이상 요청 못 하게)
         if (rematchButton) rematchButton.interactable = false;
     }
     // ── 스킬 로그 ─────────────────────────────────────────
-
-    // public void AddSkillLog(string userName, string skillName, int turnCount)
-    // {
-    //     if (skillLogText == null) return;
-
-    //     skillLogText.richText = true;
-
-    //     string safeUserName = SanitizeRichText(userName);
-    //     string safeSkillName = SanitizeRichText(skillName);
-
-    //     string logEntry =
-    //         $"<pos=5><color=#FFA500>[{turnCount}턴]</color>" +
-    //         $"<pos=90>{safeUserName}" +
-    //         $"<pos=180>{safeSkillName}";
-
-    //     _logEntries.Add(logEntry);
-    //     skillLogText.text = string.Join("\n", _logEntries);
-
-    //     StartCoroutine(ScrollToBottom());
-    // }
 
     private string SanitizeRichText(string text)
     {
@@ -780,11 +553,6 @@ public class GameHUD : MonoBehaviour
             .Replace("<", "＜")
             .Replace(">", "＞");
     }
-    // private IEnumerator ScrollToBottom()
-    // {
-    //     yield return new WaitForEndOfFrame();
-    //     skillLogScrollRect.verticalNormalizedPosition = 0f;
-    // }
 
      // ── 덱 슬롯 UI 갱신 ─────────────────────────────────────────────
     // 스킬 추가/제거/정렬될 때마다 호출
@@ -955,13 +723,6 @@ public class GameHUD : MonoBehaviour
         skillSelectPanel?.SetActive(false);
         inGameUI?.SetActive(true);
     }
-    //스킬로그 초기화 함수
-    // public void ResetSkillLog()
-    // {
-    //     _logEntries.Clear();
-    //     if (skillLogText != null) skillLogText.text = "";
-    //     _turnLogs.Clear();
-    // }
 
     // 스킬 사용 시 이펙트 보여주는 함수
     public void ShowSkillEffect(int skillId)
@@ -997,9 +758,6 @@ public class GameHUD : MonoBehaviour
     // 스킬 기록
     public void RecordSkillLog(int turnNumber, string who, string skillName)
     {
-        // TurnLogEntry entry = GetOrCreateEntry(turnNumber);
-        // entry.skillUsed = $"{who} — {skillName}";
-        // UpdateGameLog();
          _pendingSkillWho = who;
         _pendingSkillName = skillName;
     }

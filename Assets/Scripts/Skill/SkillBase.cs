@@ -12,16 +12,6 @@ public abstract class SkillBase
         this.data = skillData;
     }
 
-    // // 조건 검사 (SP가 충분한가? 쿨타임이 도는가? 안티매직에 걸렸는가?)
-    // public virtual bool CanUse(int currentSP, bool isAntiMagicActive, BoardManager board, StoneColor myColor)
-    // {
-    //     if (isAntiMagicActive && data.type != "전용") return false; // 패시브 제외 봉인
-    //     if (currentSP < data.spCost) return false;
-    //     if (currentCooldown > 0) return false;
-    //     return true;
-    // }
-    
-
     public virtual SkillUseResult CanUse(int currentSP, bool isAntiMagicActive,  BoardManager board, StoneColor myColor)
     {
         if (isAntiMagicActive) return SkillUseResult.AntiMagicBlocked;
