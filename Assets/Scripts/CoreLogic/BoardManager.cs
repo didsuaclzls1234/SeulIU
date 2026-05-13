@@ -303,6 +303,9 @@ public class BoardManager : MonoBehaviour
         //  진행 중이던 시네마틱 연출(코루틴) 멱살 잡고 강제 종료
         StopAllCoroutines();
 
+        // 무대 조명 끄기
+        if (SkillVFXManager.Instance != null) SkillVFXManager.Instance.ClearVictoryStageEffect();
+
         foreach (GameObject stone in activeStones) stone.SetActive(false);
         activeStones.Clear();
 
@@ -1143,8 +1146,13 @@ public class BoardManager : MonoBehaviour
         // [C] 카메라 이동 시작
         Vector3 centerPos = GetWinningLineCenter(winningCoords);
         if (gameManager.cameraSwitcher != null)
-        {
             StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
+
+        // SkillVFXManager를 호출해서 조명 3개 방황 + 폭죽 터뜨리기! (시간은 카메라 이동 시간과 맞춤)
+        if (SkillVFXManager.Instance != null)
+        {
+            float camDuration = gameManager.cameraSwitcher.cinematicDuration; // 보통 3~3.5초
+            SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
         }
 
         // [D] 돌 정리 (진 돌 날리기 등)
