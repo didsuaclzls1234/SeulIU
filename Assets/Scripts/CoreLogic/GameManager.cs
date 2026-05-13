@@ -342,6 +342,12 @@ public class GameManager : MonoBehaviour
         currentState = GameState.GameOver;
         // extraPlacementCount = 0;
 
+        // 🚨 [여기에 추가!] 승리 판정 나자마자 화면에 묻어있던 스킬 이펙트 싹 다 클리어!
+        if (SkillVFXManager.Instance != null)
+        {
+            SkillVFXManager.Instance.ClearAllEffects();
+        }
+
         // UI는 무조건 GameHUD가 처리하도록 위임
         if (gameHUD != null) gameHUD.ShowGameOver(winner, localPlayerColor);
 

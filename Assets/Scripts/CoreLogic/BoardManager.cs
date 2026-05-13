@@ -1386,6 +1386,13 @@ public class BoardManager : MonoBehaviour
         return sum / winningCoords.Count; // 평균 위치 (중심점)
     }
 
+    // =========================================================
+    // 🚨 배열 좌표(x, y)를 3D 실제 좌표(Vector3)로 변환해주는 헬퍼 함수
+    // =========================================================
+    public Vector3 GetWorldPosition(int x, int y)
+    {
+        return new Vector3(x * gridSize, stoneYOffset, y * gridSize);
+    }
 
     // ------------------------------------------------------------
     // ** 개발자용 격자 그리기

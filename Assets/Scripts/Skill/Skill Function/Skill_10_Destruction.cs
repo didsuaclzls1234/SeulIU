@@ -22,6 +22,10 @@ public class Skill_10_Destruction : SkillBase
 
         board.ruleManager.DisableRenjuRules(1); // 흑돌(1)의 모든 금수 해제
 
+        // 🚨 내 화면 연출 폭발!
+        SkillVFXManager.Instance.PlayMultiFlash(new Color(1f, 0f, 0f, 0.5f), 3, 0.6f);
+        SkillVFXManager.Instance.PlayCameraShake(0.6f, 0.25f);
+
         if (gm.gameHUD != null)
             gm.gameHUD.ShowSystemMessage("룰 파괴 발동! 흑돌의 모든 렌주 규칙이 제거됩니다.");
 
