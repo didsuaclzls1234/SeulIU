@@ -25,8 +25,6 @@ public class GameManager : MonoBehaviour
     /** 네트워크 전용 액션 (포톤 매니저에서 구독할 채널들)**/   // ** 네트워크 개발자 분은 아래 액션들 구독하셔서 사용하시면 됩니다! 
     public event Action<int, int, int> OnStonePlacedLocally; // 내 턴에 돌 놨을 때(x, y, seq)
     public event Action<StoneColor> OnGameOverLocally;
-    public event Action OnUndoRequestedLocally;         // 내가 무르기 버튼 눌렀을 때
-    public event Action<bool> OnUndoReplyLocally;       // 내가 상대방의 무르기를 수락/거절했을 때 발송
     public event Action OnRestartRequestedLocally;      // 내가 재시작 버튼 눌렀을 때
     // -----------------------------------------------------------------------------
 
