@@ -60,13 +60,7 @@ public class SkillManager : MonoBehaviour
     public int sealedTurnsRemaining = 0;
 
     // 턴 종료 시 파괴할 제거 스킬 타겟 좌표 (기본값 -1, -1)
-    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1);
-
-    // UI가 구독할 이벤트들 (데이터만 던져줌)
-    public event Action<int> OnSPChanged; // SP가 변했을 때 (내 SP 던져줌)
-    public event Action<List<ActiveEffect>> OnActiveEffectsChanged; // 버프/디버프 리스트가 갱신됐을 때
-    public event Action<int, bool> OnSkillButtonStateChanged; // 특정 스킬 버튼의 활성화/비활성화 상태가 변했을 때
-
+    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1); 
 
     // 2. 팩토리 메서드 (OCP 원칙: 새로운 스킬이 생기면 여기 case만 추가하면 됨)
     private SkillBase CreateSkillByID(int id)
