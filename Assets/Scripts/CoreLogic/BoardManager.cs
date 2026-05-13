@@ -899,31 +899,6 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    // 아웃라인을 완전히 끄는 대신, 신성화 상태면 파랑/빨강으로 되돌리는 헬퍼 함수
-    //public void RestoreConsecrationOutline(GameObject stoneObj, StoneVisualController svc)
-    //{
-    //    // 백돌 플레이어(시전자)의 화면에서만 작동
-    //    if (isConsecrationActive && gameManager.localPlayerColor == StoneColor.White)
-    //    {
-    //        int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
-    //        int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
-
-    //        if (grid[x, y] == (int)StoneColor.White)
-    //        {
-    //            // 인스펙터 연동 (두께와 발광 강도 적용)
-    //            svc.SetConsecration(true, visualSettings.consecrationOutlineColor, visualSettings.consecrationThickness, visualSettings.consecrationGlow);
-    //        }
-    //        else
-    //        {
-    //            svc.SetConsecration(false, Color.black); // 상대방 돌(흑돌)은 아웃라인 무조건 끔
-    //        }
-    //    }
-    //    else
-    //    {
-    //        svc.SetConsecration(false, Color.black); // 신성화가 아니면 그냥 끔
-    //    }
-    //}
-
     public void ApplyStoneBuffVisuals(GameObject stoneObj, StoneVisualController svc)
     {
         // 1순위: 승리한 돌 (가장 중요하므로 무조건 빨간 굵은 테두리 유지)
