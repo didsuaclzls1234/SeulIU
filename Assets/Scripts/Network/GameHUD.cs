@@ -172,6 +172,9 @@ public class GameHUD : MonoBehaviour
     private string _pendingSkillWho;
     private string _pendingSkillName;
 
+    [Header("턴 표시")]
+    public TextMeshProUGUI turnText;
+
     public class TurnLogEntry
     {
         public int turnNumber;
@@ -287,6 +290,9 @@ public class GameHUD : MonoBehaviour
                 ? Color.white
                 : new Color(1f, 1f, 1f, dimAlpha);
         }
+
+        if (turnText != null)
+        turnText.text = $"{gameManager.CurrentMoveCount + 1} 턴";
     }
 
     // 타이머 업데이트 함수
