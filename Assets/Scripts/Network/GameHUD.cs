@@ -600,6 +600,10 @@ public class GameHUD : MonoBehaviour
                     {
                         iconImg1.color = Color.gray;
                     }
+                    else
+                    {
+                        iconImg1.color = Color.white; // ← 추가: 복구
+                    }
                 }
             }
             // CSV 데이터 가져오기

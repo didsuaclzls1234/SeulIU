@@ -499,7 +499,7 @@ public class GameSession : MonoBehaviourPunCallbacks, IOnEventCallback
 
         _isReadySent = false;
         _isRematchRequested = false;
-
+        gameHUD?.SetReadyButtonInteractable(false);
         // 게임 로직 초기화
         skillManager.ResetForRematch();
         gameManager.ResetForRematch();
