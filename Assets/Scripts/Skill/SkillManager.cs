@@ -1396,8 +1396,10 @@ public class SkillManager : MonoBehaviour
         // bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
         if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
+            if (isBType)
+            gameSession.SendUseSkill(skill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+            else
             gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
-            //gameSession.SendUseSkill(skill.data.skillId, new int[]{-1}, new int[]{-1}, gameManager.CurrentMoveCount);
         }
 
         // ** 안티매직 시전 즉시 모든 내 돌에 하늘색 오버레이를 입히기 위해 호출!
