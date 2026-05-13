@@ -6,7 +6,7 @@ using System.Threading.Tasks; // Stack 사용
 
 
 // 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
-public enum GameState { WaitingForSkillSelect, Playing, SkillPreview, /*SkillTargeting*/ GameOver }
+public enum GameState { WaitingForSkillSelect, Wait, Playing, SkillPreview, /*SkillTargeting*/ GameOver }
 public enum PlayMode { Solo, AI, Multiplayer } // 플레이 모드 
 // [추가] 착수 종류 구분 — PlayerManual은 턴 카운트 감소, SkillInduced는 감소 없음
 public enum PlacementType { PlayerManual, SkillInduced }
@@ -599,7 +599,7 @@ public class GameManager : MonoBehaviour
     // 게임 시작 전 모든 준비(닉네임, 스킬 선택 등)를 마치고 최종적으로 호출할 함수
     public void StartGameAfterSelection()
     {
-        currentState = GameState.Playing;
+        //currentState = GameState.Playing;
 
         // 게임 상태가 Playing으로 바뀔 때 스킬 인스턴스 생성 및 버튼 연결!
         if (skillManager != null) 
@@ -618,6 +618,25 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("모든 준비 완료. 게임을 시작합니다.");
+    }
+
+    // ------------------------------------------------------------
+    // 2. 🚨 진짜 게임 시작 (SkillManager에서 패시브 연출이 다 끝나면 얘를 부를 겁니다!)
+    public void StartFirstTurn()
+    {
+        // 드디어 클릭을 허용!
+        currentState = GameState.Playing;
+
+        // 3.5초 연출 보는 동안 타이머 깎이는 거 억울하니까, 이때 타이머를 꽉 채워서 시작!
+        if (timerManager != null) timerManager.RestartTurnTimer();
+
+        // AI가 선공이면, 드디어 여기서 돌을 두라고 명령함!
+        if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
+        {
+            ExecuteAITurn();
+        }
+
+        Debug.Log("[GameManager] 모든 연출 종료! 진짜 게임(타이머/AI)을 시작합니다.");
     }
 
     // 돌 착수를 제한 시간 내로 안 했을 경우 (TimerManager에서 시간 초과 이벤트가 발생하면 이 함수를 호출하도록 연결!)

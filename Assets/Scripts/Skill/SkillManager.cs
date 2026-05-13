@@ -1691,48 +1691,94 @@ public class SkillManager : MonoBehaviour
 
     private System.Collections.IEnumerator PassiveSequenceRoutine()
     {
+        // 1. 연출 중 클릭 원천 차단
+        gameManager.currentState = GameState.Wait;
         int[] noTarget = System.Array.Empty<int>();
 
-        // [1단계] 흑돌(선공) 패시브 무조건 먼저 발동 (룰 파괴)
+        // 🚨 누가 패시브를 썼는지 기억할 스위치
+        bool didBlackUsePassive = false;
+        bool didWhiteUsePassive = false;
+
+        // =========================================================
+        // [1단계] 흑돌(선공) 패시브 검사 및 발동
+        // =========================================================
         if (gameManager.localPlayerColor == StoneColor.Black)
         {
-            // 내가 흑돌이면 내 스킬 발동하고 패킷 쏨
+            // 내가 흑돌일 때 내 스킬 검사
             SkillBase myPassive = mySkills.Find(s => s.data.type == "전용");
             if (myPassive != null && myPassive.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor) == SkillUseResult.Success)
             {
                 myPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
                 if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
                     gameSession.SendUseSkill(myPassive.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+
+                didBlackUsePassive = true;
             }
         }
-        else if (gameManager.currentMode == PlayMode.AI)
+        else
         {
-            // AI가 흑돌이면 AI 스킬 발동
-            SkillBase aiPassive = oppSkills.Find(s => s.data.type == "전용");
-            if (aiPassive != null) aiPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+            // 상대(AI 포함)가 흑돌일 때 상대 스킬 검사
+            SkillBase oppPassive = oppSkills.Find(s => s.data.type == "전용");
+            if (oppPassive != null)
+            {
+                // AI 모드라면 기존에 쓰던 방식 그대로 AI 스킬 강제 발동!
+                if (gameManager.currentMode == PlayMode.AI)
+                {
+                    oppPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                }
+                didBlackUsePassive = true;
+            }
         }
 
-        // 🚨 2초 딜레이 (룰 파괴 연출이 끝날 때까지 백돌은 무조건 숨참고 대기!)
-        yield return new WaitForSeconds(2.0f);
+        // 🚨 흑돌이 진짜 패시브를 발동했을 때만 2초 기다려줌! (없으면 0초 패스)
+        if (didBlackUsePassive) yield return new WaitForSeconds(2.0f);
 
-        // [2단계] 백돌(후공) 패시브 이어서 발동 (신성화)
+
+        // =========================================================
+        // [2단계] 백돌(후공) 패시브 이어서 검사 및 발동
+        // =========================================================
         if (gameManager.localPlayerColor == StoneColor.White)
         {
-            // 내가 백돌이면 2초 뒤에 내 스킬 발동하고 패킷 쏨
+            // 내가 백돌일 때 내 스킬 검사
             SkillBase myPassive = mySkills.Find(s => s.data.type == "전용");
             if (myPassive != null && myPassive.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor) == SkillUseResult.Success)
             {
                 myPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
                 if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
                     gameSession.SendUseSkill(myPassive.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+
+                didWhiteUsePassive = true;
             }
         }
-        else if (gameManager.currentMode == PlayMode.AI)
+        else
         {
-            // AI가 백돌이면 AI 스킬 발동
-            SkillBase aiPassive = oppSkills.Find(s => s.data.type == "전용");
-            if (aiPassive != null) aiPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+            // 상대(AI 포함)가 백돌일 때 상대 스킬 검사
+            SkillBase oppPassive = oppSkills.Find(s => s.data.type == "전용");
+            if (oppPassive != null)
+            {
+                // AI 모드라면 기존에 쓰던 방식 그대로 AI 스킬 강제 발동!
+                if (gameManager.currentMode == PlayMode.AI)
+                {
+                    oppPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                }
+                didWhiteUsePassive = true;
+            }
         }
+
+        // 🚨 백돌이 진짜 패시브를 발동했을 때만 1.5초(신성화 번쩍임) 기다려줌!
+        if (didWhiteUsePassive) yield return new WaitForSeconds(1.5f);
+
+
+        // =========================================================
+        // [3단계] 연출 끝, 진짜 게임 시작!
+        // =========================================================
+        // 모든 돌의 렌더링 상태를 최신으로 확정 지음
+        gameManager.board.RefreshAllStonesVisuals();
+
+        // GameManager에게 "연출 다 끝났으니 타이머 돌리고 클릭 풀고 게임 시작해라!" 지시
+        gameManager.StartFirstTurn();
+
+        Debug.Log("[SkillManager] 패시브 시퀀스 완전 종료! 게임 시작!");
     }
 
     // InputManager에서 현재 무슨 스킬을 들고 있는지 확인하기 위한 함수
