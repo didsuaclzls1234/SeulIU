@@ -1137,45 +1137,66 @@ public class BoardManager : MonoBehaviour
     // 엔딩 시네마틱 마스터 컨트롤러
     private IEnumerator VictoryCinematicRoutine(List<GameObject> winners, StoneColor winnerColor, List<Vector2Int> winningCoords)
     {
-        // [A] 빌드업 대기 (2.5초) : 유저들이 보드 상황을 충분히 확인하는 시간
-        yield return new WaitForSeconds(2.5f);
+        Vector3 centerPos = GetWinningLineCenter(winningCoords); // 계산 미리 해둠
 
-        // [B] 트랜지션 시작 (화이트 플래시)
+        // [A] 빌드업 대기 (2.8초) : 유저들이 보드 상황을 파악하는 시간
+        yield return new WaitForSeconds(2.75f);
+
+
+        // 🚨 [수정 1] 클라이맥스 비주얼 연출 '먼저' 동시 실행!
+        // 컴퓨터가 무거운 연산을 하기 '전' 프레임에 플래시와 파티클을 먼저 터뜨려서
+        // 시각적인 부드러움을 확보합니다.
+
+        // 1. 웅웅대던 기가 "파아앗!" 하고 사방으로 퍼지는 메인 파티클 터뜨리기
         if (SkillVFXManager.Instance != null)
-            SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
-
-        // 🚨 [순서 1] 플래시가 터지는 찰나에 신성화(흰돌) 상태를 즉시 본모습(검정돌)으로 복구
-        if (isConsecrationActive)
         {
-            RevealAllBlackStonesInstantly(winners);
+            float camDuration = gameManager.cameraSwitcher != null ? gameManager.cameraSwitcher.cinematicDuration : 1.5f;
+            // 기 모으던 연출에서 뻗어나가는 연출로 자연스럽게 이어지도록 설계된 함수라고 가정
+            SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
         }
 
-        // UI 및 자물쇠 아이콘 즉시 닫기
+        // 2. 화면 흰색으로 파아앗! 점멸 시작 (피크 타임이 아주 짧은 펑! 터지는 플래시)
+        if (SkillVFXManager.Instance != null)
+        {
+            // [튜닝 제안] 아주 빠르게 하얘졌다가(0.1초) 천천히 걷히는(1.4초) 플래시가 어울립니다.
+            SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
+        }
+
+        // UI 즉시 닫기
         if (gameManager.gameHUD != null)
         {
             if (gameManager.gameHUD.inGameUI != null) gameManager.gameHUD.inGameUI.SetActive(false);
             if (gameManager.gameHUD.opponentSilencedIcon != null) gameManager.gameHUD.opponentSilencedIcon.SetActive(false);
         }
 
-        // 웅장한 사운드 시작
+        // BGM 시작
         SoundManager.Instance.PlayBGM("BattleBGM");
 
-        Vector3 centerPos = GetWinningLineCenter(winningCoords);
 
-        // 🚨 [순서 2] 본모습을 찾은 돌들 중 '승리한 돌 중심에서 가장 가까운' 15개만 날리기
+        // 🚨 [핵심 수정 2] "마법의 1프레임 대기" (yield return null)
+        // 위에서 명령한 플래시와 파티클 생성 드로우콜이 GPU로 넘어가서 그려지기 시작한 '다음 프레임'에 
+        // 아래의 무거운 CPU 연산을 실행합니다. 이렇게 하면 비주얼 시작 단계에서의 멈칫 현상이 완벽하게 사라집니다.
+        yield return null;
+
+
+        // 🚨 [핵심 수정 3] 이제 화면이 하얗게 점멸해서 유저 눈이 멀어있는 상태입니다. 
+        // 이 찰나에 무거운 돌 교체 작업을 백그라운드에서 해치웁니다.
+
+        // 신성화(흰돌) 상태를 즉시 본모습(검정돌)으로 복구
+        if (isConsecrationActive)
+        {
+            RevealAllBlackStonesInstantly(winners);
+        }
+
+        // 본모습을 찾은 돌들 중 5목 주변 15개만 날리기 시작 (이전 코드의 SetActive(false) 최적화 포함)
         StartCoroutine(CleanUpAndFlyDefeatedStonesRoutine(winners, winnerColor, centerPos));
 
-        // 🚨 [순서 3] 돌들이 튀어오르는 것을 잠시 확인 후 카메라 이동 시작 (약 0.3초 지연)
-        yield return new WaitForSeconds(0.3f);
+
+        // [타이밍 조절] 돌들이 튀어오르는 것을 잠시 확인 후 카메라 이동 시작
+        yield return new WaitForSeconds(0.2f); // yield return null을 했으므로 조금 더 짧게 대기
 
         if (gameManager.cameraSwitcher != null)
             StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
-
-        if (SkillVFXManager.Instance != null)
-        {
-            float camDuration = gameManager.cameraSwitcher.cinematicDuration;
-            SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
-        }
 
         StartCoroutine(TrackCameraRoutine(winners, winnerColor));
 
@@ -1306,7 +1327,7 @@ public class BoardManager : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(UnityEngine.Random.Range(4f, 7f));
+            yield return new WaitForSeconds(UnityEngine.Random.Range(4f, 6f));
 
             for (int j = 0; j < winners.Count; j++)
             {
