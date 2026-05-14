@@ -6,7 +6,7 @@ using System.Threading.Tasks; // Stack 사용
 
 
 // 현재 게임 진행 상태 (스킬선택중, 게임중, 게임끝)
-public enum GameState { WaitingForSkillSelect, Playing, SkillPreview, /*SkillTargeting*/ GameOver }
+public enum GameState { WaitingForSkillSelect, Wait, Playing, SkillPreview, /*SkillTargeting*/ GameOver }
 public enum PlayMode { Solo, AI, Multiplayer } // 플레이 모드 
 // [추가] 착수 종류 구분 — PlayerManual은 턴 카운트 감소, SkillInduced는 감소 없음
 public enum PlacementType { PlayerManual, SkillInduced }
@@ -25,11 +25,7 @@ public class GameManager : MonoBehaviour
     /** 네트워크 전용 액션 (포톤 매니저에서 구독할 채널들)**/   // ** 네트워크 개발자 분은 아래 액션들 구독하셔서 사용하시면 됩니다! 
     public event Action<int, int, int> OnStonePlacedLocally; // 내 턴에 돌 놨을 때(x, y, seq)
     public event Action<StoneColor> OnGameOverLocally;
-    public event Action OnUndoRequestedLocally;         // 내가 무르기 버튼 눌렀을 때
-    public event Action<bool> OnUndoReplyLocally;       // 내가 상대방의 무르기를 수락/거절했을 때 발송
     public event Action OnRestartRequestedLocally;      // 내가 재시작 버튼 눌렀을 때
-    //public event Action<int> OnSkillUsedLocally;      // 스킬 썼을 때 (나중에 확장)
-    //public event Action<int, int, int> OnDoubleDownExtraPlaced; // Double Down 스킬로 랜덤 착수했을 때 (x, y, seq)
     // -----------------------------------------------------------------------------
 
     public BoardManager board;
@@ -39,10 +35,6 @@ public class GameManager : MonoBehaviour
     public CameraSwitcher cameraSwitcher;
     
     [Header("Skill State")]
-    // public int extraPlacementCount = 0; // 돌 여러번 놓는 스킬(예: 3번 스킬) 사용 시, 남은 추가 착수 횟수 저장용 변수
-    // public bool pendingExtraPlacement = false; // 추가 착수 대기 상태 플래그 (네트워크에서 랜덤 착수 패킷을 기다리는 중인지)
-    // public bool hasUsedSkillThisTurn = false; // 이번 턴 스킬 사용 여부 (스킬은 한 턴 당 하나만)
-    // [제거] extraPlacementCount, pendingExtraPlacement
     public bool hasUsedSkillThisTurn = false;
     public int pendingSkillId = -1; // [추가] B타입 스킬(바로 발동하지 않고, 착수 후 발동 하는 스킬 예약용)
 
@@ -183,11 +175,6 @@ public class GameManager : MonoBehaviour
 
         if (currentState == GameState.GameOver) return;
 
-        // ExtraPlacement가 올 예정이면 턴 넘기기 보류
-        // if (!pendingExtraPlacement)
-        // {
-        //     PassTurn(receivedColor);
-        // }
         PassTurn(receivedColor);
     }
      // [수정] PlacementType 파라미터 추가 / pendingSkillId 처리 / skillManager.OnStonePlaced 호출
@@ -259,43 +246,6 @@ public class GameManager : MonoBehaviour
         ExecutePlaceStone(x, y, playerColor, type);
     }
 
-    // public void ReceiveExtraPlacement(int x, int y, StoneColor color)
-    // {
-    //     Debug.Log($"[ReceiveExtraPlacement] 호출됨 - x:{x}, y:{y}, color:{color}, currentTurnColor:{currentTurnColor}");
-    
-    //     GameObject placedStone = board.PlaceStone(x, y, color);
-    //     if (placedStone == null)
-    //     {
-    //         Debug.LogWarning("[ReceiveExtraPlacement] PlaceStone 실패 - null 반환");
-    //         return;
-    //     }
-
-    //     moveHistory.Push(new MoveRecord { x = x, y = y, playerColor = color, stoneObj = placedStone });
-
-    //     // ** 상대방이 투명화 상태인지 확인
-    //     bool isOpponentInvisible = (skillManager != null && skillManager.oppInvisibilityTurns > 0);
-    //     if (isOpponentInvisible)
-    //     {
-    //         // 투명화라면 돌을 숨기고, 노란색 깜빡임 효과를 생략
-    //         board.ApplyVisibilityToSingleStone(placedStone, color, false, false);
-    //     }
-    //     else
-    //     {
-    //         // 안 투명하면 정상적으로 노란색 깜빡임
-    //         board.BlinkStoneEffect(placedStone, board.visualSettings.extraPlaceBlinkColor);
-    //     }
-
-    //     if (board.CheckWin(x, y, color))
-    //     {
-    //         EndGame(color);
-    //         return;
-    //     }
-
-    //     //  플래그 해제 후 턴 넘기기
-    //     pendingExtraPlacement = false;
-    //     PassTurn(color);
-    // }
-
     // =========================================================
     // AI 턴 처리 로직
     // =========================================================
@@ -342,6 +292,12 @@ public class GameManager : MonoBehaviour
         currentState = GameState.GameOver;
         // extraPlacementCount = 0;
 
+        // 🚨 [여기에 추가!] 승리 판정 나자마자 화면에 묻어있던 스킬 이펙트 싹 다 클리어!
+        if (SkillVFXManager.Instance != null)
+        {
+            SkillVFXManager.Instance.ClearAllEffects();
+        }
+
         // UI는 무조건 GameHUD가 처리하도록 위임
         if (gameHUD != null) gameHUD.ShowGameOver(winner, localPlayerColor);
 
@@ -353,112 +309,6 @@ public class GameManager : MonoBehaviour
             OnGameOverLocally?.Invoke(winner);
         }
     }
-
-
-    // =========================================================
-    // 2. 한 수 무르기 (Undo) 파트
-    // =========================================================
-
-    //// UI 무르기 버튼에 연결할 함수
-    //public void RequestUndo()
-    //{
-    //    if (currentMode == PlayMode.Multiplayer) return;
-    //    if (moveHistory.Count == 0 || currentState == GameState.GameOver) return; // 무를 수단이 없으면 리턴
-
-    //    // 2. 모드별 분기 처리
-    //    //if (currentMode == PlayMode.Multiplayer)
-    //    //{
-    //    //    // [멀티플레이] 상대방에게 "물러도 될까?" 물어보는 패킷을 GameSession이 쏘도록 이벤트 호출
-    //    //    // 실제 실행(ExecuteUndo)은 상대가 수락하여 패킷이 돌아왔을 때(ReceiveNetworkUndo) 진행됩니다.
-    //    //    OnUndoRequestedLocally?.Invoke();
-    //    //    Debug.Log("[Undo] 상대방에게 무르기 동의를 요청합니다...");
-
-    //    //    // 요청하자마자 '대기 팝업'을 띄움 (돌 놓기 방지)
-    //    //    if (gameHUD != null) gameHUD.ShowUndoWaitingPopup();
-    //    //}
-    //    //else
-    //    //{
-    //        // [Solo / AI] 기다릴 필요 없이 즉시 내 화면에서 무르기 실행
-    //        ExecuteUndo();
-
-    //        // ** [AI 모드] 내가 무르기를 하면 턴이 AI로 넘어가서 바로 다시 두어버림. 
-    //        // 따라서 AI의 직전 수도 같이 무르기(총 2번 Pop) 처리
-    //        if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor && moveHistory.Count > 0)
-    //        {
-    //            ExecuteUndo();
-    //        }
-    //    //}
-    //}
-
-    // ** 상대가 무르기를 요청했을 경우 수신됨
-    //public void ReceiveNetworkUndoRequest()
-    //{
-    //    if (currentState == GameState.GameOver) return;
-    //    if (gameHUD != null) gameHUD.ShowUndoPopup();
-    //}
-
-    // ** 본인이 무르기 요청 후, 수락/거절 응답을 상대방으로부터 수신할 경우
-    //public void ReceiveNetworkUndoReply(bool isAccepted)
-    //{
-    //    if (currentState == GameState.GameOver) return;
-
-    //    // 상대방의 응답을 받으면 HUD에 결과 텍스트 띄우기 (1.5초 뒤 자동 꺼짐)
-    //    if (gameHUD != null) gameHUD.ShowUndoResultAndClose(isAccepted);
-
-    //    if (isAccepted) ExecuteUndo();
-    //}
-
-    // ** HUD에서 수락/거절 버튼을 눌렀을 때 호출되는 함수 (발신)
-    //public void ReplyToUndoRequest(bool isAccepted)
-    //{
-    //    // 1. 이미 게임이 끝났다면 무르기 팝업 닫고 무시
-    //    if (currentState == GameState.GameOver)
-    //    {
-    //        if (gameHUD != null) gameHUD.undoPopupPanel.SetActive(false);
-    //        return;
-    //    }
-
-    //    // 2. 수락(true)을 눌렀다면 내 화면에서도 무르기 진행
-    //    if (isAccepted)
-    //    {
-    //        ExecuteUndo();
-    //    }
-
-    //    // 3. GameSession 쪽으로 수락/거절 여부(bool) 전달
-    //    OnUndoReplyLocally?.Invoke(isAccepted);
-    //}
-
-    //// 3. 한 수 무르기 (Undo) 기능
-    //public void ExecuteUndo()
-    //{
-    //    if (moveHistory.Count == 0) return;
-
-    //    // 가장 마지막에 둔 돌 정보 꺼내기
-    //    MoveRecord lastMove = moveHistory.Pop();
-
-    //    // 1. 데이터 배열에서 돌 삭제
-    //    board.grid[lastMove.x, lastMove.y] = 0;
-
-    //    // 2. 화면에서 3D 돌 오브젝트 없애기
-    //    if (lastMove.stoneObj != null) lastMove.stoneObj.SetActive(false);
-
-    //    // 3. 턴 되돌리기 + 화면 글씨 자동 갱신
-    //    currentTurnColor = lastMove.playerColor;
-
-    //    // (게임오버 시 무르기 불가이므로 currentState = GameState.Playing 강제 주입은 제거해도 되지만, 만약의 오류 방지용으로 놔둠)
-    //    currentState = GameState.Playing;
-
-    //    // 5. 무르기 완료 후 UI(HUD) 턴 글씨 갱신
-    //    if (gameHUD != null)
-    //    {
-    //        gameHUD.resultPanel.SetActive(false);
-    //    }
-
-    //    // 6. 무른 후의 턴에 맞춰 금수 마커 다시 계산!
-    //    board.UpdateForbiddenMarks(currentTurnColor);
-
-    //    Debug.Log($"[Undo] ({lastMove.x}, {lastMove.y}) 무르기 완료. 현재 턴: {currentTurnColor.ToKorean()}");
-    //}
 
     // =========================================================
     //  3. 재시작 (Restart) 파트
@@ -593,7 +443,7 @@ public class GameManager : MonoBehaviour
     // 게임 시작 전 모든 준비(닉네임, 스킬 선택 등)를 마치고 최종적으로 호출할 함수
     public void StartGameAfterSelection()
     {
-        currentState = GameState.Playing;
+        //currentState = GameState.Playing;
 
         // 게임 상태가 Playing으로 바뀔 때 스킬 인스턴스 생성 및 버튼 연결!
         if (skillManager != null) 
@@ -612,6 +462,25 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("모든 준비 완료. 게임을 시작합니다.");
+    }
+
+    // ------------------------------------------------------------
+    // 2. 🚨 진짜 게임 시작 (SkillManager에서 패시브 연출이 다 끝나면 얘를 부를 겁니다!)
+    public void StartFirstTurn()
+    {
+        // 드디어 클릭을 허용!
+        currentState = GameState.Playing;
+
+        // 3.5초 연출 보는 동안 타이머 깎이는 거 억울하니까, 이때 타이머를 꽉 채워서 시작!
+        if (timerManager != null) timerManager.RestartTurnTimer();
+
+        // AI가 선공이면, 드디어 여기서 돌을 두라고 명령함!
+        if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
+        {
+            ExecuteAITurn();
+        }
+
+        Debug.Log("[GameManager] 모든 연출 종료! 진짜 게임(타이머/AI)을 시작합니다.");
     }
 
     // 돌 착수를 제한 시간 내로 안 했을 경우 (TimerManager에서 시간 초과 이벤트가 발생하면 이 함수를 호출하도록 연결!)
@@ -670,34 +539,6 @@ public class GameManager : MonoBehaviour
     //        모든 감소 처리는 ExecutePlaceStone → skillManager.OnStonePlaced로 이관
     private void PassTurn(StoneColor placedColor)
     {
-        // // 1. 봉인 턴 수 감소 (원래 ExecutePlaceStone에 있던 녀석)
-        // for (int i = 0; i < board.boardSize; i++)
-        // {
-        //     for (int j = 0; j < board.boardSize; j++)
-        //     {
-        //         if (board.sealedGrid[i, j].turns > 0 && board.sealedGrid[i, j].owner != placedColor)
-        //         {
-        //             board.sealedGrid[i, j].turns--;
-        //             if (board.sealedGrid[i, j].turns == 0)
-        //             {
-        //                 board.RemoveSealEffect(i, j);
-        //                 Debug.Log($"({i}, {j}) 봉인이 해제되었습니다.");
-        //             }
-        //         }
-        //     }
-        // }
-
-        // // 2. 투명화 턴 감소 (가장 중요! 여기서 딱 1번만 깎음)
-        // skillManager?.DecreaseInvisibilityTurns(placedColor);
-
-        // // 3. SP 증가 및 스킬 쿨타임/안티매직 감소
-        // skillManager?.AddSPOnTurnEnd(placedColor);
-        // skillManager?.DecreaseSealedTurns();
-
-        // // 4. 진짜로 턴 색상 바꾸고 다음 사람 마커 갱신
-        // currentTurnColor = currentTurnColor.Opponent();
-        // board.UpdateForbiddenMarks(currentTurnColor);
-        // hasUsedSkillThisTurn = false;
         currentTurnColor     = currentTurnColor.Opponent();
         board.UpdateForbiddenMarks(currentTurnColor);
         hasUsedSkillThisTurn = false;

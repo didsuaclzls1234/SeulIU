@@ -15,6 +15,9 @@ public class Skill_8_SevenSins : SkillBase
         RuleSettings oppRules = (oppColorInt == 1) ? board.ruleManager.blackRules : board.ruleManager.whiteRules;
         oppRules.winCondition = 7;
 
+        // 🚨 내 화면(시전자)에는 필터 없이 "지진"만 발생해서 타격감 전달
+        SkillVFXManager.Instance.PlayCameraShake(0.5f, 0.2f);
+
         if (gm.gameHUD != null)
             gm.gameHUD.ShowSystemMessage("칠죄종 발동! 상대방의 승리 조건이 7목으로 영구 변경되었습니다.");
 

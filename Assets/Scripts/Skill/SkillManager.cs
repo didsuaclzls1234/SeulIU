@@ -60,13 +60,7 @@ public class SkillManager : MonoBehaviour
     public int sealedTurnsRemaining = 0;
 
     // 턴 종료 시 파괴할 제거 스킬 타겟 좌표 (기본값 -1, -1)
-    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1);
-
-    // UI가 구독할 이벤트들 (데이터만 던져줌)
-    public event Action<int> OnSPChanged; // SP가 변했을 때 (내 SP 던져줌)
-    public event Action<List<ActiveEffect>> OnActiveEffectsChanged; // 버프/디버프 리스트가 갱신됐을 때
-    public event Action<int, bool> OnSkillButtonStateChanged; // 특정 스킬 버튼의 활성화/비활성화 상태가 변했을 때
-
+    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1); 
 
     // 2. 팩토리 메서드 (OCP 원칙: 새로운 스킬이 생기면 여기 case만 추가하면 됨)
     private SkillBase CreateSkillByID(int id)
@@ -171,17 +165,19 @@ public class SkillManager : MonoBehaviour
             int rx = pendingRemoveTarget.x;
             int ry = pendingRemoveTarget.y;
 
-            // 터지기 전 원래 돌 색깔 파악 (깜빡임 이펙트용)
+            GameObject deadObj = gameManager.board.GetStoneObjectAt(rx, ry);
             StoneColor deadStoneColor = (StoneColor)gameManager.board.grid[rx, ry];
 
-            // 데이터 및 오브젝트 삭제
-            gameManager.board.grid[rx, ry] = 0;
-            gameManager.board.RemoveStoneObjectAt(rx, ry);
+            gameManager.board.grid[rx, ry] = 0; // 데이터 먼저 삭제 (승리판정 영향 없게)
+            gameManager.board.RemoveStoneObjectAt(rx, ry); // 보드 관리 리스트에서 제외 (이때 SetActive(false)됨)
+            
+            if (deadObj != null) 
+            {
+                deadObj.SetActive(true); // 🚨 연출을 위해 강제로 다시 켬!
+                SkillVFXManager.Instance.PlayGlitchDeath(deadObj, deadStoneColor); // 이펙트 매니저에게 파괴를 위임
+            }
 
-            // 기존에 쓰던 빨간색 점멸 이펙트 호출 (자리에 빈 이펙트 띄우기)
-            gameManager.board.BlinkEmptySpaceEffect(rx, ry, gameManager.board.visualSettings.removeBlinkColor, deadStoneColor);
-
-            // 예약 초기화
+            // 기존에 있던 BlinkEmptySpaceEffect 호출 줄은 싹 삭제합니다!
             pendingRemoveTarget = new Vector2Int(-1, -1);
             Debug.Log($"[SkillManager] 예약되었던 돌({rx},{ry}) 파괴 완료!");
         }
@@ -199,17 +195,22 @@ public class SkillManager : MonoBehaviour
             {
                 gameManager.gameHUD.SetOpponentSilencedUI(false);
                 gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
+
+                // 🚨 피격자 화면 회색 오버레이 끄기!
+                RefreshAntiMagicOverlayUI();
             }
         }
- 
+
         // 3. 투명화 턴 감소
         if (placedColor == gameManager.localPlayerColor && myInvisibilityTurns > 0)
         {
             myInvisibilityTurns--;
             if (myInvisibilityTurns == 0)
             {
+                // 🚨 투명화 끝날 때 하얗게 깜빡!
+                SkillVFXManager.Instance.PlayScreenFlash(Color.white, 0.2f);
+                SkillVFXManager.Instance.ToggleOverlay(SkillVFXManager.Instance.invisibilityOverlayImage, false);
                 gameManager.board.SetStoneInvisibility(gameManager.localPlayerColor, true, true);
-                gameManager.gameHUD?.ShowSystemMessage("내 투명화 효과가 해제되었습니다.");
             }
         }
         else if (placedColor != gameManager.localPlayerColor && oppInvisibilityTurns > 0)
@@ -256,7 +257,13 @@ public class SkillManager : MonoBehaviour
                 if (placedColor != activeEffects[i].casterColor)
                 {
                     activeEffects[i].remainingTurns--;
-                    if (activeEffects[i].remainingTurns <= 0) activeEffects.RemoveAt(i);
+                    if (activeEffects[i].remainingTurns <= 0) 
+                    { 
+                        activeEffects.RemoveAt(i);
+
+                        // 시전자 화면 하늘색 오버레이 끄기!
+                        RefreshAntiMagicOverlayUI();
+                    }
                 }
             }
             else
@@ -328,80 +335,6 @@ public class SkillManager : MonoBehaviour
 
         // TODO: (시온 작업) 여기서 CSV 데이터를 찾아 실제 Skill 인스턴스를 생성할 예정입니다.
     }
-
-
-    // 착수 시 SP 증가 (GameManager에서 턴 넘어갈 때 호출해줄 함수)
-    // public void AddSPOnTurnEnd(StoneColor placedColor)
-    // {
-    //     if (placedColor == gameManager.localPlayerColor)
-    //     {
-    //         mySP = Mathf.Min(mySP + 1, MAX_SP);
-    //     }
-    //     else
-    //     {
-    //         oppSP = Mathf.Min(oppSP + 1, MAX_SP);
-    //     }
-
-    //     // 쿨타임은 방금 턴을 마친 사람이 아니라, '이제 턴을 시작할 사람' 것을 깎습니다!
-    //     StoneColor nextTurnColor = placedColor.Opponent();
-    //     UpdateSkillDurations(nextTurnColor);
-
-    //     // SP가 바뀌었으니 HUD에 즉시 양쪽 SP 최신화
-    //     if (gameManager.gameHUD != null)
-    //     {
-    //         gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
-    //     }
-    // }
-
-    // private void UpdateSkillDurations(StoneColor nextTurnColor)
-    // {
-    //     //// 턴이 지날 때마다 스킬들의 OnTurnPassed()를 호출하여 쿨다운 감소
-    //     //if (turnColor == gameManager.localPlayerColor)
-    //     //{
-    //     //    foreach (var skill in mySkills) skill.OnTurnPassed();
-    //     //}
-    //     //else
-    //     //{
-    //     //    foreach (var skill in oppSkills) skill.OnTurnPassed();
-    //     //}
-    //     List<SkillBase> targetSkills = (nextTurnColor == gameManager.localPlayerColor) ? mySkills : oppSkills;
-
-    //     for (int i = 0; i < targetSkills.Count; i++)
-    //     {
-    //         targetSkills[i].OnTurnPassed(); // 내부 쿨타임 감소 로직 호출
-
-    //         // UI 텍스트 갱신은 '내 턴'이 돌아왔을 때 내 화면에서만 해주면 됩니다.
-    //         if (nextTurnColor == gameManager.localPlayerColor && gameManager.gameHUD != null)
-    //         {
-    //             Button btn = gameManager.gameHUD.activeSkillButtons[i];
-    //             TMP_Text cdText = gameManager.gameHUD.cooldownTexts[i];
-
-    //             bool isPassive = targetSkills[i].data.type == "전용";
-    //             bool isSilenced = sealedTurnsRemaining > 0; // 안티매직 걸렸는지
-    //             bool onCooldown = targetSkills[i].currentCooldown > 0;
-    //             bool notEnoughSP = mySP < targetSkills[i].data.spCost; // ** (나중에 사용될 듯)
-
-    //             // 버튼 잠금 처리
-    //             btn.interactable = !isPassive;
-
-    //             // ** 패시브거나, 쿨타임이거나, SP가 부족하거나, 안티매직에 걸렸다면 버튼 강제 잠금 (** 이 부분은 추후 기획의도 맞춰서 해야 할 듯)
-    //             btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced;
-
-    //             // 쿨타임 텍스트 표시
-    //             cdText.text = (!isPassive && onCooldown) ? targetSkills[i].currentCooldown.ToString() : "";
-    //         }
-    //     }
-
-    //     for (int i = activeEffects.Count - 1; i >= 0; i--)
-    //     {
-    //         activeEffects[i].remainingTurns--;
-    //         if (activeEffects[i].remainingTurns <= 0)
-    //             activeEffects.RemoveAt(i);
-    //     }
-
-    //     if (gameManager.gameHUD != null)
-    //         gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
-    // }
 
     // AI 모드 전용: AI가 스킬을 사용할지 판단하고 실행하는 함수
     // =========================================================
@@ -538,40 +471,13 @@ public class SkillManager : MonoBehaviour
             // 돌 놓기 패킷이 오기 전에 로그창에 "상대: [스킬명]"을 먼저 띄움
             gameManager.gameHUD.ForceCommitPendingLog(turnCount);
         }
-        // DoubleDown 두 번째 패킷 (랜덤 추가 착수) — 로그 없이 착수만
-        // if (skillId == 3 && xs[0] != -1)
-        // {
-        //     ReceiveSkill_DoubleDown(xs, ys);
-        //      if (skillDatabase.TryGetValue(skillId, out SkillData data3))
-        //     {
-        //          // ↓ 추가: SP 차감 및 UI 갱신
-        //         oppSP -= data3.spCost;
-        //         gameManager.gameHUD?.UpdateSPUI(mySP, oppSP);
-        //         // ↓ turnCount로 기존 엔트리에 직접 기록
-        //         gameManager.gameHUD?.RecordSkillLog(turnCount, "상대방", data3.skillName);
-        //         gameManager.gameHUD?.UpdateGameLog();
-        //         //gameManager.gameHUD?.AddSkillLog("상대방", data3.skillName, turnCount);
-        //     }
-        //     return;
-        // }
-        // if (skillId == 6 && xs[0] != -1)
-        // {
-        //     // 두 번째 패킷 — 실제 봉인 좌표, 로그 없이 처리
-        //     ReceiveSkill_Bladefall(xs, ys);
-        //     if (skillDatabase.TryGetValue(skillId, out SkillData data6))
-        //     {   // ↓ 추가: SP 차감 및 UI 갱신
-        //         oppSP -= data6.spCost;
-        //          gameManager.gameHUD?.UpdateSPUI(mySP, oppSP);
-        //         // ↓ 동일
-        //         gameManager.gameHUD?.RecordSkillLog(turnCount, "상대방", data6.skillName);
-        //         gameManager.gameHUD?.UpdateGameLog();
-        //         //gameManager.gameHUD?.AddSkillLog("상대방", data6.skillName, turnCount);
-        //     }
-        //     return;
-        // }
+        
          // ─── B타입 첫 번째 패킷 (xs[0] == -1) : 스킬 선언 → Pending 저장 ───
         if ((skillId == 3 || skillId == 6) && xs[0] == -1)
         {
+            // 🚨 상대가 이중착수 썼을 때 내 화면도 번쩍!
+            if (skillId == 3) SkillVFXManager.Instance.PlayScreenFlash(Color.white, 0.2f);
+
             if (skillDatabase.TryGetValue(skillId, out SkillData declData))
             {
                 oppSP -= declData.spCost;
@@ -620,20 +526,7 @@ public class SkillManager : MonoBehaviour
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
         }
-        // 3. 실제 효과 실행 (Execute 내부에서 보드 데이터 지우기 수행)
-        // xs, ys 배열을 돌면서 들어있는 모든 좌표를 지움 (최대 2개)
-        // for (int i = 0; i < xs.Length; i++)
-        // {
-        //     int tx = xs[i];
-        //     int ty = ys[i];
-
-        //     // 유효한 좌표(-1이 아님)이고 바둑판에 돌이 있다면 삭제
-        //     if (tx != -1 && ty != -1)
-        //     {
-        //         gameManager.board.grid[tx, ty] = 0;
-        //         gameManager.board.RemoveStoneObjectAt(tx, ty);
-        //     }
-        // }
+        
         if (skillData.durationTurn > 0)
         {
             activeEffects.Add(new ActiveEffect
@@ -657,6 +550,9 @@ public class SkillManager : MonoBehaviour
         //gameManager.gameHUD?.AddSkillLog("상대방", skillData.skillName, turnCount);
 
         gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
+
+        // 🚨 [여기에 추가!] 상대방 버프/디버프 등록 끝났으니 오버레이 상태 최종 갱신!
+        RefreshAntiMagicOverlayUI();
     }
     //  1번스킬 추가
     private void ReceiveSkill_StoneShift(int[] xs, int[] ys)
@@ -669,6 +565,9 @@ public class SkillManager : MonoBehaviour
         // 1. 이동하기 전에 원래 자리에 방패(신의 가호)가 있었는지 확인!
         bool hadShield = gameManager.board.shieldGrid[tx, ty];
 
+        // 🚨 시작 위치 기억
+        Vector3 startPos = gameManager.board.GetWorldPosition(tx, ty);
+
         // 2. 이동 전 좌표 제거 (돌 + 방패)
         gameManager.board.grid[tx, ty] = 0;
         gameManager.board.RemoveStoneObjectAt(tx, ty);
@@ -678,6 +577,10 @@ public class SkillManager : MonoBehaviour
         StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
         GameObject newStone = gameManager.board.PlaceStone(destX, destY, opponentColor);
         if (hadShield) gameManager.board.ApplyShield(destX, destY);
+
+        // 🚨 텔레포트 이펙트 발동!
+        Vector3 endPos = gameManager.board.GetWorldPosition(destX, destY);
+        SkillVFXManager.Instance.PlayTeleportVFX(newStone, startPos, endPos);
 
         // 4. 상대 투명화 시전 중일 때는 코루틴으로 깜빡인 후 숨김!
         if (oppInvisibilityTurns > 0 && newStone != null)
@@ -696,6 +599,10 @@ public class SkillManager : MonoBehaviour
          StoneColor opponentColor = gameManager.localPlayerColor.Opponent();
         int duration = skillDatabase[2].durationTurn;
         gameManager.board.ApplySeal(xs[0], ys[0], duration, opponentColor);
+
+        // 🚨 봉인 이펙트 발동!
+        Vector3 pos = gameManager.board.GetWorldPosition(xs[0], ys[0]);
+        SkillVFXManager.Instance.PlayPrimitiveShield(pos, Color.yellow);
     }
      // [수정] DoubleDown 수신 — pendingExtraPlacement 대신 수신 측 처리
     //        상대방이 보낸 패킷의 xs[1],ys[1]에 랜덤 착수 좌표가 들어있으면 그대로 반영
@@ -708,6 +615,10 @@ public class SkillManager : MonoBehaviour
         {
             StoneColor oppColor = gameManager.localPlayerColor.Opponent();
             gameManager.ExecutePlaceStonePublic(xs[0], ys[0], oppColor, PlacementType.SkillInduced);
+
+            // 🚨 상대방이 추가 돌을 놓을 때도 바닥에 소환진 쾅! (플래시 삭제)
+            Vector3 spawnPos = gameManager.board.GetWorldPosition(xs[0], ys[0]);
+            SkillVFXManager.Instance.PlayPrimitiveShield(spawnPos, Color.yellow);
 
             // 상대방이 투명화 상태라면 깜빡인 후 숨김 처리
             if (oppInvisibilityTurns > 0)
@@ -737,6 +648,8 @@ public class SkillManager : MonoBehaviour
         sealedTurnsRemaining = 2;
         Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 2턴간 봉인");
 
+        RefreshAntiMagicOverlayUI();
+
         // 내 화면의 상대방 프로필 쪽에 자물쇠 아이콘 켜기 (직관적 피드백)
         if (gameManager.gameHUD != null)
         {
@@ -752,6 +665,14 @@ public class SkillManager : MonoBehaviour
         {
             // 상대방이 제거 스킬을 쓰면 즉시 지우지 않고 예약 상태로 만듦
             pendingRemoveTarget = new Vector2Int(xs[0], ys[0]);
+
+            // 🚨 상대가 내 돌을 지우려고 찍었을 때, 내 화면에서도 그 돌을 빨갛게 물들여줌 (시인성!)
+            GameObject targetObj = gameManager.board.GetStoneObjectAt(xs[0], ys[0]);
+            if (targetObj != null)
+            {
+                targetObj.GetComponent<StoneVisualController>()?.SetOverlay(Color.red, 0.8f);
+            }
+
             Debug.Log($"[Network] 제거 스킬 예약 수신: ({xs[0]}, {ys[0]}) - 상대가 착수 시 파괴됨");
         }
     }
@@ -769,6 +690,9 @@ public class SkillManager : MonoBehaviour
             }
         }
 
+        // 🚨 칼날비 카메라 셰이킹
+        SkillVFXManager.Instance.PlayBladefallShake();
+
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.ShowSystemMessage("상대방이 칼날비를 사용했습니다. 빈 교차점이 봉인됩니다!");
 
@@ -784,6 +708,12 @@ public class SkillManager : MonoBehaviour
         // 상대방이 투명화 썼으니, 내 화면의 상대 돌을 100% 투명하게(isVisible=false, isMyStone=false) 변경
         gameManager.board.SetStoneInvisibility(oppColor, false, false);
 
+        // 🚨 상대(시온님) 돌들을 내 화면에서 완전 투명하게 처리
+        gameManager.board.SetStoneInvisibility(oppColor, false, false);
+
+        // 🚨 카메라 펀치 삭제! 오직 하얗게 0.2초 번쩍(눈 깜빡)만 남김!
+        SkillVFXManager.Instance.PlayScreenFlash(Color.white, 0.2f);
+
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.ShowSystemMessage("상대방이 투명화를 사용했습니다!");
     }
@@ -798,6 +728,16 @@ public class SkillManager : MonoBehaviour
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.ShowSystemMessage("상대방이 칠죄종을 사용했습니다. 나의 승리 조건이 7목으로 변경됩니다!");
 
+        // 🚨 피격자(상대방이 쓴 걸 받은 나) 화면에는 지진 + "필터 영구 유지"
+        SkillVFXManager.Instance.PlayCameraShake(0.8f, 0.3f);
+
+        // 🚨 불투명도 100%에 가까운 검붉은색 (0.95f 정도로 해야 바둑판이 살짝 보입니다)
+        SkillVFXManager.Instance.SetPersistentOverlay(
+            SkillVFXManager.Instance.sevenSinsOverlayImage,
+            true,
+            new Color(0.35f, 0.05f, 0.1f, 0.95f)
+        );
+
         Debug.Log("[Network] 칠죄종 수신 — 내 승리 조건 7목 강제 적용!");
     }
 
@@ -811,6 +751,10 @@ public class SkillManager : MonoBehaviour
             {
                 // 상대방 화면(내 화면 기준)에 보호막 시각 효과 및 데이터 적용
                 gameManager.board.ApplyShield(xs[i], ys[i]);
+
+                // 🚨 상대가 쓴 신의 가호도 내 화면에서 샤라랄라 재생!
+                Vector3 pos = gameManager.board.GetWorldPosition(xs[i], ys[i]);
+                SkillVFXManager.Instance.PlayPrimitiveShield(pos, Color.cyan);
 
                 // 시각적 피드백: 보호막이 씌워지는 돌을 하늘색으로 깜빡이게 해보죠!
                 GameObject stone = gameManager.board.GetStoneObjectAt(xs[i], ys[i]);
@@ -837,6 +781,11 @@ public class SkillManager : MonoBehaviour
         // 금수 마커 즉시 갱신
         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
 
+        // 🚨 렌주룰 파괴 이펙트 (시뻘건 화면 + 대지진 + 펀치) -> 신성화와 1.5초 간격으로 터짐
+        SkillVFXManager.Instance.PlayScreenFlash(new Color(1f, 0, 0, 0.4f), 0.3f);
+        SkillVFXManager.Instance.PlayFOVPunch(0.3f, 20f);
+        SkillVFXManager.Instance.PlayCameraShake(0.6f, 0.25f);
+
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.ShowSystemMessage("상대방이 룰 파괴를 사용했습니다. 흑돌의 금수가 해제됩니다.");
 
@@ -848,6 +797,9 @@ public class SkillManager : MonoBehaviour
     {
         // 상대방(백돌)이 10번 패시브를 가지고 있으면 내 화면(흑돌)의 보드도 신성화 모드로 변경
         gameManager.board.ActivateConsecration();
+
+        // 🚨 신성화 이펙트 (하얗게 전체화면 점멸)
+        SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1f);
 
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.ShowSystemMessage("상대방이 신성화를 장착했습니다. 모든 돌이 백돌로 보입니다!");
@@ -945,48 +897,30 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    // public void DecreaseSealedTurns()
-    // {
-    //     if (sealedTurnsRemaining > 0)
-    //     {
-    //         sealedTurnsRemaining--;
-    //         Debug.Log($"[SkillManager] 봉인 턴 감소 → 남은 턴: {sealedTurnsRemaining}");
-
-    //         // 0이 되면 자물쇠 치우기
-    //         if (sealedTurnsRemaining == 0 && gameManager.gameHUD != null)
-    //         {
-    //             gameManager.gameHUD.SetOpponentSilencedUI(false);
-    //             gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
-    //         }
-    //     }
-    // }
-
-    // 매 턴 종료 시 턴을 깎고, 0이 되면 투명화 해제
-    // GameManager의 ExecutePlaceStone 에서 턴 넘기기 직전에 이 함수를 호출해주세요.
-    // public void DecreaseInvisibilityTurns(StoneColor turnColor)
-    // {
-    //     // 내가 턴을 마칠 때 내 투명화 턴 감소
-    //     if (turnColor == gameManager.localPlayerColor && myInvisibilityTurns > 0)
-    //     {
-    //         myInvisibilityTurns--;
-    //         if (myInvisibilityTurns == 0)
-    //         {
-    //             gameManager.board.SetStoneInvisibility(gameManager.localPlayerColor, true, true);
-    //             gameManager.gameHUD.ShowSystemMessage("내 투명화 효과가 해제되었습니다.");
-    //         }
-    //     }
-    //     // 상대가 턴을 마칠 때 상대 투명화 턴 감소
-    //     else if (turnColor != gameManager.localPlayerColor && oppInvisibilityTurns > 0)
-    //     {
-    //         oppInvisibilityTurns--;
-    //         if (oppInvisibilityTurns == 0)
-    //         {
-    //             StoneColor oppColor = gameManager.localPlayerColor.Opponent();
-    //             gameManager.board.SetStoneInvisibility(oppColor, true, false);
-    //             gameManager.gameHUD.ShowSystemMessage("상대방의 투명화 효과가 해제되었습니다.");
-    //         }
-    //     }
-    // }
+    // =========================================================
+    // 🚨 안티매직 오버레이 우선순위 교통정리 (무조건 흰색 패널티 우선!)
+    // =========================================================
+    public void RefreshAntiMagicOverlayUI()
+    {
+        if (sealedTurnsRemaining > 0)
+        {
+            // 내가 침묵 당함: 흰색 (투명도 높여서 0.3f)
+            SkillVFXManager.Instance.SetPersistentOverlay(SkillVFXManager.Instance.antiMagicOverlayImage, true, new Color(1f, 1f, 1f, 0.3f));
+        }
+        else
+        {
+            bool isOpponentSilenced = activeEffects.Exists(e => e.skillId == 4 && e.casterColor == gameManager.localPlayerColor);
+            if (isOpponentSilenced)
+            {
+                // 내가 시전함: 하늘색
+                SkillVFXManager.Instance.SetPersistentOverlay(SkillVFXManager.Instance.antiMagicOverlayImage, true, new Color(0f, 0.8f, 1f, 0.6f));
+            }
+            else
+            {
+                SkillVFXManager.Instance.SetPersistentOverlay(SkillVFXManager.Instance.antiMagicOverlayImage, false);
+            }
+        }
+    }
 
     public void ResetForRematch()
     {
@@ -1006,6 +940,9 @@ public class SkillManager : MonoBehaviour
         oppInvisibilityTurns  = 0;
         selectedSkillSlot     = -1;
         activeEffects.Clear();
+
+        // 재시작 시
+        RefreshAntiMagicOverlayUI();
 
         //  제거 스킬 예약 좌표 초기화! (이거 안 하면 다음 판에 엉뚱한 돌이 터집니다)
         pendingRemoveTarget = new Vector2Int(-1, -1);
@@ -1249,75 +1186,8 @@ public class SkillManager : MonoBehaviour
         }
  
         Debug.Log($"==== [{selectedSkill.data.skillName}] SkillPreview 진입! ====");
-       
-        
-
-
-        // // 추가 — targetType이 "none"이면 즉시 실행 (타겟팅 불필요)
-        // if (selectedSkill.data.targetType == "none")
-        // {
-        //     selectedSkillSlot = slotIndex;
-        //     // 칼날비(6번)는 최대 20칸 좌표가 필요
-        //     int arraySize = (selectedSkill.data.skillId == 6) ? 20 : 2;
-        //     int[] targetX = new int[arraySize];
-        //     int[] targetY = new int[arraySize];
-        //     for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
-
-        //     if (selectedSkill.Execute(targetX, targetY, gameManager, gameManager.board))
-        //     {
-        //         gameManager.hasUsedSkillThisTurn = true; // ** 스킬 사용 완료!
-        //         mySP -= selectedSkill.data.spCost;
-        //         selectedSkill.currentCooldown = selectedSkill.data.cooldown;
-        //         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
-
-        //         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-        //             gameSession.SendUseSkill(selectedSkill.data.skillId, targetX, targetY);
-        //     }
-        //     selectedSkillSlot = -1;
-        //     return; //  타겟팅 모드 진입 없이 바로 종료
-        //}
-        // 상태를 '스킬 타겟팅'으로 변경 (이제 InputManager가 클릭하면 TryPlaceStone 대신 SkillManager한테 좌표를 넘기게 될 겁니다)
-        // selectedSkillSlot = slotIndex;
-        // gameManager.currentState = GameState.SkillTargeting;
-
-
-        // // 비주얼 효과 시작: 보드의 모든 자신/상대 돌에 초록색 테두리 표시
-        // // targetType 기준으로 하이라이트 분기
-        // if (selectedSkill.data.targetType == "my")
-        // {
-        //     gameManager.board.HideSkillTargetMarkers();
-        //     if (gameManager.gameHUD != null)
-        //         gameManager.gameHUD.ShowSystemMessage($"{selectedSkill.data.skillName} 사용! 대상이 될 내 돌을 클릭하세요.");
-        // }
-        // else if (selectedSkill.data.targetType == "enemy") 
-        // {
-        //     // 5번(제거) 스킬이면 전체 하이라이트를 하지 않고 메시지만 띄움    // ** 나중에 좀 더 보완할 예정
-        //     if (selectedSkill.data.skillId == 5)
-        //     {
-        //         if (gameManager.gameHUD != null)
-        //             gameManager.gameHUD.ShowSystemMessage("제거 스킬 사용! 삭제할 상대방 돌을 클릭하세요.");
-
-        //         gameManager.board.HideSkillTargetMarkers();
-        //     }
-        //     else
-        //     {
-        //         gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
-        //     }
-        // }
-        // else if (selectedSkill.data.targetType == "cell")
-        // {
-        //     // TODO: 빈 칸에 호버될 때 특별한 표시를 하거나, 전체 빈칸에 마커 띄우기
-        //     // (일단 마커 안 띄우고 조준점(InputManager)만 바뀌게 냅둬도 무방)
-        //     gameManager.board.HideSkillTargetMarkers();
-        // }
-        // else // "none" (타겟팅 필요 없는 즉발 스킬. 예: 4번 안티매직)
-        // {
-        //     // 타겟팅 모드 진입 안 하고 바로 스킬 실행!
-        //     ExecuteSkillAt(-1, -1);
-        // }
-
-        // Debug.Log($"==== [{selectedSkill.data.skillName}] 타겟팅 모드 진입! ====");
     }
+
     // =========================================================
     // [추가] ConfirmSkill — SkillPreview에서 좌클릭 시 호출
     // =========================================================
@@ -1392,13 +1262,6 @@ public class SkillManager : MonoBehaviour
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
-        // B타입(이중착수, 칼날비)은 여기서 빈 패킷을 쏘지 않습니다 (나중에 좌표 확정 후 쏨)
-        // bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
-        // if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-        // {
-        //     gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
-        //     //gameSession.SendUseSkill(skill.data.skillId, new int[]{-1}, new int[]{-1}, gameManager.CurrentMoveCount);
-        // }
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
             if (isBType)
@@ -1418,7 +1281,9 @@ public class SkillManager : MonoBehaviour
         RefreshSkillButtonStates();
 
         gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
-        // gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", skill.data.skillName);//끝날때 로그용.
+
+        // 🚨 [여기에 추가!] 버프 리스트 등록까지 다 끝났으니, 오버레이 상태 최종 갱신!
+        RefreshAntiMagicOverlayUI();
     }
 
     // =========================================================
@@ -1460,6 +1325,11 @@ public class SkillManager : MonoBehaviour
                 if (candidates.Count > 0)
                 {
                     Vector2Int rand = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+
+                    // 🚨 이중착수 돌이 튀어나올 때 그 바닥에 쉴드 이펙트를 소환진처럼 터뜨림!
+                    Vector3 spawnPos = gameManager.board.GetWorldPosition(rand.x, rand.y);
+                    SkillVFXManager.Instance.PlayPrimitiveShield(spawnPos, Color.yellow);
+
                     gameManager.ExecutePlaceStonePublic(
                     rand.x, rand.y,
                     gameManager.currentTurnColor,
@@ -1515,6 +1385,9 @@ public class SkillManager : MonoBehaviour
                 // 일반 착수 패킷 먼저 날아가도록 지연 전송
                 StartCoroutine(SendDeferredSkillPacket(6, bx, by, logTurn));
 
+                // 🚨 칼날비 전용 카메라 셰이킹
+                SkillVFXManager.Instance.PlayBladefallShake();
+
                 Debug.Log("[Bladefall] 착수 후 봉인 발동 완료");
                 break;
             }
@@ -1533,101 +1406,101 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    // =========================================================
-    // 기존 ExecuteSkillAt — SkillTargeting 상태에서 호출 (타겟 지정형)
-    // [수정] ConfirmSkill로 흡수됐으므로 SkillPreview → ConfirmSkill로 위임
-    // =========================================================
-    // public void ExecuteSkillAt(int x, int y)
-    // {
-    //     // SkillPreview 상태라면 ConfirmSkill로 위임
-    //     if (gameManager.currentState == GameState.SkillPreview)
-    //     {
-    //         ConfirmSkill(x, y);
-    //         return;
-    //     }
-
-    //     if (selectedSkillSlot < 0 || selectedSkillSlot >= mySkills.Count) return;
-
-    //     SkillBase skillToUse = mySkills[selectedSkillSlot];
-
-    //     // 1. 배열로 좌표 전달 (다중 타겟 스킬도 있으니 배열로 감싸서 보냄) (0:선택좌표, 1:랜덤좌표)
-    //     int[] targetX = new int[] { x, -1 };
-    //     int[] targetY = new int[] { y, -1 };
-
-    //     // 2. 스킬 발동! (구체적인 효과는 각 스킬 클래스 내부에서 처리)
-    //     // Execute 내부에서 targetX[1], targetY[1]의 값을 랜덤 좌표로 채워줍니다.
-    //     if (skillToUse.Execute(targetX, targetY, gameManager, gameManager.board))
-    //     {
-    //         gameManager.hasUsedSkillThisTurn = true;
-    //         mySP -= skillToUse.data.spCost;
-    //         skillToUse.currentCooldown = skillToUse.data.cooldown;
-
-    //         // durationTurn이 있는 스킬만 activeEffects에 추가
-    //         if (skillToUse.data.durationTurn > 0)
-    //         {
-    //             ActiveEffect effect = new ActiveEffect
-    //             {
-    //                 skillId = skillToUse.data.skillId,
-    //                 remainingTurns = skillToUse.data.durationTurn,
-    //                 isBuff = true,
-    //                 effectName = skillToUse.data.skillName,
-    //                 description = skillToUse.data.description
-    //             };
-    //             activeEffects.Add(effect);
-    //             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
-    //         }
-
-    //         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
-
-    //         // 네트워크 담당자에게 전달할 패킷 (좌표 2개가 담긴 배열 전송)
-    //         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-    //         {
-    //             gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY,gameManager.CurrentMoveCount);
-    //         }
-
-    //         selectedSkillSlot = -1;
-    //         gameManager.currentState = GameState.Playing;
-    //         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
-
-    //     }
-    //     else
-    //     {
-    //         selectedSkillSlot = -1;
-    //         gameManager.currentState = GameState.Playing;
-    //     }
-
-    //     // 스킬이 성공하든 실패하든 마커는 지워야 함
-    //     gameManager.board.HideSkillTargetMarkers();
-    // }
-
     public void AutoActivatePassiveSkills()
     {
+        StartCoroutine(PassiveSequenceRoutine()); // 코루틴으로 실행
+    }
+
+    private System.Collections.IEnumerator PassiveSequenceRoutine()
+    {
+        // 1. 연출 중 클릭 원천 차단
+        gameManager.currentState = GameState.Wait;
         int[] noTarget = System.Array.Empty<int>();
 
-        // 1. 내 패시브 스킬 발동 (기존 유지)
-        SkillBase passiveSkill = mySkills.Find(s => s.data.type == "전용");
-        if (passiveSkill != null && passiveSkill.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor) == SkillUseResult.Success)
-        {
-            passiveSkill.Execute(noTarget, noTarget, gameManager, gameManager.board);
+        // 🚨 누가 패시브를 썼는지 기억할 스위치
+        bool didBlackUsePassive = false;
+        bool didWhiteUsePassive = false;
 
-            if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-                gameSession.SendUseSkill(passiveSkill.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
-        }
-
-        // 2. AI 모드일 때 AI의 패시브 스킬 자동 발동!
-        if (gameManager.currentMode == PlayMode.AI)
+        // =========================================================
+        // [1단계] 흑돌(선공) 패시브 검사 및 발동
+        // =========================================================
+        if (gameManager.localPlayerColor == StoneColor.Black)
         {
-            SkillBase aiPassive = oppSkills.Find(s => s.data.type == "전용");
-            if (aiPassive != null)
+            // 내가 흑돌일 때 내 스킬 검사
+            SkillBase myPassive = mySkills.Find(s => s.data.type == "전용");
+            if (myPassive != null && myPassive.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor) == SkillUseResult.Success)
             {
-                StoneColor aiColor = gameManager.localPlayerColor.Opponent(); // AI의 색상
-                if (aiPassive.CanUse(oppSP, false, gameManager.board, aiColor) == SkillUseResult.Success)
-                {
-                    aiPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
-                    Debug.Log($"[AI] 패시브 스킬({aiPassive.data.skillName}) 자동 발동 완료!");
-                }
+                myPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+                    gameSession.SendUseSkill(myPassive.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+
+                didBlackUsePassive = true;
             }
         }
+        else
+        {
+            // 상대(AI 포함)가 흑돌일 때 상대 스킬 검사
+            SkillBase oppPassive = oppSkills.Find(s => s.data.type == "전용");
+            if (oppPassive != null)
+            {
+                // AI 모드라면 기존에 쓰던 방식 그대로 AI 스킬 강제 발동!
+                if (gameManager.currentMode == PlayMode.AI)
+                {
+                    oppPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                }
+                didBlackUsePassive = true;
+            }
+        }
+
+        // 🚨 흑돌이 진짜 패시브를 발동했을 때만 2초 기다려줌! (없으면 0초 패스)
+        if (didBlackUsePassive) yield return new WaitForSeconds(2.0f);
+
+
+        // =========================================================
+        // [2단계] 백돌(후공) 패시브 이어서 검사 및 발동
+        // =========================================================
+        if (gameManager.localPlayerColor == StoneColor.White)
+        {
+            // 내가 백돌일 때 내 스킬 검사
+            SkillBase myPassive = mySkills.Find(s => s.data.type == "전용");
+            if (myPassive != null && myPassive.CanUse(mySP, false, gameManager.board, gameManager.localPlayerColor) == SkillUseResult.Success)
+            {
+                myPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
+                    gameSession.SendUseSkill(myPassive.data.skillId, new int[] { -1 }, new int[] { -1 }, gameManager.CurrentMoveCount);
+
+                didWhiteUsePassive = true;
+            }
+        }
+        else
+        {
+            // 상대(AI 포함)가 백돌일 때 상대 스킬 검사
+            SkillBase oppPassive = oppSkills.Find(s => s.data.type == "전용");
+            if (oppPassive != null)
+            {
+                // AI 모드라면 기존에 쓰던 방식 그대로 AI 스킬 강제 발동!
+                if (gameManager.currentMode == PlayMode.AI)
+                {
+                    oppPassive.Execute(noTarget, noTarget, gameManager, gameManager.board);
+                }
+                didWhiteUsePassive = true;
+            }
+        }
+
+        // 🚨 백돌이 진짜 패시브를 발동했을 때만 1.5초(신성화 번쩍임) 기다려줌!
+        if (didWhiteUsePassive) yield return new WaitForSeconds(1.5f);
+
+
+        // =========================================================
+        // [3단계] 연출 끝, 진짜 게임 시작!
+        // =========================================================
+        // 모든 돌의 렌더링 상태를 최신으로 확정 지음
+        gameManager.board.RefreshAllStonesVisuals();
+
+        // GameManager에게 "연출 다 끝났으니 타이머 돌리고 클릭 풀고 게임 시작해라!" 지시
+        gameManager.StartFirstTurn();
+
+        Debug.Log("[SkillManager] 패시브 시퀀스 완전 종료! 게임 시작!");
     }
 
     // InputManager에서 현재 무슨 스킬을 들고 있는지 확인하기 위한 함수

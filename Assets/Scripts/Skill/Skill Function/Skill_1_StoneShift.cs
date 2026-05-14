@@ -88,6 +88,9 @@ public class Skill_1_StoneShift : SkillBase
         // ** 돌이 가진 '신의 가호(방패)' 여부 확인
         bool hadShield = board.shieldGrid[tx, ty];
 
+        // 🚨 이펙트용 시작 위치 저장!
+        Vector3 startPos = board.GetWorldPosition(tx, ty);
+
         // 4. 원래 자리 제거 (데이터 + 3D 오브젝트)
         board.grid[tx, ty] = 0;
         board.RemoveStoneObjectAt(tx, ty);
@@ -96,6 +99,10 @@ public class Skill_1_StoneShift : SkillBase
         // 5. 목적지에 배치 (데이터 + 3D 오브젝트)
         GameObject newStone = board.PlaceStone(destX, destY, casterColor);
         if (hadShield) board.ApplyShield(destX, destY); // 새 자리에 방패 부여
+
+        // 🚨 텔레포트 이펙트 쾅!
+        Vector3 endPos = board.GetWorldPosition(destX, destY);
+        SkillVFXManager.Instance.PlayTeleportVFX(newStone, startPos, endPos);
 
         // ** 투명화 상태라면 이동된 돌도 잠깐 보였다가 사라지게
         if (gm.skillManager.myInvisibilityTurns > 0 && newStone != null)
