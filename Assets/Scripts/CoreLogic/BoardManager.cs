@@ -181,14 +181,19 @@ public class BoardManager : MonoBehaviour
         if (sealedGrid[x, y].turns > 0)
         {
             // 칼날비(None)는 피아 식별 없이 무조건 입구컷
-            if (sealedGrid[x, y].owner == StoneColor.None)
+            // if (sealedGrid[x, y].owner == StoneColor.None)
+            // {
+            //     if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
+            //     return false;
+            // }
+            // // if (playerColor != sealedGrid[x, y].owner)
+            // {
+            //     if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+            //     return false;
+            // }
+            if (sealedGrid[x, y].turns > 0)
             {
-                if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
-                return false;
-            }
-            if (playerColor != sealedGrid[x, y].owner)
-            {
-                if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+                if (!silent) Debug.LogWarning("봉인된 칸입니다!");
                 return false;
             }
         }
@@ -510,12 +515,30 @@ public class BoardManager : MonoBehaviour
             Vector3 spawnRot = (gameManager.localPlayerColor == StoneColor.Black) ? blackSealRotation : whiteSealRotation;
             GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(spawnRot));
 
+             // ↓ 추가: 이미 마커가 있으면 색상만 업데이트
+            if (activeSealMarkers.ContainsKey(posKey))
+            {
+                MeshRenderer mr = activeSealMarkers[posKey].GetComponent<MeshRenderer>();
+                if (mr != null)
+                {
+                    Material instancedMat = mr.material;
+                    Color finalColor = (ownerColor == gameManager.localPlayerColor)
+                        ? new Color(0.2f, 0.6f, 1f, 0.8f)
+                        : new Color(1f, 0.2f, 0.2f, 0.8f);
+
+                    if (instancedMat.HasProperty("_BaseColor")) instancedMat.SetColor("_BaseColor", finalColor);
+                    else if (instancedMat.HasProperty("_Color")) instancedMat.SetColor("_Color", finalColor);
+                }
+                return;
+            }
+            
+
             if (marker == null) return;
 
-            MeshRenderer mr = marker.GetComponent<MeshRenderer>();
-            if (mr != null)
+            MeshRenderer mr2 = marker.GetComponent<MeshRenderer>();
+            if (mr2 != null)
             {
-                Material instancedMat = mr.material;
+                Material instancedMat = mr2.material;
                 Color finalColor = (ownerColor == gameManager.localPlayerColor) ? new Color(0.2f, 0.6f, 1f, 0.8f) : new Color(1f, 0.2f, 0.2f, 0.8f);
 
                 if (instancedMat.HasProperty("_BaseColor")) instancedMat.SetColor("_BaseColor", finalColor);
