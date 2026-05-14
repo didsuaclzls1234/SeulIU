@@ -1148,6 +1148,13 @@ public class BoardManager : MonoBehaviour
     {
         yield return new WaitForSeconds(2.5f);
 
+        // 🚨 [마법의 한 줄] 카메라 순간이동 + 대량 오브젝트 생성으로 인한 '뚝 끊김(렉)'을 완벽하게 가려줍니다!
+        // 화면이 하얗게 확 퍼진 뒤 스르륵 걷히면서 자연스럽게 줌인 씬으로 연결됩니다.
+        if (SkillVFXManager.Instance != null)
+        {
+            SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
+        }
+
         if (gameManager.gameHUD != null && gameManager.gameHUD.inGameUI != null)
             gameManager.gameHUD.inGameUI.SetActive(false);
 
@@ -1156,7 +1163,9 @@ public class BoardManager : MonoBehaviour
         if (isConsecrationActive)
             yield return StartCoroutine(RevealAllBlackStonesWave(winners));
 
-        CleanUpAndFlyDefeatedStones(winners, winnerColor);
+        // 🚨 [수정] 기존의 void 함수 호출 대신, StartCoroutine으로 실행!
+        // yield return을 붙이지 않았기 때문에, 돌들이 팝콘처럼 터지는 '동시에' 아래의 카메라 이동이 시작됩니다.
+        StartCoroutine(CleanUpAndFlyDefeatedStonesRoutine(winners, winnerColor));
 
         Vector3 centerPos = GetWinningLineCenter(winningCoords);
         
@@ -1353,34 +1362,35 @@ public class BoardManager : MonoBehaviour
         RefreshAllStonesVisuals(); // 점멸 끝나면 버프 원상복구
     }
 
-    // 🚨 흩어져 있던 청소 함수와 폭발 함수를 단 하나로 완벽하게 통합!!!
-    // (기존에 있던 BlowUpDefeatedStones와 CleanUpStonesForVictory를 이걸로 퉁칩니다)
-    private void CleanUpAndFlyDefeatedStones(List<GameObject> winners, StoneColor winnerColor)
+    // 🚨 [최적화] 1프레임 렉 폭탄을 제거하기 위해 코루틴으로 변경 (팝콘 연출)
+    private IEnumerator CleanUpAndFlyDefeatedStonesRoutine(List<GameObject> winners, StoneColor winnerColor)
     {
         StoneColor loserColor = winnerColor.Opponent();
 
-        // 🚨 foreach 대신 for문 사용하여 에러 씹기 (도중에 리스트가 꼬여도 터지지 않음)
+        // 1. 찌꺼기 마커들은 연산이 가벼우므로 한 프레임에 즉시 숨김
+        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
+        foreach (var knife in activeKnifeObjects.Values) if (knife != null) knife.SetActive(false);
+        foreach (var mark in forbiddenMarks) if (mark != null) mark.SetActive(false);
+
+        SetBoardOverlayState(0);
+        HideSkillTargetMarkers();
+
+        // 2. 🚨 핵심: 날아가는 가짜 돌 생성을 여러 프레임에 걸쳐 '분산'시킵니다.
         for (int i = 0; i < activeStones.Count; i++)
         {
             GameObject stone = activeStones[i];
 
-            // 방어 코드: 이미 비활성화됐거나 널이면 패스
-            if (stone == null || !stone.activeSelf) continue;
-
-            // 승리한 5목은 건드리지 않음
-            if (winners.Contains(stone)) continue;
+            if (stone == null || !stone.activeSelf || winners.Contains(stone)) continue;
 
             int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
             int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
-
-            // 만약 x,y가 맵 밖이면 스킵 (에러 방지)
             if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) continue;
 
             StoneColor stoneColor = (StoneColor)grid[x, y];
 
             if (stoneColor == loserColor)
             {
-                // 상대방 돌은 튕겨나가는 가짜 돌 소환
                 string poolTag = (loserColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
                 GameObject fake = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
                 if (fake != null)
@@ -1393,19 +1403,14 @@ public class BoardManager : MonoBehaviour
                     }
                     StartCoroutine(StoneFlyRoutine(fake));
                 }
+
+                // 🚨 0.02초 대기: 돌들이 한 번에 안 터지고 타다다닥 팝콘처럼 연쇄 폭발함 (렉 완벽 제거)
+                yield return new WaitForSeconds(0.02f);
             }
-            // 🚨 이긴 돌이든 진 돌이든, 바닥에 있던 '진짜 돌'은 즉시 비활성화(쑉 가림)!
+
+            // 진짜 돌 숨기기
             stone.SetActive(false);
         }
-
-        // [찌꺼기 가리기] 모든 마커 강제 숨김
-        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
-        foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
-        foreach (var knife in activeKnifeObjects.Values) if (knife != null) knife.SetActive(false);
-        foreach (var mark in forbiddenMarks) if (mark != null) mark.SetActive(false);
-
-        SetBoardOverlayState(0);
-        HideSkillTargetMarkers();
     }
 
     private IEnumerator StoneFlyRoutine(GameObject stone)
