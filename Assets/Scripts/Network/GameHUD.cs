@@ -282,6 +282,10 @@ public class GameHUD : MonoBehaviour
         if (winner == StoneColor.None)
         {
             inGameUI?.SetActive(false);
+
+            // 🚨 [여기에 추가!] 자물쇠 마커도 같이 끄기
+            if (opponentSilencedIcon != null) opponentSilencedIcon.SetActive(false);
+
             if (resultPanel) resultPanel.SetActive(true);
             if (resultImage != null) resultImage.sprite = null;
             return;

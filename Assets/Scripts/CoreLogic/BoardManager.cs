@@ -1137,33 +1137,39 @@ public class BoardManager : MonoBehaviour
     // 엔딩 시네마틱 마스터 컨트롤러
     private IEnumerator VictoryCinematicRoutine(List<GameObject> winners, StoneColor winnerColor, List<Vector2Int> winningCoords)
     {
+        // [A] 빌드업 대기 (2.5초) : 유저들이 보드 상황을 충분히 확인하는 시간
         yield return new WaitForSeconds(2.5f);
 
-        // 🚨 [마법의 한 줄] 카메라 순간이동 + 대량 오브젝트 생성으로 인한 '뚝 끊김(렉)'을 완벽하게 가려줍니다!
-        // 화면이 하얗게 확 퍼진 뒤 스르륵 걷히면서 자연스럽게 줌인 씬으로 연결됩니다.
+        // [B] 트랜지션 시작 (화이트 플래시)
         if (SkillVFXManager.Instance != null)
-        {
             SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
+
+        // 🚨 [순서 1] 플래시가 터지는 찰나에 신성화(흰돌) 상태를 즉시 본모습(검정돌)으로 복구
+        if (isConsecrationActive)
+        {
+            RevealAllBlackStonesInstantly(winners);
         }
 
-        if (gameManager.gameHUD != null && gameManager.gameHUD.inGameUI != null)
-            gameManager.gameHUD.inGameUI.SetActive(false);
+        // UI 및 자물쇠 아이콘 즉시 닫기
+        if (gameManager.gameHUD != null)
+        {
+            if (gameManager.gameHUD.inGameUI != null) gameManager.gameHUD.inGameUI.SetActive(false);
+            if (gameManager.gameHUD.opponentSilencedIcon != null) gameManager.gameHUD.opponentSilencedIcon.SetActive(false);
+        }
 
+        // 웅장한 사운드 시작
         SoundManager.Instance.PlayBGM("BattleBGM");
 
-        if (isConsecrationActive)
-            yield return StartCoroutine(RevealAllBlackStonesWave(winners));
-
-        // 🚨 [수정] 기존의 void 함수 호출 대신, StartCoroutine으로 실행!
-        // yield return을 붙이지 않았기 때문에, 돌들이 팝콘처럼 터지는 '동시에' 아래의 카메라 이동이 시작됩니다.
-        StartCoroutine(CleanUpAndFlyDefeatedStonesRoutine(winners, winnerColor));
-
         Vector3 centerPos = GetWinningLineCenter(winningCoords);
-        
+
+        // 🚨 [순서 2] 본모습을 찾은 돌들 중 '승리한 돌 중심에서 가장 가까운' 15개만 날리기
+        StartCoroutine(CleanUpAndFlyDefeatedStonesRoutine(winners, winnerColor, centerPos));
+
+        // 🚨 [순서 3] 돌들이 튀어오르는 것을 잠시 확인 후 카메라 이동 시작 (약 0.3초 지연)
+        yield return new WaitForSeconds(0.3f);
+
         if (gameManager.cameraSwitcher != null)
-        {     
             StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
-        }
 
         if (SkillVFXManager.Instance != null)
         {
@@ -1171,40 +1177,96 @@ public class BoardManager : MonoBehaviour
             SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
         }
 
-        // 🚨 [수정됨] 승리한 돌들의 색상 오프셋을 실시간 추적 루틴에 전달!
         StartCoroutine(TrackCameraRoutine(winners, winnerColor));
 
-        // [점프 루프 및 판넬 등장]
+        // [점프 루프 및 판넬 등장] - 기존과 동일
         for (int i = 0; i < 3; i++)
         {
-            if (i == 1) // 효과음 선재생
-            {
-                if (gameManager.gameHUD != null)
-                    gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: false, playSound: true);
-            }
+            if (i == 1 && gameManager.gameHUD != null)
+                gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: false, playSound: true);
 
             for (int j = 0; j < winners.Count; j++)
             {
                 var stone = winners[j];
                 if (stone != null) stone.GetComponent<Animator>()?.SetTrigger("DoWin");
-
-                // 기존에 있던 if (i == 2 && j == middleIndex) 판넬 호출 부분 삭제
                 yield return new WaitForSeconds(0.05f);
             }
 
-            // 🚨 3번째 점프(파도타기)가 끝난 후 판넬 등장 로직
             if (i == 2)
             {
-                // 원하는 지연 시간 입력 (예: 0.3초 대기 후 띄움)
                 yield return new WaitForSeconds(0.3f);
-
                 if (gameManager.gameHUD != null)
                     gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: true, playSound: false);
             }
-
             yield return new WaitForSeconds(0.7f);
         }
         StartCoroutine(IntermittentWaveJumpRoutine(winners));
+    }
+
+    // 2. 팝콘 폭발 청소 코루틴 (중심점 기준 15개 비행 + 나머지 즉시 숨김)
+    private IEnumerator CleanUpAndFlyDefeatedStonesRoutine(List<GameObject> winners, StoneColor winnerColor, Vector3 centerPos)
+    {
+        StoneColor loserColor = winnerColor.Opponent();
+
+        // 찌꺼기 마커 즉시 제거
+        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
+        foreach (var knife in activeKnifeObjects.Values) if (knife != null) knife.SetActive(false);
+        foreach (var mark in forbiddenMarks) if (mark != null) mark.SetActive(false);
+        SetBoardOverlayState(0);
+        HideSkillTargetMarkers();
+
+        List<GameObject> flyCandidates = new List<GameObject>();
+
+        // 🚨 [핵심 1] 모든 돌을 스캔하면서 "진짜 돌"은 모조리, 즉시 화면에서 감춥니다! (0초 소요)
+        for (int i = 0; i < activeStones.Count; i++)
+        {
+            GameObject stone = activeStones[i];
+            if (stone == null || !stone.activeSelf || winners.Contains(stone)) continue;
+
+            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
+            if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) continue;
+
+            if ((StoneColor)grid[x, y] == loserColor)
+            {
+                // 패배한 돌들만 따로 명단에 적어둠
+                flyCandidates.Add(stone);
+            }
+
+            // 승리한 5목이 아닌 이상, 진짜 돌들은 여기서 즉시 투명인간 처리됨!
+            stone.SetActive(false);
+        }
+
+        // 🚨 [핵심 2] 명단에 적힌 돌들을 승리 중심점(centerPos)에서 가까운 순서대로 정렬
+        flyCandidates.Sort((a, b) => {
+            float distA = (a.transform.position - centerPos).sqrMagnitude;
+            float distB = (b.transform.position - centerPos).sqrMagnitude;
+            return distA.CompareTo(distB);
+        });
+
+        // 🚨 [핵심 3] 가장 가까운 상위 15개만 가짜 돌을 만들어서 하늘로 날려버림!
+        // 나머지 멀리 있던 돌들은 위에서 이미 SetActive(false)로 감춰졌으니 아무 일도 안 일어납니다.
+        int maxFlyers = 15;
+        for (int i = 0; i < flyCandidates.Count && i < maxFlyers; i++)
+        {
+            GameObject stone = flyCandidates[i];
+
+            string poolTag = (loserColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
+            GameObject fake = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
+
+            if (fake != null)
+            {
+                StoneVisualController fakeSvc = fake.GetComponent<StoneVisualController>();
+                if (fakeSvc != null) { fakeSvc.SetConsecration(false, Color.black); fakeSvc.SetOverlay(Color.black, 0f); }
+
+                // 기존에 잘 쓰던 비행 함수 그대로 사용! (이상한 효과 안 넣음)
+                StartCoroutine(StoneFlyRoutine(fake));
+            }
+
+            // 한꺼번에 터지면 렉 걸리니 0.01초 간격으로 타다닥 날림
+            yield return new WaitForSeconds(0.01f);
+        }
     }
 
     // 🚨 [완벽 수정] 실시간 카메라 추적 코루틴 (옛날 함수 지우고 이걸로 씁니다)
@@ -1285,8 +1347,8 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    // 신성화 해제 파도 연출
-    private IEnumerator RevealAllBlackStonesWave(List<GameObject> winners)
+    // 🚨 [수정됨] 코루틴(파도타기) 버리고 즉시 일괄 변환(void)으로 갈아엎음
+    private void RevealAllBlackStonesInstantly(List<GameObject> winners)
     {
         List<GameObject> blackStonesToReveal = new List<GameObject>();
         foreach (GameObject stone in activeStones)
@@ -1303,10 +1365,8 @@ public class BoardManager : MonoBehaviour
             GameObject stone = blackStonesToReveal[i];
             Vector3 pos = stone.transform.position;
 
-            // 기본값 설정
             Quaternion correctRot = Quaternion.Euler(0, blackStoneYRotation, 0);
 
-            // 🚨 변신하는 흑돌도 카메라 위치에 맞춰서 오프셋 적용
             if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
             {
                 Vector3 lookDir = gameManager.cameraSwitcher.victoryCamera.transform.position - pos;
@@ -1327,7 +1387,7 @@ public class BoardManager : MonoBehaviour
             int winnerIndex = winners.IndexOf(stone);
             if (winnerIndex != -1) winners[winnerIndex] = realBlack;
 
-            yield return new WaitForSeconds(0.01f);
+            // 🚨 대기 시간(yield return) 싹 제거! 1프레임 만에 전체 즉시 변경!
         }
         isConsecrationActive = false;
     }
@@ -1358,48 +1418,62 @@ public class BoardManager : MonoBehaviour
     {
         StoneColor loserColor = winnerColor.Opponent();
 
-        // 1. 찌꺼기 마커들은 연산이 가벼우므로 한 프레임에 즉시 숨김
+        // 찌꺼기 마커 제거
         foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
         foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
         foreach (var knife in activeKnifeObjects.Values) if (knife != null) knife.SetActive(false);
         foreach (var mark in forbiddenMarks) if (mark != null) mark.SetActive(false);
-
         SetBoardOverlayState(0);
         HideSkillTargetMarkers();
 
-        // 2. 🚨 핵심: 날아가는 가짜 돌 생성을 여러 프레임에 걸쳐 '분산'시킵니다.
+        // 🚨 날릴 돌 후보군 수집
+        List<GameObject> flyCandidates = new List<GameObject>();
         for (int i = 0; i < activeStones.Count; i++)
         {
             GameObject stone = activeStones[i];
-
             if (stone == null || !stone.activeSelf || winners.Contains(stone)) continue;
 
             int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
             int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
             if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) continue;
 
-            StoneColor stoneColor = (StoneColor)grid[x, y];
+            if ((StoneColor)grid[x, y] == loserColor)
+                flyCandidates.Add(stone);
+            else
+                stone.SetActive(false); // 승리팀이 아닌 돌 중 루저 색깔이 아니면 즉시 숨김
+        }
 
-            if (stoneColor == loserColor)
+        // 🚨 최적화: 최대 날릴 개수 설정 (예: 15개)
+        int maxFlyers = 15;
+        int currentFlyCount = 0;
+
+        // 리스트를 무작위로 섞어서 연출용 돌 선택
+        for (int i = 0; i < flyCandidates.Count; i++)
+        {
+            int rnd = Random.Range(0, flyCandidates.Count);
+            GameObject temp = flyCandidates[i];
+            flyCandidates[i] = flyCandidates[rnd];
+            flyCandidates[rnd] = temp;
+        }
+
+        foreach (GameObject stone in flyCandidates)
+        {
+            if (currentFlyCount < maxFlyers)
             {
+                // 연출용 돌: 가짜 돌 생성하여 날리기
                 string poolTag = (loserColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
                 GameObject fake = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
                 if (fake != null)
                 {
                     StoneVisualController fakeSvc = fake.GetComponent<StoneVisualController>();
-                    if (fakeSvc != null)
-                    {
-                        fakeSvc.SetConsecration(false, Color.black);
-                        fakeSvc.SetOverlay(Color.black, 0f);
-                    }
+                    if (fakeSvc != null) { fakeSvc.SetConsecration(false, Color.black); fakeSvc.SetOverlay(Color.black, 0f); }
                     StartCoroutine(StoneFlyRoutine(fake));
                 }
-
-                // 🚨 0.02초 대기: 돌들이 한 번에 안 터지고 타다다닥 팝콘처럼 연쇄 폭발함 (렉 완벽 제거)
-                yield return new WaitForSeconds(0.02f);
+                currentFlyCount++;
+                yield return new WaitForSeconds(0.01f); // 매우 빠르게 타타닥
             }
 
-            // 진짜 돌 숨기기
+            // 실제 돌은 즉시 숨김
             stone.SetActive(false);
         }
     }
