@@ -1137,49 +1137,55 @@ public class BoardManager : MonoBehaviour
     // 엔딩 시네마틱 마스터 컨트롤러
     private IEnumerator VictoryCinematicRoutine(List<GameObject> winners, StoneColor winnerColor, List<Vector2Int> winningCoords)
     {
-        // [A] 빌드업 대기 (2.5초) : 유저들이 보드 상황을 충분히 확인하는 시간
-        yield return new WaitForSeconds(2.5f);
+        Vector3 centerPos = GetWinningLineCenter(winningCoords); // 계산 미리 해둠
 
-        // [B] 트랜지션 시작 (화이트 플래시)
+        // [A] 빌드업 대기 (2.5초)
+        yield return new WaitForSeconds(2.75f);
+
+        // 🚨 [교정 1] 기 모으던 파티클이 "파아앗!" 뻗어나가는 걸 가장 먼저 터뜨립니다.
+        if (SkillVFXManager.Instance != null)
+        {
+            float camDuration = gameManager.cameraSwitcher != null ? gameManager.cameraSwitcher.cinematicDuration : 1.5f;
+            SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
+        }
+
+        // [B] 그와 동시에 화이트 플래시 터짐! (이때부터 화면이 새하얗게 변합니다)
         if (SkillVFXManager.Instance != null)
             SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
 
-        // 🚨 [순서 1] 플래시가 터지는 찰나에 신성화(흰돌) 상태를 즉시 본모습(검정돌)으로 복구
-        if (isConsecrationActive)
-        {
-            RevealAllBlackStonesInstantly(winners);
-        }
-
-        // UI 및 자물쇠 아이콘 즉시 닫기
+        // UI 즉시 닫기
         if (gameManager.gameHUD != null)
         {
             if (gameManager.gameHUD.inGameUI != null) gameManager.gameHUD.inGameUI.SetActive(false);
             if (gameManager.gameHUD.opponentSilencedIcon != null) gameManager.gameHUD.opponentSilencedIcon.SetActive(false);
         }
 
-        // 웅장한 사운드 시작
         SoundManager.Instance.PlayBGM("BattleBGM");
 
-        Vector3 centerPos = GetWinningLineCenter(winningCoords);
+        // 🚨 [교정 2] "마법의 1프레임 대기" (진짜 중요)
+        // 위에서 명령한 플래시와 파티클이 화면에 그려지기 시작하도록 1프레임(0.016초) 텀을 줍니다.
+        // 이거 하나로 멈칫하는 스파이크 현상이 싹 사라집니다.
+        yield return null;
 
-        // 🚨 [순서 2] 본모습을 찾은 돌들 중 '승리한 돌 중심에서 가장 가까운' 15개만 날리기
+        // 🚨 [최적화 1] 화면이 새하얄 때 마법의 프레임 분산으로 돌들을 스리슬쩍 변신시킴
+        if (isConsecrationActive)
+        {
+            yield return StartCoroutine(RevealAllBlackStonesFastRoutine(winners));
+        }
+
+        // 변신이 끝나자마자 진 돌들 15개 사출!
         StartCoroutine(CleanUpAndFlyDefeatedStonesRoutine(winners, winnerColor, centerPos));
 
-        // 🚨 [순서 3] 돌들이 튀어오르는 것을 잠시 확인 후 카메라 이동 시작 (약 0.3초 지연)
-        yield return new WaitForSeconds(0.3f);
+        // 팝콘 튀어오르는 것 잠시 대기
+        yield return new WaitForSeconds(0.15f);
 
+        // 이제 카메라가 부드럽게 줌인 시작!
         if (gameManager.cameraSwitcher != null)
             StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
 
-        if (SkillVFXManager.Instance != null)
-        {
-            float camDuration = gameManager.cameraSwitcher.cinematicDuration;
-            SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
-        }
-
         StartCoroutine(TrackCameraRoutine(winners, winnerColor));
 
-        // [점프 루프 및 판넬 등장] - 기존과 동일
+        // [점프 루프 및 판넬 등장]
         for (int i = 0; i < 3; i++)
         {
             if (i == 1 && gameManager.gameHUD != null)
@@ -1201,6 +1207,55 @@ public class BoardManager : MonoBehaviour
             yield return new WaitForSeconds(0.7f);
         }
         StartCoroutine(IntermittentWaveJumpRoutine(winners));
+    }
+
+    // 🚨 [최적화 2] 기존의 즉시 변환 함수를 대체하는 초고속 코루틴
+    private IEnumerator RevealAllBlackStonesFastRoutine(List<GameObject> winners)
+    {
+        int swapCount = 0;
+
+        // 리스트의 IndexOf를 쓰지 않고 for문으로 덮어씌워 연산량을 100배 줄임
+        for (int i = 0; i < activeStones.Count; i++)
+        {
+            GameObject stone = activeStones[i];
+            if (stone == null || !stone.activeSelf) continue;
+
+            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
+            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
+
+            if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && grid[x, y] == (int)StoneColor.Black)
+            {
+                Vector3 pos = stone.transform.position;
+                Quaternion correctRot = Quaternion.Euler(0, blackStoneYRotation, 0);
+
+                if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
+                {
+                    Vector3 lookDir = gameManager.cameraSwitcher.victoryCamera.transform.position - pos;
+                    lookDir.y = 0;
+                    if (lookDir != Vector3.zero)
+                        correctRot = Quaternion.LookRotation(lookDir) * Quaternion.Euler(0, blackStoneYRotation, 0);
+                }
+
+                stone.SetActive(false);
+                GameObject realBlack = ObjectPooler.Instance.SpawnFromPool("BlackStone", pos, correctRot);
+
+                StoneVisualController svc = realBlack.GetComponent<StoneVisualController>();
+                if (svc != null) { svc.SetConsecration(false, Color.black); svc.SetOverlay(Color.black, 0f); }
+
+                // 리스트 강제 교체 (초고속)
+                activeStones[i] = realBlack;
+
+                int winnerIndex = winners.IndexOf(stone);
+                if (winnerIndex != -1) winners[winnerIndex] = realBlack;
+
+                swapCount++;
+
+                // 🚨 핵심: 6개의 돌을 변신시킬 때마다 딱 1프레임씩(0.016초) 쉬어줍니다!
+                // 컴퓨터가 과부하 걸리는 걸 막으면서도, 어차피 화면은 하얀색이라 눈에 보이지 않습니다.
+                if (swapCount % 6 == 0) yield return null;
+            }
+        }
+        isConsecrationActive = false;
     }
 
     // 2. 팝콘 폭발 청소 코루틴 (중심점 기준 15개 비행 + 나머지 즉시 숨김)
@@ -1306,7 +1361,7 @@ public class BoardManager : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(UnityEngine.Random.Range(4f, 7f));
+            yield return new WaitForSeconds(UnityEngine.Random.Range(4f, 6f));
 
             for (int j = 0; j < winners.Count; j++)
             {
@@ -1318,78 +1373,6 @@ public class BoardManager : MonoBehaviour
                 yield return new WaitForSeconds(0.05f);
             }
         }
-    }
-
-    // 헬퍼: 돌들이 카메라를 바라보게 회전
-    private void RotateStonesToCamera(List<GameObject> winners, StoneColor winnerColor)
-    {
-        if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
-        {
-            Vector3 camPos = gameManager.cameraSwitcher.victoryCamera.transform.position;
-
-            // 🚨 승리한 돌의 인스펙터 Y축 오프셋을 끌고 옴
-            float yOffset = (winnerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
-
-            for (int j = 0; j < winners.Count; j++)
-            {
-                var stone = winners[j];
-                if (stone == null) continue;
-
-                Vector3 lookDir = camPos - stone.transform.position;
-                lookDir.y = 0;
-
-                if (lookDir != Vector3.zero)
-                {
-                    // 🚨 카메라 각도에 + 원래 정면 방향(오프셋)을 더해서 뒤통수 철벽 방어!
-                    stone.transform.rotation = Quaternion.LookRotation(lookDir) * Quaternion.Euler(0, yOffset, 0);
-                }
-            }
-        }
-    }
-
-    // 🚨 [수정됨] 코루틴(파도타기) 버리고 즉시 일괄 변환(void)으로 갈아엎음
-    private void RevealAllBlackStonesInstantly(List<GameObject> winners)
-    {
-        List<GameObject> blackStonesToReveal = new List<GameObject>();
-        foreach (GameObject stone in activeStones)
-        {
-            if (stone == null || !stone.activeSelf) continue;
-            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
-            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
-            if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && grid[x, y] == (int)StoneColor.Black)
-                blackStonesToReveal.Add(stone);
-        }
-
-        for (int i = 0; i < blackStonesToReveal.Count; i++)
-        {
-            GameObject stone = blackStonesToReveal[i];
-            Vector3 pos = stone.transform.position;
-
-            Quaternion correctRot = Quaternion.Euler(0, blackStoneYRotation, 0);
-
-            if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
-            {
-                Vector3 lookDir = gameManager.cameraSwitcher.victoryCamera.transform.position - pos;
-                lookDir.y = 0;
-                if (lookDir != Vector3.zero)
-                    correctRot = Quaternion.LookRotation(lookDir) * Quaternion.Euler(0, blackStoneYRotation, 0);
-            }
-
-            stone.SetActive(false);
-            GameObject realBlack = ObjectPooler.Instance.SpawnFromPool("BlackStone", pos, correctRot);
-
-            StoneVisualController svc = realBlack.GetComponent<StoneVisualController>();
-            if (svc != null) { svc.SetConsecration(false, Color.black); svc.SetOverlay(Color.black, 0f); }
-
-            int activeIndex = activeStones.IndexOf(stone);
-            if (activeIndex != -1) activeStones[activeIndex] = realBlack;
-
-            int winnerIndex = winners.IndexOf(stone);
-            if (winnerIndex != -1) winners[winnerIndex] = realBlack;
-
-            // 🚨 대기 시간(yield return) 싹 제거! 1프레임 만에 전체 즉시 변경!
-        }
-        isConsecrationActive = false;
     }
 
     // ** 이중착수 시 확실하게 번쩍거리는 전용 코루틴

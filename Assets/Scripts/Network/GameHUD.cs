@@ -407,26 +407,24 @@ public class GameHUD : MonoBehaviour
         {
             int skillId = i + 1;
 
+            // 10번(렌주룰 파괴)은 흑돌 전용, 11번(신성화)은 백돌 전용
             bool isRestricted = (skillId == 10 && myColor != StoneColor.Black)
                             || (skillId == 11 && myColor != StoneColor.White);
 
             skillSelectButtons[i].interactable = !isRestricted;
-            if (isRestricted)
+
+            // 시각적 회색(비활성화) 처리
+            Transform iconTr = skillSelectButtons[i].transform.Find("IconImage");
+            if (iconTr != null)
             {
-                Transform iconTr =skillSelectButtons[i].transform.Find("IconImage");
-                if (iconTr != null)
+                Image iconImg1 = iconTr.GetComponent<Image>();
+                if (iconImg1 != null)
                 {
-                    Image iconImg1 = iconTr.GetComponent<Image>();
-                    if (iconImg1 != null)
-                    {
-                        iconImg1.color = Color.gray;
-                    }
-                    else
-                    {
-                        iconImg1.color = Color.white; // ← 추가: 복구
-                    }
+                    // 제한된 스킬이면 회색, 아니면 원래 색상(흰색)
+                    iconImg1.color = isRestricted ? Color.gray : Color.white;
                 }
             }
+
             // CSV 데이터 가져오기
             SkillData data = default(SkillData);
             if (skillManager != null && !skillManager.skillDatabase.TryGetValue(skillId, out data)) continue;
@@ -454,7 +452,7 @@ public class GameHUD : MonoBehaviour
             // 설명
             TextMeshProUGUI descText = btnTransform.Find("DescText")?.GetComponent<TextMeshProUGUI>();
             if (descText != null) descText.text = data.description;
-           
+
             bool isBlack = (myColor == StoneColor.Black);
 
             if (myPanelImage != null)
