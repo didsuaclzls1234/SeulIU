@@ -374,10 +374,6 @@ public class InputManager : MonoBehaviour
         {
             gameManager.TryPlaceStone(x, y);
         }
-        // else if (gameManager.currentState == GameState.SkillTargeting && skillManager != null)
-        // {
-        //     skillManager.ExecuteSkillAt(x, y);
-        // }
         // [추가] SkillPreview 상태에서 좌클릭 → 스킬 확정
         else if (gameManager.currentState == GameState.SkillPreview)
         {

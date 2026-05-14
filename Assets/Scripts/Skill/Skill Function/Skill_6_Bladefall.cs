@@ -90,7 +90,7 @@ public class Skill_6_Bladefall : SkillBase
             for (int y = 0; y < board.boardSize; y++)
             {
                 if (board.grid[x, y] != 0) continue;           // 이미 돌이 있음
-                if (board.sealedGrid[x, y].turns > 0) continue; // 이미 봉인됨
+                //if (board.sealedGrid[x, y].turns > 0) continue; // 이미 봉인됨
                 if (x == excludeX && y == excludeY) continue; // [추가] 착수 좌표 제외
                 
                 bool isAdjacent = false;

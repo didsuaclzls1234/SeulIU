@@ -60,13 +60,7 @@ public class SkillManager : MonoBehaviour
     public int sealedTurnsRemaining = 0;
 
     // 턴 종료 시 파괴할 제거 스킬 타겟 좌표 (기본값 -1, -1)
-    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1);
-
-    // UI가 구독할 이벤트들 (데이터만 던져줌)
-    public event Action<int> OnSPChanged; // SP가 변했을 때 (내 SP 던져줌)
-    public event Action<List<ActiveEffect>> OnActiveEffectsChanged; // 버프/디버프 리스트가 갱신됐을 때
-    public event Action<int, bool> OnSkillButtonStateChanged; // 특정 스킬 버튼의 활성화/비활성화 상태가 변했을 때
-
+    public Vector2Int pendingRemoveTarget = new Vector2Int(-1, -1); 
 
     // 2. 팩토리 메서드 (OCP 원칙: 새로운 스킬이 생기면 여기 case만 추가하면 됨)
     private SkillBase CreateSkillByID(int id)
@@ -342,80 +336,6 @@ public class SkillManager : MonoBehaviour
         // TODO: (시온 작업) 여기서 CSV 데이터를 찾아 실제 Skill 인스턴스를 생성할 예정입니다.
     }
 
-
-    // 착수 시 SP 증가 (GameManager에서 턴 넘어갈 때 호출해줄 함수)
-    // public void AddSPOnTurnEnd(StoneColor placedColor)
-    // {
-    //     if (placedColor == gameManager.localPlayerColor)
-    //     {
-    //         mySP = Mathf.Min(mySP + 1, MAX_SP);
-    //     }
-    //     else
-    //     {
-    //         oppSP = Mathf.Min(oppSP + 1, MAX_SP);
-    //     }
-
-    //     // 쿨타임은 방금 턴을 마친 사람이 아니라, '이제 턴을 시작할 사람' 것을 깎습니다!
-    //     StoneColor nextTurnColor = placedColor.Opponent();
-    //     UpdateSkillDurations(nextTurnColor);
-
-    //     // SP가 바뀌었으니 HUD에 즉시 양쪽 SP 최신화
-    //     if (gameManager.gameHUD != null)
-    //     {
-    //         gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
-    //     }
-    // }
-
-    // private void UpdateSkillDurations(StoneColor nextTurnColor)
-    // {
-    //     //// 턴이 지날 때마다 스킬들의 OnTurnPassed()를 호출하여 쿨다운 감소
-    //     //if (turnColor == gameManager.localPlayerColor)
-    //     //{
-    //     //    foreach (var skill in mySkills) skill.OnTurnPassed();
-    //     //}
-    //     //else
-    //     //{
-    //     //    foreach (var skill in oppSkills) skill.OnTurnPassed();
-    //     //}
-    //     List<SkillBase> targetSkills = (nextTurnColor == gameManager.localPlayerColor) ? mySkills : oppSkills;
-
-    //     for (int i = 0; i < targetSkills.Count; i++)
-    //     {
-    //         targetSkills[i].OnTurnPassed(); // 내부 쿨타임 감소 로직 호출
-
-    //         // UI 텍스트 갱신은 '내 턴'이 돌아왔을 때 내 화면에서만 해주면 됩니다.
-    //         if (nextTurnColor == gameManager.localPlayerColor && gameManager.gameHUD != null)
-    //         {
-    //             Button btn = gameManager.gameHUD.activeSkillButtons[i];
-    //             TMP_Text cdText = gameManager.gameHUD.cooldownTexts[i];
-
-    //             bool isPassive = targetSkills[i].data.type == "전용";
-    //             bool isSilenced = sealedTurnsRemaining > 0; // 안티매직 걸렸는지
-    //             bool onCooldown = targetSkills[i].currentCooldown > 0;
-    //             bool notEnoughSP = mySP < targetSkills[i].data.spCost; // ** (나중에 사용될 듯)
-
-    //             // 버튼 잠금 처리
-    //             btn.interactable = !isPassive;
-
-    //             // ** 패시브거나, 쿨타임이거나, SP가 부족하거나, 안티매직에 걸렸다면 버튼 강제 잠금 (** 이 부분은 추후 기획의도 맞춰서 해야 할 듯)
-    //             btn.interactable = !isPassive && !onCooldown && !notEnoughSP && !isSilenced;
-
-    //             // 쿨타임 텍스트 표시
-    //             cdText.text = (!isPassive && onCooldown) ? targetSkills[i].currentCooldown.ToString() : "";
-    //         }
-    //     }
-
-    //     for (int i = activeEffects.Count - 1; i >= 0; i--)
-    //     {
-    //         activeEffects[i].remainingTurns--;
-    //         if (activeEffects[i].remainingTurns <= 0)
-    //             activeEffects.RemoveAt(i);
-    //     }
-
-    //     if (gameManager.gameHUD != null)
-    //         gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
-    // }
-
     // AI 모드 전용: AI가 스킬을 사용할지 판단하고 실행하는 함수
     // =========================================================
     // AI 전용 스킬 로직
@@ -606,20 +526,7 @@ public class SkillManager : MonoBehaviour
                 Debug.LogWarning($"[Network] 스킬 ID {skillId} 수신 처리 미구현");
                 break;
         }
-        // 3. 실제 효과 실행 (Execute 내부에서 보드 데이터 지우기 수행)
-        // xs, ys 배열을 돌면서 들어있는 모든 좌표를 지움 (최대 2개)
-        // for (int i = 0; i < xs.Length; i++)
-        // {
-        //     int tx = xs[i];
-        //     int ty = ys[i];
-
-        //     // 유효한 좌표(-1이 아님)이고 바둑판에 돌이 있다면 삭제
-        //     if (tx != -1 && ty != -1)
-        //     {
-        //         gameManager.board.grid[tx, ty] = 0;
-        //         gameManager.board.RemoveStoneObjectAt(tx, ty);
-        //     }
-        // }
+        
         if (skillData.durationTurn > 0)
         {
             activeEffects.Add(new ActiveEffect
@@ -738,8 +645,8 @@ public class SkillManager : MonoBehaviour
     
     private void ReceiveSkill_AntiMagic(int[] xs, int[] ys)
     {
-        sealedTurnsRemaining = 2;
-        Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 2턴간 봉인");
+        sealedTurnsRemaining = skillDatabase.TryGetValue(4, out SkillData data) ? data.durationTurn : 2; // CSV에서 지속 턴 가져오기 (기본값 2턴)
+        Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 " + sealedTurnsRemaining + "턴간 봉인");
 
         RefreshAntiMagicOverlayUI();
 
@@ -747,7 +654,7 @@ public class SkillManager : MonoBehaviour
         if (gameManager.gameHUD != null)
         {
             gameManager.gameHUD.SetOpponentSilencedUI(true);
-            gameManager.gameHUD.ShowSystemMessage("상대방이 안티매직을 사용했습니다. 2턴간 스킬 사용 불가!");
+            gameManager.gameHUD.ShowSystemMessage("상대방이 안티매직을 사용했습니다. " + sealedTurnsRemaining + "턴간 스킬 사용 불가!");
         }
     }
 
@@ -990,49 +897,6 @@ public class SkillManager : MonoBehaviour
         }
     }
 
-    // public void DecreaseSealedTurns()
-    // {
-    //     if (sealedTurnsRemaining > 0)
-    //     {
-    //         sealedTurnsRemaining--;
-    //         Debug.Log($"[SkillManager] 봉인 턴 감소 → 남은 턴: {sealedTurnsRemaining}");
-
-    //         // 0이 되면 자물쇠 치우기
-    //         if (sealedTurnsRemaining == 0 && gameManager.gameHUD != null)
-    //         {
-    //             gameManager.gameHUD.SetOpponentSilencedUI(false);
-    //             gameManager.gameHUD.ShowSystemMessage("안티매직 효과가 풀렸습니다!");
-    //         }
-    //     }
-    // }
-
-    // 매 턴 종료 시 턴을 깎고, 0이 되면 투명화 해제
-    // GameManager의 ExecutePlaceStone 에서 턴 넘기기 직전에 이 함수를 호출해주세요.
-    // public void DecreaseInvisibilityTurns(StoneColor turnColor)
-    // {
-    //     // 내가 턴을 마칠 때 내 투명화 턴 감소
-    //     if (turnColor == gameManager.localPlayerColor && myInvisibilityTurns > 0)
-    //     {
-    //         myInvisibilityTurns--;
-    //         if (myInvisibilityTurns == 0)
-    //         {
-    //             gameManager.board.SetStoneInvisibility(gameManager.localPlayerColor, true, true);
-    //             gameManager.gameHUD.ShowSystemMessage("내 투명화 효과가 해제되었습니다.");
-    //         }
-    //     }
-    //     // 상대가 턴을 마칠 때 상대 투명화 턴 감소
-    //     else if (turnColor != gameManager.localPlayerColor && oppInvisibilityTurns > 0)
-    //     {
-    //         oppInvisibilityTurns--;
-    //         if (oppInvisibilityTurns == 0)
-    //         {
-    //             StoneColor oppColor = gameManager.localPlayerColor.Opponent();
-    //             gameManager.board.SetStoneInvisibility(oppColor, true, false);
-    //             gameManager.gameHUD.ShowSystemMessage("상대방의 투명화 효과가 해제되었습니다.");
-    //         }
-    //     }
-    // }
-
     // =========================================================
     // 🚨 안티매직 오버레이 우선순위 교통정리 (무조건 흰색 패널티 우선!)
     // =========================================================
@@ -1093,7 +957,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(0, 0);
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
             gameManager.gameHUD.SetOpponentSilencedUI(false);
-            //gameManager.gameHUD.ResetSkillLog();
+            gameManager.gameHUD.ResetSkillLog();
             gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
             gameManager.gameHUD?.RefreshOppDeckSlots(new int[] { -1, -1, -1 }, skillDatabase);
         }
@@ -1322,75 +1186,8 @@ public class SkillManager : MonoBehaviour
         }
  
         Debug.Log($"==== [{selectedSkill.data.skillName}] SkillPreview 진입! ====");
-       
-        
-
-
-        // // 추가 — targetType이 "none"이면 즉시 실행 (타겟팅 불필요)
-        // if (selectedSkill.data.targetType == "none")
-        // {
-        //     selectedSkillSlot = slotIndex;
-        //     // 칼날비(6번)는 최대 20칸 좌표가 필요
-        //     int arraySize = (selectedSkill.data.skillId == 6) ? 20 : 2;
-        //     int[] targetX = new int[arraySize];
-        //     int[] targetY = new int[arraySize];
-        //     for (int j = 0; j < arraySize; j++) { targetX[j] = -1; targetY[j] = -1; }
-
-        //     if (selectedSkill.Execute(targetX, targetY, gameManager, gameManager.board))
-        //     {
-        //         gameManager.hasUsedSkillThisTurn = true; // ** 스킬 사용 완료!
-        //         mySP -= selectedSkill.data.spCost;
-        //         selectedSkill.currentCooldown = selectedSkill.data.cooldown;
-        //         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
-
-        //         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-        //             gameSession.SendUseSkill(selectedSkill.data.skillId, targetX, targetY);
-        //     }
-        //     selectedSkillSlot = -1;
-        //     return; //  타겟팅 모드 진입 없이 바로 종료
-        //}
-        // 상태를 '스킬 타겟팅'으로 변경 (이제 InputManager가 클릭하면 TryPlaceStone 대신 SkillManager한테 좌표를 넘기게 될 겁니다)
-        // selectedSkillSlot = slotIndex;
-        // gameManager.currentState = GameState.SkillTargeting;
-
-
-        // // 비주얼 효과 시작: 보드의 모든 자신/상대 돌에 초록색 테두리 표시
-        // // targetType 기준으로 하이라이트 분기
-        // if (selectedSkill.data.targetType == "my")
-        // {
-        //     gameManager.board.HideSkillTargetMarkers();
-        //     if (gameManager.gameHUD != null)
-        //         gameManager.gameHUD.ShowSystemMessage($"{selectedSkill.data.skillName} 사용! 대상이 될 내 돌을 클릭하세요.");
-        // }
-        // else if (selectedSkill.data.targetType == "enemy") 
-        // {
-        //     // 5번(제거) 스킬이면 전체 하이라이트를 하지 않고 메시지만 띄움    // ** 나중에 좀 더 보완할 예정
-        //     if (selectedSkill.data.skillId == 5)
-        //     {
-        //         if (gameManager.gameHUD != null)
-        //             gameManager.gameHUD.ShowSystemMessage("제거 스킬 사용! 삭제할 상대방 돌을 클릭하세요.");
-
-        //         gameManager.board.HideSkillTargetMarkers();
-        //     }
-        //     else
-        //     {
-        //         gameManager.board.ShowSkillTargetMarkers(gameManager.localPlayerColor);
-        //     }
-        // }
-        // else if (selectedSkill.data.targetType == "cell")
-        // {
-        //     // TODO: 빈 칸에 호버될 때 특별한 표시를 하거나, 전체 빈칸에 마커 띄우기
-        //     // (일단 마커 안 띄우고 조준점(InputManager)만 바뀌게 냅둬도 무방)
-        //     gameManager.board.HideSkillTargetMarkers();
-        // }
-        // else // "none" (타겟팅 필요 없는 즉발 스킬. 예: 4번 안티매직)
-        // {
-        //     // 타겟팅 모드 진입 안 하고 바로 스킬 실행!
-        //     ExecuteSkillAt(-1, -1);
-        // }
-
-        // Debug.Log($"==== [{selectedSkill.data.skillName}] 타겟팅 모드 진입! ====");
     }
+
     // =========================================================
     // [추가] ConfirmSkill — SkillPreview에서 좌클릭 시 호출
     // =========================================================
@@ -1469,13 +1266,6 @@ public class SkillManager : MonoBehaviour
         if (gameManager.gameHUD != null)
             gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
 
-        // B타입(이중착수, 칼날비)은 여기서 빈 패킷을 쏘지 않습니다 (나중에 좌표 확정 후 쏨)
-        // bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
-        // if (!isBType && gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-        // {
-        //     gameSession.SendUseSkill(skill.data.skillId, targetX, targetY, gameManager.CurrentMoveCount);
-        //     //gameSession.SendUseSkill(skill.data.skillId, new int[]{-1}, new int[]{-1}, gameManager.CurrentMoveCount);
-        // }
         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
         {
             if (isBType)
@@ -1495,7 +1285,6 @@ public class SkillManager : MonoBehaviour
         RefreshSkillButtonStates();
 
         gameManager.board.RefreshAllStonesVisuals(); // 버프가 켜졌으니 바둑판 렌더링 즉시 새로고침 (안티매직 하늘색 표시용)
-        // gameManager.gameHUD?.RecordSkillLog(gameManager.CurrentMoveCount, "나", skill.data.skillName);//끝날때 로그용.
 
         // 🚨 [여기에 추가!] 버프 리스트 등록까지 다 끝났으니, 오버레이 상태 최종 갱신!
         RefreshAntiMagicOverlayUI();
@@ -1620,73 +1409,6 @@ public class SkillManager : MonoBehaviour
             gameSession.SendUseSkill(skillId, xs, ys, turnCount);
         }
     }
-
-    // =========================================================
-    // 기존 ExecuteSkillAt — SkillTargeting 상태에서 호출 (타겟 지정형)
-    // [수정] ConfirmSkill로 흡수됐으므로 SkillPreview → ConfirmSkill로 위임
-    // =========================================================
-    // public void ExecuteSkillAt(int x, int y)
-    // {
-    //     // SkillPreview 상태라면 ConfirmSkill로 위임
-    //     if (gameManager.currentState == GameState.SkillPreview)
-    //     {
-    //         ConfirmSkill(x, y);
-    //         return;
-    //     }
-
-    //     if (selectedSkillSlot < 0 || selectedSkillSlot >= mySkills.Count) return;
-
-    //     SkillBase skillToUse = mySkills[selectedSkillSlot];
-
-    //     // 1. 배열로 좌표 전달 (다중 타겟 스킬도 있으니 배열로 감싸서 보냄) (0:선택좌표, 1:랜덤좌표)
-    //     int[] targetX = new int[] { x, -1 };
-    //     int[] targetY = new int[] { y, -1 };
-
-    //     // 2. 스킬 발동! (구체적인 효과는 각 스킬 클래스 내부에서 처리)
-    //     // Execute 내부에서 targetX[1], targetY[1]의 값을 랜덤 좌표로 채워줍니다.
-    //     if (skillToUse.Execute(targetX, targetY, gameManager, gameManager.board))
-    //     {
-    //         gameManager.hasUsedSkillThisTurn = true;
-    //         mySP -= skillToUse.data.spCost;
-    //         skillToUse.currentCooldown = skillToUse.data.cooldown;
-
-    //         // durationTurn이 있는 스킬만 activeEffects에 추가
-    //         if (skillToUse.data.durationTurn > 0)
-    //         {
-    //             ActiveEffect effect = new ActiveEffect
-    //             {
-    //                 skillId = skillToUse.data.skillId,
-    //                 remainingTurns = skillToUse.data.durationTurn,
-    //                 isBuff = true,
-    //                 effectName = skillToUse.data.skillName,
-    //                 description = skillToUse.data.description
-    //             };
-    //             activeEffects.Add(effect);
-    //             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
-    //         }
-
-    //         if (gameManager.gameHUD != null) gameManager.gameHUD.UpdateSPUI(mySP, oppSP);
-
-    //         // 네트워크 담당자에게 전달할 패킷 (좌표 2개가 담긴 배열 전송)
-    //         if (gameManager.currentMode == PlayMode.Multiplayer && gameSession != null)
-    //         {
-    //             gameSession.SendUseSkill(skillToUse.data.skillId, targetX, targetY,gameManager.CurrentMoveCount);
-    //         }
-
-    //         selectedSkillSlot = -1;
-    //         gameManager.currentState = GameState.Playing;
-    //         gameManager.board.UpdateForbiddenMarks(gameManager.currentTurnColor);
-
-    //     }
-    //     else
-    //     {
-    //         selectedSkillSlot = -1;
-    //         gameManager.currentState = GameState.Playing;
-    //     }
-
-    //     // 스킬이 성공하든 실패하든 마커는 지워야 함
-    //     gameManager.board.HideSkillTargetMarkers();
-    // }
 
     public void AutoActivatePassiveSkills()
     {

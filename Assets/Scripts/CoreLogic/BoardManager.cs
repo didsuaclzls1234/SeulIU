@@ -184,14 +184,19 @@ public class BoardManager : MonoBehaviour
         if (sealedGrid[x, y].turns > 0)
         {
             // 칼날비(None)는 피아 식별 없이 무조건 입구컷
-            if (sealedGrid[x, y].owner == StoneColor.None)
+            // if (sealedGrid[x, y].owner == StoneColor.None)
+            // {
+            //     if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
+            //     return false;
+            // }
+            // // if (playerColor != sealedGrid[x, y].owner)
+            // {
+            //     if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+            //     return false;
+            // }
+            if (sealedGrid[x, y].turns > 0)
             {
-                if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
-                return false;
-            }
-            if (playerColor != sealedGrid[x, y].owner)
-            {
-                if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+                if (!silent) Debug.LogWarning("봉인된 칸입니다!");
                 return false;
             }
         }
@@ -229,6 +234,12 @@ public class BoardManager : MonoBehaviour
             }
 
             GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.Euler(0, yRotation, 0));
+            MeshRenderer mr = newStone.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.enabled = true;
+                mr.material.color = Color.white;
+            }
             activeStones.Add(newStone);
 
             // 신성화 상태 처리 
@@ -508,7 +519,12 @@ public class BoardManager : MonoBehaviour
         sealedGrid[x, y].turns = turns;
         sealedGrid[x, y].owner = ownerColor;
         Vector2Int posKey = new Vector2Int(x, y);
-
+        
+        if (activeSealMarkers.ContainsKey(posKey))
+        {
+            RemoveSealEffect(x, y);
+        }
+            
         if (!activeSealMarkers.ContainsKey(posKey))
         {
             Vector3 spawnPos = new Vector3(x * gridSize, sealYOffset, y * gridSize);
@@ -905,31 +921,6 @@ public class BoardManager : MonoBehaviour
             }
         }
     }
-
-    // 아웃라인을 완전히 끄는 대신, 신성화 상태면 파랑/빨강으로 되돌리는 헬퍼 함수
-    //public void RestoreConsecrationOutline(GameObject stoneObj, StoneVisualController svc)
-    //{
-    //    // 백돌 플레이어(시전자)의 화면에서만 작동
-    //    if (isConsecrationActive && gameManager.localPlayerColor == StoneColor.White)
-    //    {
-    //        int x = Mathf.RoundToInt(stoneObj.transform.position.x / gridSize);
-    //        int y = Mathf.RoundToInt(stoneObj.transform.position.z / gridSize);
-
-    //        if (grid[x, y] == (int)StoneColor.White)
-    //        {
-    //            // 인스펙터 연동 (두께와 발광 강도 적용)
-    //            svc.SetConsecration(true, visualSettings.consecrationOutlineColor, visualSettings.consecrationThickness, visualSettings.consecrationGlow);
-    //        }
-    //        else
-    //        {
-    //            svc.SetConsecration(false, Color.black); // 상대방 돌(흑돌)은 아웃라인 무조건 끔
-    //        }
-    //    }
-    //    else
-    //    {
-    //        svc.SetConsecration(false, Color.black); // 신성화가 아니면 그냥 끔
-    //    }
-    //}
 
     public void ApplyStoneBuffVisuals(GameObject stoneObj, StoneVisualController svc)
     {

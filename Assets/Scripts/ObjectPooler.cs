@@ -40,13 +40,40 @@ public class ObjectPooler : MonoBehaviour
     public GameObject SpawnFromPool(string tag, Vector3 position, Quaternion rotation)
     {
         if (!poolDictionary.ContainsKey(tag)) return null;
+        Queue<GameObject> queue = poolDictionary[tag];
+        // ↓ 추가: 사용 가능한(비활성화된) 오브젝트 찾기, 없으면 새로 생성
+        GameObject objectToSpawn = null;
+        int count = queue.Count;
+        for (int i = 0; i < count; i++)
+        {
+            GameObject obj = queue.Dequeue();
+            if (!obj.activeInHierarchy)
+            {
+                objectToSpawn = obj;
+                queue.Enqueue(obj);
+                break;
+            }
+            queue.Enqueue(obj);
+        }
+        // 비활성 오브젝트가 없으면 새로 생성
+        if (objectToSpawn == null)
+        {
+            Pool pool = pools.Find(p => p.tag == tag);
+            if (pool != null)
+            {
+                objectToSpawn = Instantiate(pool.prefab);
+                objectToSpawn.transform.SetParent(this.transform);
+                queue.Enqueue(objectToSpawn);
+                Debug.Log($"[ObjectPooler] {tag} 풀 부족 → 새 오브젝트 생성");
+            }
+        }
 
-        GameObject objectToSpawn = poolDictionary[tag].Dequeue();
+        // GameObject objectToSpawn = poolDictionary[tag].Dequeue();
         objectToSpawn.SetActive(true);
         objectToSpawn.transform.position = position;
         objectToSpawn.transform.rotation = rotation;
 
-        poolDictionary[tag].Enqueue(objectToSpawn); // 다시 큐의 맨 뒤로 넣어서 재사용
+        // poolDictionary[tag].Enqueue(objectToSpawn); // 다시 큐의 맨 뒤로 넣어서 재사용
         return objectToSpawn;
     }
 }
