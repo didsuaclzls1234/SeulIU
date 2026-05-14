@@ -128,6 +128,9 @@ public class BoardManager : MonoBehaviour
     // ** 승리한 돌들을 담아둘 리스트
     private List<GameObject> winningStones = new List<GameObject>();
 
+    // 🚨 켜져 있는 승리 파티클(가시광선)들을 기억할 리스트
+    private List<GameObject> activeFlares = new List<GameObject>();
+
     // ---------------------------------------------------
     // 스킬 '봉인' 정보를 담을 구조체 선언 (클래스 안에 선언)
     public struct SealInfo
@@ -305,6 +308,10 @@ public class BoardManager : MonoBehaviour
 
         // 무대 조명 끄기
         if (SkillVFXManager.Instance != null) SkillVFXManager.Instance.ClearVictoryStageEffect();
+
+        // 켜져 있던 빛 가시광선 파티클 풀로 강제 반환!
+        foreach (var flare in activeFlares) if (flare != null) flare.SetActive(false);
+        activeFlares.Clear();
 
         foreach (GameObject stone in activeStones) stone.SetActive(false);
         activeStones.Clear();
@@ -926,11 +933,11 @@ public class BoardManager : MonoBehaviour
 
     public void ApplyStoneBuffVisuals(GameObject stoneObj, StoneVisualController svc)
     {
-        // 1순위: 승리한 돌 (가장 중요하므로 무조건 빨간 굵은 테두리 유지)
+        // 1순위: 승리한 돌 (빨간 굵은 테두리 🚨제거🚨 -> 빛 파티클이 대체함!)
         if (winningStones.Contains(stoneObj))
         {
-            svc.SetConsecration(true, Color.red, 2f, 8f);
-            svc.SetOverlay(Color.black, 0f); // 혹시 모를 색깔 제거
+            svc.SetConsecration(false, Color.black); // 확실하게 끔
+            svc.SetOverlay(Color.black, 0f);
             return;
         }
 
@@ -1108,6 +1115,9 @@ public class BoardManager : MonoBehaviour
     {
         winningStones.Clear();
 
+        // 🚨 어떤 색깔의 빛 가시광선을 꺼낼지 결정 (오브젝트 풀 태그 이름 일치 필수!)
+        string flarePoolTag = (winnerColor == StoneColor.Black) ? "BlackFlare" : "WhiteFlare";
+
         foreach (Vector2Int pos in winningCoords)
         {
             GameObject stone = GetStoneObjectAt(pos.x, pos.y);
@@ -1117,12 +1127,14 @@ public class BoardManager : MonoBehaviour
                 StoneVisualController svc = stone.GetComponent<StoneVisualController>();
                 if (svc != null)
                 {
-                    // [투명화 즉시 해제] 승리한 주인공들은 그 즉시 정체를 드러냄
+                    // 투명화 즉시 해제
                     svc.SetVisibility(true, false);
                     svc.SetOverlay(Color.black, 0f);
+                    svc.SetConsecration(false, Color.black);
 
-                    // 빨간 테두리 씌우기
-                    svc.SetConsecration(true, Color.red, 2f, 8f);
+                    // 🚨 소환한 파티클을 변수에 담고 리스트에 추가!
+                    GameObject flare = ObjectPooler.Instance.SpawnFromPool(flarePoolTag, stone.transform.position, Quaternion.identity);
+                    if (flare != null) activeFlares.Add(flare);
                 }
             }
         }
@@ -1134,152 +1146,190 @@ public class BoardManager : MonoBehaviour
     // 엔딩 시네마틱 마스터 컨트롤러
     private IEnumerator VictoryCinematicRoutine(List<GameObject> winners, StoneColor winnerColor, List<Vector2Int> winningCoords)
     {
-        // [A] 주인공들 빨간 테두리 상태로 2초간 여운 (투명화는 이미 풀린 상태)
-        yield return new WaitForSeconds(2.0f);
+        yield return new WaitForSeconds(2.5f);
 
-        // [B] 신성화 상태라면 이제서야 흑돌로 촤라락 변신 (회전값 보정 포함)
+        if (gameManager.gameHUD != null && gameManager.gameHUD.inGameUI != null)
+            gameManager.gameHUD.inGameUI.SetActive(false);
+
+        SoundManager.Instance.PlayBGM("BattleBGM");
+
         if (isConsecrationActive)
-        {
             yield return StartCoroutine(RevealAllBlackStonesWave(winners));
+
+        CleanUpAndFlyDefeatedStones(winners, winnerColor);
+
+        Vector3 centerPos = GetWinningLineCenter(winningCoords);
+        
+        if (gameManager.cameraSwitcher != null)
+        {     
+            StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
         }
 
-        // [C] 카메라 이동 시작
-        Vector3 centerPos = GetWinningLineCenter(winningCoords);
-        if (gameManager.cameraSwitcher != null)
-            StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
-
-        // SkillVFXManager를 호출해서 조명 3개 방황 + 폭죽 터뜨리기! (시간은 카메라 이동 시간과 맞춤)
         if (SkillVFXManager.Instance != null)
         {
-            float camDuration = gameManager.cameraSwitcher.cinematicDuration; // 보통 3~3.5초
+            float camDuration = gameManager.cameraSwitcher.cinematicDuration;
             SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
         }
 
-        // [D] 돌 정리 (진 돌 날리기 등)
-        CleanUpStonesForVictory(winners, winnerColor);
+        // 🚨 [수정됨] 승리한 돌들의 색상 오프셋을 실시간 추적 루틴에 전달!
+        StartCoroutine(TrackCameraRoutine(winners, winnerColor));
 
-        // [E] 주인공들 빨간 테두리 벗기기
-        foreach (var stone in winners)
+        // [점프 루프 및 판넬 등장]
+        for (int i = 0; i < 3; i++)
         {
-            stone.GetComponent<StoneVisualController>()?.SetConsecration(false, Color.black);
-        }
+            if (i == 1) // 효과음 선재생
+            {
+                if (gameManager.gameHUD != null)
+                    gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: false, playSound: true);
+            }
 
-        // ** 돌들이 카메라 렌즈를 쳐다보게 회전
+            for (int j = 0; j < winners.Count; j++)
+            {
+                var stone = winners[j];
+                if (stone != null) stone.GetComponent<Animator>()?.SetTrigger("DoWin");
+
+                // 기존에 있던 if (i == 2 && j == middleIndex) 판넬 호출 부분 삭제
+                yield return new WaitForSeconds(0.05f);
+            }
+
+            // 🚨 3번째 점프(파도타기)가 끝난 후 판넬 등장 로직
+            if (i == 2)
+            {
+                // 원하는 지연 시간 입력 (예: 0.3초 대기 후 띄움)
+                yield return new WaitForSeconds(0.3f);
+
+                if (gameManager.gameHUD != null)
+                    gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: true, playSound: false);
+            }
+
+            yield return new WaitForSeconds(0.7f);
+        }
+        StartCoroutine(IntermittentWaveJumpRoutine(winners));
+    }
+
+    // 🚨 [완벽 수정] 실시간 카메라 추적 코루틴 (옛날 함수 지우고 이걸로 씁니다)
+    private IEnumerator TrackCameraRoutine(List<GameObject> winners, StoneColor winnerColor)
+    {
+        // 인스펙터에 설정된 흑/백돌 고유 회전 오프셋 값 가져오기
+        float yOffset = (winnerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
+
+        while (true)
+        {
+            if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
+            {
+                // 실시간으로 변하는 카메라의 위치를 매 프레임 참조
+                Vector3 currentCamPos = gameManager.cameraSwitcher.victoryCamera.transform.position;
+
+                for (int j = 0; j < winners.Count; j++)
+                {
+                    GameObject stone = winners[j];
+                    if (stone == null || !stone.activeInHierarchy) continue;
+
+                    // 돌에서 현재 카메라 위치를 향하는 방향 계산
+                    Vector3 lookDir = currentCamPos - stone.transform.position;
+                    lookDir.y = 0;
+
+                    if (lookDir.sqrMagnitude > 0.001f)
+                    {
+                        stone.transform.rotation = Quaternion.LookRotation(lookDir);
+                    }
+                }
+            }
+            yield return null;
+        }
+    }
+
+    // 🚨 코루틴 5개 -> 전체 관리용 코루틴 1개로 압축 (렉 방지 + 파도타기 감성)
+    private IEnumerator IntermittentWaveJumpRoutine(List<GameObject> winners)
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(UnityEngine.Random.Range(4f, 7f));
+
+            for (int j = 0; j < winners.Count; j++)
+            {
+                var stone = winners[j];
+                if (stone != null && stone.gameObject.activeInHierarchy)
+                {
+                    stone.GetComponent<Animator>()?.SetTrigger("DoWin");
+                }
+                yield return new WaitForSeconds(0.05f);
+            }
+        }
+    }
+
+    // 헬퍼: 돌들이 카메라를 바라보게 회전
+    private void RotateStonesToCamera(List<GameObject> winners, StoneColor winnerColor)
+    {
         if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
         {
             Vector3 camPos = gameManager.cameraSwitcher.victoryCamera.transform.position;
 
-            foreach (var stone in winners)
-            {
-                if (stone != null)
-                {
-                    // 돌에서 카메라를 바라보는 방향 계산
-                    Vector3 lookDir = camPos - stone.transform.position;
-                    lookDir.y = 0; // 캐릭터가 하늘을 보며 뒤로 눕지 않게 Y축 회전만 고정!
+            // 🚨 승리한 돌의 인스펙터 Y축 오프셋을 끌고 옴
+            float yOffset = (winnerColor == StoneColor.Black) ? blackStoneYRotation : whiteStoneYRotation;
 
-                    // 자연스럽게 휙! 하고 돌아봄
-                    stone.transform.rotation = Quaternion.LookRotation(lookDir);
+            for (int j = 0; j < winners.Count; j++)
+            {
+                var stone = winners[j];
+                if (stone == null) continue;
+
+                Vector3 lookDir = camPos - stone.transform.position;
+                lookDir.y = 0;
+
+                if (lookDir != Vector3.zero)
+                {
+                    // 🚨 카메라 각도에 + 원래 정면 방향(오프셋)을 더해서 뒤통수 철벽 방어!
+                    stone.transform.rotation = Quaternion.LookRotation(lookDir) * Quaternion.Euler(0, yOffset, 0);
                 }
             }
         }
-
-        // [F] 주인공들 파도타기 점프 (7목이든 뭐든 리스트 순서대로 뜀)
-        for (int i = 0; i < 3; i++) // 3번 반복
-        {
-            foreach (var stone in winners)
-            {
-                if (stone != null) stone.GetComponent<Animator>()?.SetTrigger("DoWin");
-                yield return new WaitForSeconds(0.05f); // 0.1초 간격 파도타기
-            }
-            yield return new WaitForSeconds(0.5f); // 한 세트 점프 후 휴식
-        }
     }
 
-    // 신성화 해제 파도 연출 (바둑판 전체의 흑돌을 싹 다 본모습으로)
+    // 신성화 해제 파도 연출
     private IEnumerator RevealAllBlackStonesWave(List<GameObject> winners)
     {
         List<GameObject> blackStonesToReveal = new List<GameObject>();
-
-        // 1. 맵 전체를 뒤져서 '진짜 흑돌'인 녀석들만 모음
         foreach (GameObject stone in activeStones)
         {
+            if (stone == null || !stone.activeSelf) continue;
             int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
             int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
-
-            if (grid[x, y] == (int)StoneColor.Black)
-            {
+            if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && grid[x, y] == (int)StoneColor.Black)
                 blackStonesToReveal.Add(stone);
-            }
         }
 
-        // 2. 찾은 흑돌들을 순차적으로 변신!
         for (int i = 0; i < blackStonesToReveal.Count; i++)
         {
             GameObject stone = blackStonesToReveal[i];
             Vector3 pos = stone.transform.position;
 
-            // 흑돌 원래의 정면 각도
+            // 기본값 설정
             Quaternion correctRot = Quaternion.Euler(0, blackStoneYRotation, 0);
 
-            // 기존 가짜 백돌 비활성
-            stone.SetActive(false);
+            // 🚨 변신하는 흑돌도 카메라 위치에 맞춰서 오프셋 적용
+            if (gameManager.cameraSwitcher != null && gameManager.cameraSwitcher.victoryCamera != null)
+            {
+                Vector3 lookDir = gameManager.cameraSwitcher.victoryCamera.transform.position - pos;
+                lookDir.y = 0;
+                if (lookDir != Vector3.zero)
+                    correctRot = Quaternion.LookRotation(lookDir) * Quaternion.Euler(0, blackStoneYRotation, 0);
+            }
 
-            // 진짜 흑돌 소환
+            stone.SetActive(false);
             GameObject realBlack = ObjectPooler.Instance.SpawnFromPool("BlackStone", pos, correctRot);
 
-            // 리스트 안전하게 교체 (에러 방지 & 초기화 완벽 대응)
+            StoneVisualController svc = realBlack.GetComponent<StoneVisualController>();
+            if (svc != null) { svc.SetConsecration(false, Color.black); svc.SetOverlay(Color.black, 0f); }
+
             int activeIndex = activeStones.IndexOf(stone);
             if (activeIndex != -1) activeStones[activeIndex] = realBlack;
 
-            // 만약 이 흑돌이 5목(winners)에 포함된 녀석이라면? (흑돌이 이긴 경우)
-            // winners 리스트도 교체해주고 빨간 테두리를 유지해줍니다.
             int winnerIndex = winners.IndexOf(stone);
-            if (winnerIndex != -1)
-            {
-                winners[winnerIndex] = realBlack;
-                realBlack.GetComponent<StoneVisualController>()?.SetConsecration(true, Color.red, 2f, 8f);
-            }
+            if (winnerIndex != -1) winners[winnerIndex] = realBlack;
 
-            // 0.05초면 맵 전체가 빠르게 촤라락! 하고 변하는 느낌이 납니다.
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.01f);
         }
-
-        isConsecrationActive = false; // 파도가 끝났으니 신성화 상태 완전 해제
-    }
-
-    // 1. 돌 정리 + 보드판 위 찌꺼기 완벽 제거
-    private void CleanUpStonesForVictory(List<GameObject> winners, StoneColor winnerColor)
-    {
-        StoneColor loserColor = winnerColor.Opponent();
-
-        // [돌 정리]
-        foreach (var stone in activeStones)
-        {
-            if (winners.Contains(stone)) continue; // 이긴 돌은 무시
-
-            int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
-            int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
-            StoneColor stoneColor = (StoneColor)grid[x, y];
-
-            if (stoneColor == loserColor)
-            {
-                // 상대방 돌은 영혼 소환해서 썅! 날려버리기
-                string poolTag = (loserColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
-                GameObject fake = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
-                if (fake != null) StartCoroutine(StoneFlyRoutine(fake));
-            }
-            stone.SetActive(false); // 본체는 숨김 (우리 팀 안 이긴 돌은 여기서 그냥 뿅 사라짐)
-        }
-
-        // [찌꺼기 가리기] 승리 연출을 방해하는 모든 마커 강제 숨김
-        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
-        foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
-        foreach (var knife in activeKnifeObjects.Values) if (knife != null) knife.SetActive(false);
-        foreach (var mark in forbiddenMarks) if (mark != null) mark.SetActive(false);
-
-        // 타겟팅 테두리 및 바닥 오버레이 색상 강제 초기화
-        SetBoardOverlayState(0);
-        HideSkillTargetMarkers();
+        isConsecrationActive = false;
     }
 
     // ** 이중착수 시 확실하게 번쩍거리는 전용 코루틴
@@ -1303,76 +1353,90 @@ public class BoardManager : MonoBehaviour
         RefreshAllStonesVisuals(); // 점멸 끝나면 버프 원상복구
     }
 
-    // =========================================================
-    //  패배 돌 튕겨내기 연출 (시네마틱)
-    // =========================================================
-    public IEnumerator BlowUpDefeatedStones(List<GameObject> winners, StoneColor loserColor)
+    // 🚨 흩어져 있던 청소 함수와 폭발 함수를 단 하나로 완벽하게 통합!!!
+    // (기존에 있던 BlowUpDefeatedStones와 CleanUpStonesForVictory를 이걸로 퉁칩니다)
+    private void CleanUpAndFlyDefeatedStones(List<GameObject> winners, StoneColor winnerColor)
     {
-        int loserInt = (int)loserColor;
+        StoneColor loserColor = winnerColor.Opponent();
 
-        foreach (var stone in activeStones)
+        // 🚨 foreach 대신 for문 사용하여 에러 씹기 (도중에 리스트가 꼬여도 터지지 않음)
+        for (int i = 0; i < activeStones.Count; i++)
         {
-            // 승리한 5목 돌이면 무시
+            GameObject stone = activeStones[i];
+
+            // 방어 코드: 이미 비활성화됐거나 널이면 패스
+            if (stone == null || !stone.activeSelf) continue;
+
+            // 승리한 5목은 건드리지 않음
             if (winners.Contains(stone)) continue;
 
             int x = Mathf.RoundToInt(stone.transform.position.x / gridSize);
             int y = Mathf.RoundToInt(stone.transform.position.z / gridSize);
 
-            // 🚨 "진 돌(패배자 색상)"만 날려버리기
-            if (grid[x, y] == loserInt)
+            // 만약 x,y가 맵 밖이면 스킵 (에러 방지)
+            if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) continue;
+
+            StoneColor stoneColor = (StoneColor)grid[x, y];
+
+            if (stoneColor == loserColor)
             {
-                // 1. 가짜 돌(더미) 생성 (원래 돌 위치/회전 그대로)
+                // 상대방 돌은 튕겨나가는 가짜 돌 소환
                 string poolTag = (loserColor == StoneColor.Black) ? "BlackStone" : "WhiteStone";
-                GameObject fakeStone = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
-
-                // 2. 가짜 돌 날리기!
-                if (fakeStone != null) StartCoroutine(StoneFlyRoutine(fakeStone));
-
-                // 3. (선택) 보드에 남아있는 진짜 돌은 살짝 어둡게(까맣게) 만들어서 죽은 돌 느낌 내기
-                StoneVisualController svc = stone.GetComponent<StoneVisualController>();
-                if (svc != null) svc.SetOverlay(Color.black, 0.6f);
+                GameObject fake = ObjectPooler.Instance.SpawnFromPool(poolTag, stone.transform.position, stone.transform.rotation);
+                if (fake != null)
+                {
+                    StoneVisualController fakeSvc = fake.GetComponent<StoneVisualController>();
+                    if (fakeSvc != null)
+                    {
+                        fakeSvc.SetConsecration(false, Color.black);
+                        fakeSvc.SetOverlay(Color.black, 0f);
+                    }
+                    StartCoroutine(StoneFlyRoutine(fake));
+                }
             }
+            // 🚨 이긴 돌이든 진 돌이든, 바닥에 있던 '진짜 돌'은 즉시 비활성화(쑉 가림)!
+            stone.SetActive(false);
         }
-        yield return null;
+
+        // [찌꺼기 가리기] 모든 마커 강제 숨김
+        foreach (var marker in activeShieldMarkers.Values) marker.SetActive(false);
+        foreach (var marker in activeSealMarkers.Values) marker.SetActive(false);
+        foreach (var knife in activeKnifeObjects.Values) if (knife != null) knife.SetActive(false);
+        foreach (var mark in forbiddenMarks) if (mark != null) mark.SetActive(false);
+
+        SetBoardOverlayState(0);
+        HideSkillTargetMarkers();
     }
 
     private IEnumerator StoneFlyRoutine(GameObject stone)
     {
-        // 돌의 메쉬를 끄지 않고, 콜라이더만 꺼서 서로 안 부딪히게 함 (성능 최적화)
+        // 돌의 메쉬를 끄지 않고, 콜라이더만 꺼서 서로 안 부딪히게 함
         if (stone.TryGetComponent<Collider>(out var col)) col.enabled = false;
 
-        // 랜덤한 비행 방향 설정 (바깥쪽으로 퍼지게 + 위로 솟구치게)
         Vector3 flyDirection = new Vector3(
             UnityEngine.Random.Range(-1f, 1f),
             UnityEngine.Random.Range(1.5f, 2.5f), // 위로 솟구치는 힘
             UnityEngine.Random.Range(-1f, 1f)
         ).normalized;
 
-        float speed = UnityEngine.Random.Range(8f, 15f); // 날아가는 속도
-        float rotationSpeed = UnityEngine.Random.Range(300f, 600f); // 빙글빙글 회전 속도
-        Vector3 rotAxis = UnityEngine.Random.onUnitSphere; // 회전축 랜덤
+        float speed = UnityEngine.Random.Range(8f, 15f);
+        float rotationSpeed = UnityEngine.Random.Range(300f, 600f);
+        Vector3 rotAxis = UnityEngine.Random.onUnitSphere;
 
         float elapsed = 0f;
-        while (elapsed < 2f) // 2초 동안 날아감
+        while (elapsed < 2f)
         {
             elapsed += Time.deltaTime;
 
-            // 중력 가속도 계산 (점점 아래로 떨어지게)
             flyDirection += Vector3.down * Time.deltaTime * 2.5f;
-
-            // 위치 이동
             stone.transform.position += flyDirection * speed * Time.deltaTime;
-
-            // 빙글빙글 회전
             stone.transform.Rotate(rotAxis, rotationSpeed * Time.deltaTime);
-
-            // 점점 작아지면서 사라지는 효과 (선택 사항)
             stone.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.zero, elapsed / 2f);
 
             yield return null;
         }
 
-        stone.SetActive(false); // 마지막에 비활성화
+        stone.SetActive(false);
     }
 
     // 승리한 돌들의 "중심점"과 "정면" 계산하기 (시네머신 준비)

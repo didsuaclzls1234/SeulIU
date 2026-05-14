@@ -29,6 +29,9 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
     [Tooltip("원뿔 밑동의 반지름 (바닥 동그라미 크기에 맞춰 조절)")]
     public float beamBottomRadius = 1.6f;
 
+    // 🚨 [추가] 생성된 꽃가루를 기억할 변수
+    private ParticleSystem activeConfetti;
+
     protected override void Awake()
     {
         base.Awake();
@@ -239,9 +242,10 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
     {
         if (confettiParticlePrefab != null)
         {
-            ParticleSystem confetti = Instantiate(confettiParticlePrefab);
-            confetti.Play();
-            Destroy(confetti.gameObject, duration + 2f);
+            // 🚨 [수정] Destroy 타이머를 없애고 변수에 저장만 해둡니다!
+            if (activeConfetti != null) Destroy(activeConfetti.gameObject); // 혹시 남아있던 거 치우기
+            activeConfetti = Instantiate(confettiParticlePrefab);
+            activeConfetti.Play();
         }
 
         if (fake2DSpotlightPrefab != null)
@@ -312,6 +316,14 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
         {
             if (victoryLights[i] != null) victoryLights[i].SetActive(false);
         }
+
+        // 🚨 [추가] 다음 게임을 위해 바닥에 떨어진 꽃가루 싹 치우기!
+        if (activeConfetti != null)
+        {
+            Destroy(activeConfetti.gameObject);
+            activeConfetti = null;
+        }
+
     }
 
     // =========================================================
