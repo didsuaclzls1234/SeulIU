@@ -275,7 +275,6 @@ public class GameHUD : MonoBehaviour
         // 스킬 버튼들의 활성화 여부 제어 로직 등
     }
 
-    // 🚨 파라미터에 fromCinematic 기본값 추가!
     public void ShowGameOver(StoneColor winner, StoneColor myColor, bool fromCinematic = false, bool showPanel = true, bool playSound = true)
     {
         // 1. 무승부(None)면 묻지도 따지지도 않고 바로 띄움
@@ -283,7 +282,7 @@ public class GameHUD : MonoBehaviour
         {
             inGameUI?.SetActive(false);
 
-            // 🚨 [여기에 추가!] 자물쇠 마커도 같이 끄기
+            // 자물쇠 마커도 같이 끄기
             if (opponentSilencedIcon != null) opponentSilencedIcon.SetActive(false);
 
             if (resultPanel) resultPanel.SetActive(true);
@@ -296,26 +295,31 @@ public class GameHUD : MonoBehaviour
 
         bool isWin = (gameManager.currentMode == PlayMode.Solo) ? (winner == StoneColor.Black) : (winner == myColor);
 
-        // [효과음 재생]
-        if (playSound)
-        {
-            if (isWin) SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
-            else SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
-        }
-
-        // [판넬 띄우기]
+        // 판넬 띄우기와 효과음 재생을 하나의 블록으로 묶음!
+        // 판넬이 화면에 등장(SetActive)하는 바로 그 프레임에 소리가 터집니다.
         if (showPanel)
         {
+            // 판넬 켜기
             if (resultPanel) resultPanel.SetActive(true);
 
+            // 결과 이미지 켜기
             if (resultImage != null)
             {
                 resultImage.gameObject.SetActive(true);
                 resultImage.sprite = isWin ? victorySprite : defeatSprite;
             }
+
             UpdateGameLog();
+
+            // 판넬이 뜨는 순간에 효과음 재생!
+            if (playSound)
+            {
+                if (isWin) SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
+                else SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
+            }
         }
     }
+
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);

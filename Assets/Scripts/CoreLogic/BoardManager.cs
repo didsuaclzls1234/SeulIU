@@ -1137,6 +1137,9 @@ public class BoardManager : MonoBehaviour
     // 엔딩 시네마틱 마스터 컨트롤러
     private IEnumerator VictoryCinematicRoutine(List<GameObject> winners, StoneColor winnerColor, List<Vector2Int> winningCoords)
     {
+        // 🎵 "샤라라~" 돌 완성 효과음 재생 
+        SoundManager.Instance.PlaySFX("ShalalaSFX");
+
         Vector3 centerPos = GetWinningLineCenter(winningCoords); // 계산 미리 해둠
 
         // [A] 빌드업 대기 (2.5초)
