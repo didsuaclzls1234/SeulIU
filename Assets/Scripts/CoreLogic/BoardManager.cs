@@ -273,10 +273,20 @@ public class BoardManager : MonoBehaviour
     private IEnumerator SleepAnimatorRoutine(Animator anim, float delay)
     {
         yield return new WaitForSeconds(delay);
+
         // 돌이 파괴되지 않고 살아있다면 애니메이터만 끔 (CPU 휴식)
         if (anim != null && anim.gameObject.activeInHierarchy)
         {
-            anim.enabled = false;
+            //// 애니메이터만 끄는 게 아니라, 아예 찰흙으로 구워버림! (Batches 줄이기 위함)
+            //StoneOptimizer optimizer = anim.GetComponent<StoneOptimizer>();
+            //if (optimizer != null)
+            //{
+            //    optimizer.BakeToStaticMesh();
+            //}
+            //else
+            //{
+                anim.enabled = false; // 스크립트 없으면 예전처럼 애니메이터만 끔
+            //}
         }
     }
 
@@ -1161,53 +1171,55 @@ public class BoardManager : MonoBehaviour
         // 🎵 "샤라라~" 돌 완성 효과음 재생 
         SoundManager.Instance.PlaySFX("ShalalaSFX");
 
-        Vector3 centerPos = GetWinningLineCenter(winningCoords); // 계산 미리 해둠
+        Vector3 centerPos = GetWinningLineCenter(winningCoords);
 
-        // [A] 빌드업 대기 (2.5초)
-        yield return new WaitForSeconds(2.75f);
+        // [A] 기 모으는 빌드업 대기 (약 2.70초)
+        yield return new WaitForSeconds(2.70f);
 
-        // 🚨 [교정 1] 기 모으던 파티클이 "파아앗!" 뻗어나가는 걸 가장 먼저 터뜨립니다.
+        // ---------------------------------------------------------
+        // 🚨 [하이라이트] 여기서부터 모든 연출이 '동시'에 터집니다!
+        // ---------------------------------------------------------
+
+        // 1. 화면 화이트 플래시 (번쩍!)
+        if (SkillVFXManager.Instance != null)
+            SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
+
+        // 2. 가시광선 스포트라이트 & 꽃가루 폭죽 (번쩍임과 동시에 시작)
         if (SkillVFXManager.Instance != null)
         {
             float camDuration = gameManager.cameraSwitcher != null ? gameManager.cameraSwitcher.cinematicDuration : 1.5f;
             SkillVFXManager.Instance.PlayVictoryStageEffect(centerPos, camDuration);
         }
 
-        // [B] 그와 동시에 화이트 플래시 터짐! (이때부터 화면이 새하얗게 변합니다)
-        if (SkillVFXManager.Instance != null)
-            SkillVFXManager.Instance.PlayScreenFlash(Color.white, 1.5f);
+        // 3. 카메라 줌인 시작 (확대 시작!)
+        if (gameManager.cameraSwitcher != null)
+            StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
 
-        // UI 즉시 닫기
+        // 4. UI 닫기 및 BGM 변경
         if (gameManager.gameHUD != null)
         {
             if (gameManager.gameHUD.inGameUI != null) gameManager.gameHUD.inGameUI.SetActive(false);
             if (gameManager.gameHUD.opponentSilencedIcon != null) gameManager.gameHUD.opponentSilencedIcon.SetActive(false);
         }
-
         SoundManager.Instance.PlayBGM("BattleBGM");
 
-        // 🚨 [교정 2] "마법의 1프레임 대기" (진짜 중요)
-        // 위에서 명령한 플래시와 파티클이 화면에 그려지기 시작하도록 1프레임(0.016초) 텀을 줍니다.
-        // 이거 하나로 멈칫하는 스파이크 현상이 싹 사라집니다.
-        yield return null;
+        // ---------------------------------------------------------
+        // [눈속임 구간] 화면이 하얄 때 몰래 데이터 정리하기
+        // ---------------------------------------------------------
+        yield return null; // 1프레임 대기 (렌더링 안정화)
 
-        // 🚨 [최적화 1] 화면이 새하얄 때 마법의 프레임 분산으로 돌들을 스리슬쩍 변신시킴
         if (isConsecrationActive)
         {
             yield return StartCoroutine(RevealAllBlackStonesFastRoutine(winners));
         }
 
-        // 변신이 끝나자마자 진 돌들 15개 사출!
+        // 팝콘처럼 튀어오르는 패배팀 돌들 연출
         StartCoroutine(CleanUpAndFlyDefeatedStonesRoutine(winners, winnerColor, centerPos));
 
-        // 팝콘 튀어오르는 것 잠시 대기
-        yield return new WaitForSeconds(0.15f);
-
-        // 이제 카메라가 부드럽게 줌인 시작!
-        if (gameManager.cameraSwitcher != null)
-            StartCoroutine(gameManager.cameraSwitcher.VictoryCinematicCamera(centerPos, winnerColor, winningCoords));
-
+        // 카메라 회전에 맞춰 돌들도 카메라를 쳐다보게 함
         StartCoroutine(TrackCameraRoutine(winners, winnerColor));
+
+        yield return new WaitForSeconds(0.15f);
 
         // [점프 루프 및 판넬 등장]
         for (int i = 0; i < 3; i++)
