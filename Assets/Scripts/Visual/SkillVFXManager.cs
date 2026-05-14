@@ -283,7 +283,13 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
-            float curveT = t * t * (3f - 2f * t);
+
+            //float curveT = t * t * (3f - 2f * t);
+
+            // 🚨 [수정] 집중 속도 향상: 기존 curveT보다 더 빠르게 중심에 도달하도록 변경
+            // t * t * t (Cubic Ease-In) 또는 1 - (1-t)^3 (Cubic Ease-Out) 느낌을 섞어 
+            // 초반 텐션을 훨씬 높였습니다.
+            float curveT = 1f - Mathf.Pow(1f - t, 3f);
 
             for (int i = 0; i < 3; i++)
             {

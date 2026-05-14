@@ -45,6 +45,12 @@ public class InputManager : MonoBehaviour
             blackHoverIndicator.name = "BlackHoverIndicator_Dynamic";
             blackHoverIndicator.SetActive(false);
 
+            // 🚨 [추가] 흑돌 호버의 모든 렌더러 그림자 강제 끄기
+            foreach (Renderer r in blackHoverIndicator.GetComponentsInChildren<Renderer>())
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+
             StoneVisualController svc = blackHoverIndicator.GetComponent<StoneVisualController>();
             // 인스펙터 연동! (흑돌 전용 세팅값 주입)
             if (svc != null) svc.SetVisibility(true, true, vs.blackHoverAlpha, vs.blackHoverMetallic, vs.blackHoverSmoothness);
@@ -58,6 +64,12 @@ public class InputManager : MonoBehaviour
             whiteHoverIndicator = Instantiate(whiteHoverPrefab);
             whiteHoverIndicator.name = "WhiteHoverIndicator_Dynamic";
             whiteHoverIndicator.SetActive(false);
+
+            // 🚨 [추가] 백돌 호버의 모든 렌더러 그림자 강제 끄기
+            foreach (Renderer r in whiteHoverIndicator.GetComponentsInChildren<Renderer>())
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
 
             StoneVisualController svc = whiteHoverIndicator.GetComponent<StoneVisualController>();
             // 인스펙터 연동! (백돌 전용 세팅값 주입)
