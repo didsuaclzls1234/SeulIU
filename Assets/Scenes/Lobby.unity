@@ -1989,7 +1989,7 @@ PrefabInstance:
     - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
       propertyPath: sfxList.Array.data[4].clip
       value: 
-      objectReference: {fileID: 8300000, guid: be075cff594b0554d9b4d06a7e003e9a, type: 3}
+      objectReference: {fileID: 8300000, guid: b821aeb2b42035b43b60636ac257e484, type: 3}
     - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
       propertyPath: sfxList.Array.data[5].clip
       value: 
