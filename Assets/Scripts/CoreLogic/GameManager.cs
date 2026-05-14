@@ -254,35 +254,34 @@ public class GameManager : MonoBehaviour
         if (aiPlayer == null || currentState != GameState.Playing || isAITurnProcessing) return;
 
         isAITurnProcessing = true;
-        Debug.Log("[GameManager] AI가 수를 고민 중입니다...");
-
-        // AI가 연산을 시작할 때의 턴(착수 횟수)을 기억합니다.
+        // AI 연산을 시작할 때 누구 턴인지 정확히 기억해둡니다.
+        StoneColor turnWhenStarted = currentTurnColor;
         int expectedMoveCount = moveHistory.Count;
 
-        // AI가 사람처럼 고민하는 딜레이 타임 (0.3초)
         await Task.Delay(300);
 
-        // ** AI에게 넘겨줄 봉인(칼날비/봉인) 데이터 복사본 생성
         BoardManager.SealInfo[,] sealedClone = (BoardManager.SealInfo[,])board.sealedGrid.Clone();
-
-        // 비동기로 AI가 최적의 수를 계산 (화면 멈춤 없음)
         Vector2Int aiMove = await aiPlayer.CalculateBestMoveAsync(board.grid, sealedClone);
 
         isAITurnProcessing = false;
 
-        // 게임이 그 사이에 종료되지 않았다면 착수
-        // **연산이 끝났는데, 만약 타임아웃이 터져서 이미 턴이 넘어갔다면 이 수는 폐기합니다!
-        if (currentState == GameState.Playing && currentTurnColor != localPlayerColor && moveHistory.Count == expectedMoveCount)
+        // 🚨 [방어 코드 추가] 게임이 종료(Destroy)되었는지 확인
+        // this(GameManager)가 null이거나, board가 이미 파괴되었다면 착수 로직을 실행하지 않고 나갑니다.
+        if (this == null || board == null || !gameObject.activeInHierarchy) return;
+
+        // 🚨 [수정된 조건문]
+        // 1. 게임 오버가 아니고
+        // 2. 연산 시작했을 때의 그 턴 색깔이 여전히 현재 턴 색깔과 같고 (턴 안 넘어갔고)
+        // 3. 그 사이에 아무도 돌을 안 뒀다면 착수!
+        if (currentState == GameState.Playing && currentTurnColor == turnWhenStarted && moveHistory.Count == expectedMoveCount)
         {
             ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor, PlacementType.PlayerManual);
-
             if (currentState == GameState.GameOver) return;
-
             PassTurn(currentTurnColor);
         }
         else
         {
-            Debug.LogWarning("[GameManager] 이미 타임아웃 등으로 턴이 넘어갔으므로 AI의 지연 착수를 취소합니다.");
+            Debug.LogWarning("[AI] 연산 도중 턴이 밀렸거나 상태가 변해 착수를 취소합니다.");
         }
     }
 
@@ -550,13 +549,14 @@ public class GameManager : MonoBehaviour
         // 턴이 넘어갈 때마다 모드 상관없이 무조건 타이머 재시작! (0초 멈춤 해결)
         if (timerManager != null) timerManager.RestartTurnTimer();
 
-        // 5. AI 모드라면 AI에게 턴 넘김
+        // 🚨 [체크] AI 모드이고, 지금 바뀐 턴이 AI(localPlayerColor가 아님)라면?
         if (currentMode == PlayMode.AI && currentTurnColor != localPlayerColor)
         {
-            // AI가 스킬 쓸지 말지 먼저 판별
+            // 🚨 AI가 이미 연산 중이라면 강제로 풀어주고 다시 시킴 (중복 방지 해제)
+            isAITurnProcessing = false;
+
             if (skillManager != null) skillManager.AI_TryUseSkill();
 
-            // 그 다음 돌 두기
             ExecuteAITurn();
         }
     }

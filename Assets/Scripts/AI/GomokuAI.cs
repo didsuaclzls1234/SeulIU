@@ -18,7 +18,7 @@ public class GomokuAI
         this.playerColor = (aiColor == 1) ? 2 : 1;
         this.ruleManager = rm;
         this.boardSize = size;
-        this.maxDepth = difficulty;
+        this.maxDepth = Mathf.Clamp(difficulty, 1, 3); // 🚨 최대 깊이를 3으로 제한 (최적의 타협점)
         this.gameManager = gameManager;
     }
 
@@ -63,31 +63,38 @@ public class GomokuAI
     // =========================================================
     private Vector2Int GetBestMove(int[,] grid, RuleSettings aiRules, RuleSettings playerRules, int depth, BoardManager.SealInfo[,] sealedGrid)
     {
-        int bestScore = int.MinValue;
+        // 1. 점수 초기값을 아주 낮은 값으로 설정
+        float bestScore = float.NegativeInfinity;
         int size = grid.GetLength(0);
-        Vector2Int bestMove = new Vector2Int(size / 2, size / 2); // 첫 수라면 정중앙 
 
-        // 최적화 1: 19x19 전체를 돌지 않고, '돌이 놓여있는 곳 주변'만 후보군으로 추림
+        // 🚨 [수정] 후보군이 없을 때를 대비한 기본값 설정 (현재 판에 돌이 있으면 그 주변, 없으면 중앙)
+        Vector2Int bestMove = new Vector2Int(size / 2, size / 2);
+
         List<Vector2Int> candidateMoves = GetCandidateMoves(grid, aiColor, aiRules, sealedGrid);
 
+        // 2. 만약 후보가 하나도 없다면 (그럴 리 없겠지만 방어 코드) 바로 기본값 반환
         if (candidateMoves.Count == 0) return bestMove;
+
+        // 🚨 첫 번째 후보를 일단 기본값으로 설정해서, 루프에서 점수가 안 나와도 뭐라도 두게 만듦
+        bestMove = candidateMoves[0];
 
         foreach (Vector2Int move in candidateMoves)
         {
-            grid[move.x, move.y] = aiColor; // 가상으로 한 수 두어봄
+            grid[move.x, move.y] = aiColor;
 
-            // 미니맥스 + 알파베타 재귀 호출 시작 (상대방 턴으로 넘김 -> isMaximizing = false)
-            // 재귀 호출할 때 복사본 룰 2개도 같이 계속 토스!
+            // 미니맥스 호출
             int score = Minimax(grid, depth - 1, int.MinValue, int.MaxValue, false, aiRules, playerRules, sealedGrid);
 
-            grid[move.x, move.y] = 0; // 가상으로 둔 수 원상복구 (백트래킹)
+            grid[move.x, move.y] = 0; // 백트래킹
 
+            // 🚨 점수가 같더라도 랜덤성을 주거나, 더 좋은 수라면 갱신
             if (score > bestScore)
             {
                 bestScore = score;
                 bestMove = move;
             }
         }
+
         return bestMove;
     }
 
@@ -160,8 +167,9 @@ public class GomokuAI
     private List<Vector2Int> GetCandidateMoves(int[,] grid, int turnColor, RuleSettings snapshotRules, BoardManager.SealInfo[,] sealedGrid)
     {
         List<Vector2Int> moves = new List<Vector2Int>();
-        int radius = 2;
-
+        //int radius = 2;
+        // radius를 1로 줄여도 오목은 충분히 방어가 됩니다. 연산량 4배 감소!
+        int radius = 1;
         // 이 색깔(턴)에 금수가 아예 없으면 굳이 딥하게 검사 안 함 (최적화)
         bool hasForbidden = snapshotRules.ban33 || snapshotRules.ban44 || snapshotRules.banOverline;
 
