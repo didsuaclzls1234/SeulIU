@@ -506,7 +506,12 @@ public class BoardManager : MonoBehaviour
         sealedGrid[x, y].turns = turns;
         sealedGrid[x, y].owner = ownerColor;
         Vector2Int posKey = new Vector2Int(x, y);
-
+        
+        if (activeSealMarkers.ContainsKey(posKey))
+        {
+            RemoveSealEffect(x, y);
+        }
+            
         if (!activeSealMarkers.ContainsKey(posKey))
         {
             Vector3 spawnPos = new Vector3(x * gridSize, sealYOffset, y * gridSize);
@@ -515,30 +520,12 @@ public class BoardManager : MonoBehaviour
             Vector3 spawnRot = (gameManager.localPlayerColor == StoneColor.Black) ? blackSealRotation : whiteSealRotation;
             GameObject marker = ObjectPooler.Instance.SpawnFromPool("SealMarker", spawnPos, Quaternion.Euler(spawnRot));
 
-             // ↓ 추가: 이미 마커가 있으면 색상만 업데이트
-            if (activeSealMarkers.ContainsKey(posKey))
-            {
-                MeshRenderer mr = activeSealMarkers[posKey].GetComponent<MeshRenderer>();
-                if (mr != null)
-                {
-                    Material instancedMat = mr.material;
-                    Color finalColor = (ownerColor == gameManager.localPlayerColor)
-                        ? new Color(0.2f, 0.6f, 1f, 0.8f)
-                        : new Color(1f, 0.2f, 0.2f, 0.8f);
-
-                    if (instancedMat.HasProperty("_BaseColor")) instancedMat.SetColor("_BaseColor", finalColor);
-                    else if (instancedMat.HasProperty("_Color")) instancedMat.SetColor("_Color", finalColor);
-                }
-                return;
-            }
-            
-
             if (marker == null) return;
 
-            MeshRenderer mr2 = marker.GetComponent<MeshRenderer>();
-            if (mr2 != null)
+            MeshRenderer mr = marker.GetComponent<MeshRenderer>();
+            if (mr != null)
             {
-                Material instancedMat = mr2.material;
+                Material instancedMat = mr.material;
                 Color finalColor = (ownerColor == gameManager.localPlayerColor) ? new Color(0.2f, 0.6f, 1f, 0.8f) : new Color(1f, 0.2f, 0.2f, 0.8f);
 
                 if (instancedMat.HasProperty("_BaseColor")) instancedMat.SetColor("_BaseColor", finalColor);
