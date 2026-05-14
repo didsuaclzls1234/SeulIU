@@ -254,7 +254,13 @@ public class BoardManager : MonoBehaviour
 
             // 생성된 직후 "착수 애니메이션" 
             Animator anim = newStone.GetComponent<Animator>();
-            if (anim != null) anim.SetTrigger("DoChaksu");
+            if (anim != null)
+            {
+                anim.enabled = true; // 확실히 켜주고
+                anim.SetTrigger("DoChaksu");
+                // 1.5초 뒤(착수 모션이 끝날 쯤)에 애니메이터를 기절시키는 코루틴 실행
+                StartCoroutine(SleepAnimatorRoutine(anim, 1.5f)); // ** 최적화
+            }
 
             Debug.Log($"[BoardManager] 좌표 ({x}, {y})에 3D 돌 생성 완료!");
             return newStone;
@@ -262,6 +268,16 @@ public class BoardManager : MonoBehaviour
 
         // 만약 금수 자리거나 룰에 막혀서 돌을 못 놓았다면 빈 값(null) 반환
         return null;
+    }
+
+    private IEnumerator SleepAnimatorRoutine(Animator anim, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        // 돌이 파괴되지 않고 살아있다면 애니메이터만 끔 (CPU 휴식)
+        if (anim != null && anim.gameObject.activeInHierarchy)
+        {
+            anim.enabled = false;
+        }
     }
 
     // 전체 바둑판을 스캔해서 ❌ 마커를 그리는 함수
@@ -324,7 +340,12 @@ public class BoardManager : MonoBehaviour
         foreach (var flare in activeFlares) if (flare != null) flare.SetActive(false);
         activeFlares.Clear();
 
-        foreach (GameObject stone in activeStones) stone.SetActive(false);
+        foreach (GameObject stone in activeStones)
+        {
+            Animator anim = stone.GetComponent<Animator>();
+            if (anim != null) anim.enabled = true; // 풀로 돌아가기 전에 애니메이터를 켜놔야 나중에 다시 나올 때 문제없음
+            stone.SetActive(false);
+        }
         activeStones.Clear();
 
         foreach (GameObject mark in forbiddenMarks) mark.SetActive(false);
@@ -1194,7 +1215,15 @@ public class BoardManager : MonoBehaviour
             for (int j = 0; j < winners.Count; j++)
             {
                 var stone = winners[j];
-                if (stone != null) stone.GetComponent<Animator>()?.SetTrigger("DoWin");
+                if (stone != null)
+                {
+                    Animator anim = stone.GetComponent<Animator>();
+                    if (anim != null)
+                    {
+                        anim.enabled = true; // 🚨 잠들어있던 애니메이터 다시 기상!
+                        anim.SetTrigger("DoWin");
+                    }
+                }
                 yield return new WaitForSeconds(0.05f);
             }
 
