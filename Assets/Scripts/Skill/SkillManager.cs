@@ -1020,7 +1020,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(0, 0);
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
             gameManager.gameHUD.SetOpponentSilencedUI(false);
-            //gameManager.gameHUD.ResetSkillLog();
+            gameManager.gameHUD.ResetSkillLog();
             gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
             gameManager.gameHUD?.RefreshOppDeckSlots(new int[] { -1, -1, -1 }, skillDatabase);
         }
