@@ -1191,9 +1191,6 @@ public class BoardManager : MonoBehaviour
         // [점프 루프 및 판넬 등장]
         for (int i = 0; i < 3; i++)
         {
-            if (i == 1 && gameManager.gameHUD != null)
-                gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: false, playSound: true);
-
             for (int j = 0; j < winners.Count; j++)
             {
                 var stone = winners[j];
@@ -1205,7 +1202,10 @@ public class BoardManager : MonoBehaviour
             {
                 yield return new WaitForSeconds(0.3f);
                 if (gameManager.gameHUD != null)
-                    gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: true, playSound: false);
+                {
+                    // 🚨 [수정 2] 판넬 띄우는 이 순간에 소리도 'true'로 같이 쏴줍니다!
+                    gameManager.gameHUD.ShowGameOver(winnerColor, gameManager.localPlayerColor, true, showPanel: true, playSound: true);
+                }
             }
             yield return new WaitForSeconds(0.7f);
         }

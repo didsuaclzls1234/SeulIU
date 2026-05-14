@@ -281,10 +281,7 @@ public class GameHUD : MonoBehaviour
         if (winner == StoneColor.None)
         {
             inGameUI?.SetActive(false);
-
-            // 자물쇠 마커도 같이 끄기
             if (opponentSilencedIcon != null) opponentSilencedIcon.SetActive(false);
-
             if (resultPanel) resultPanel.SetActive(true);
             if (resultImage != null) resultImage.sprite = null;
             return;
@@ -295,14 +292,29 @@ public class GameHUD : MonoBehaviour
 
         bool isWin = (gameManager.currentMode == PlayMode.Solo) ? (winner == StoneColor.Black) : (winner == myColor);
 
-        // 판넬 띄우기와 효과음 재생을 하나의 블록으로 묶음!
-        // 판넬이 화면에 등장(SetActive)하는 바로 그 프레임에 소리가 터집니다.
         if (showPanel)
         {
-            // 판넬 켜기
+            // 🚨 [해결 1] 사운드 명령을 '무조건 1순위'로 쏩니다!
+            // UI를 켜는 SetActive(true)는 순간적인 렉을 유발합니다.
+            // 렉이 걸리기 전에 사운드 명령을 먼저 던져놔야 화면과 소리가 완벽하게 1프레임에 동기화됩니다.
+            if (playSound)
+            {
+                if (isWin)
+                {
+                    // [해결 2] 1번만 틀 거면 딜레이 없는 PlaySFX를 직접 호출해서 즉각 반응하게 만듦
+                    if (victorySFXCount <= 1) SoundManager.Instance.PlaySFX("VictorySFX");
+                    else SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
+                }
+                else
+                {
+                    if (defeatSFXCount <= 1) SoundManager.Instance.PlaySFX("DefeatSFX");
+                    else SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
+                }
+            }
+
+            // 🚨 [해결 3] 사운드를 날린 직후에 UI 판넬 활성화
             if (resultPanel) resultPanel.SetActive(true);
 
-            // 결과 이미지 켜기
             if (resultImage != null)
             {
                 resultImage.gameObject.SetActive(true);
@@ -310,13 +322,6 @@ public class GameHUD : MonoBehaviour
             }
 
             UpdateGameLog();
-
-            // 판넬이 뜨는 순간에 효과음 재생!
-            if (playSound)
-            {
-                if (isWin) SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
-                else SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
-            }
         }
     }
 
@@ -467,30 +472,61 @@ public class GameHUD : MonoBehaviour
         }
     }
     // 2. 버프/디버프 상태 전체 갱신 
+    // 2. 버프/디버프 상태 전체 갱신 (🚨 무한 Instantiate 방지 최적화 버전)
     public void RefreshBuffIcons(List<ActiveEffect> effects, StoneColor myColor)
     {
-        // 기존 아이콘 전부 제거
-        foreach (Transform child in blackBuffContainer) Destroy(child.gameObject);
-        foreach (Transform child in whiteBuffContainer) Destroy(child.gameObject);
+        // 1. 내 버프와 상대 버프 리스트 분리
+        List<ActiveEffect> myEffects = new List<ActiveEffect>();
+        List<ActiveEffect> oppEffects = new List<ActiveEffect>();
 
-        foreach (ActiveEffect effect in effects)
+        foreach (var effect in effects)
         {
-            // isBuff면 내 컨테이너, 아니면 상대 컨테이너
-            Transform targetContainer = effect.isBuff ?
-                (myColor == StoneColor.Black ? blackBuffContainer : whiteBuffContainer) :
-                (myColor == StoneColor.Black ? whiteBuffContainer : blackBuffContainer);
+            if (effect.isBuff) myEffects.Add(effect);
+            else oppEffects.Add(effect);
+        }
 
-            GameObject icon = Instantiate(buffIconPrefab, targetContainer);
+        // 2. 각각의 컨테이너 갱신 (흑돌이면 내 버프가 black, 백돌이면 white)
+        UpdateBuffContainer(blackBuffContainer, myColor == StoneColor.Black ? myEffects : oppEffects);
+        UpdateBuffContainer(whiteBuffContainer, myColor == StoneColor.White ? myEffects : oppEffects);
+    }
 
-            TextMeshProUGUI nameText = icon.transform.Find("SkillNameText").GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI turnsText = icon.transform.Find("RemainingTurnsText").GetComponent<TextMeshProUGUI>();
+    // 헬퍼 함수: Destroy 없이 자식 오브젝트를 재사용하여 UI를 갱신합니다.
+    private void UpdateBuffContainer(Transform container, List<ActiveEffect> targetEffects)
+    {
+        // 필요한 만큼 아이콘을 켜거나 새로 만듦
+        for (int i = 0; i < targetEffects.Count; i++)
+        {
+            GameObject iconObj;
+            if (i < container.childCount)
+            {
+                // 이미 자식이 있다면 재사용
+                iconObj = container.GetChild(i).gameObject;
+                iconObj.SetActive(true);
+            }
+            else
+            {
+                // 부족할 때만 새로 생성
+                iconObj = Instantiate(buffIconPrefab, container);
+            }
 
-            if (nameText) nameText.text = effect.effectName;
-            if (turnsText) turnsText.text = $"남은 턴: {effect.remainingTurns}";
+            // 텍스트 갱신
+            TextMeshProUGUI nameText = iconObj.transform.Find("SkillNameText")?.GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI turnsText = iconObj.transform.Find("RemainingTurnsText")?.GetComponent<TextMeshProUGUI>();
 
-            SkillTooltipTrigger trigger = icon.GetComponent<SkillTooltipTrigger>();
-            if (trigger == null) trigger = icon.AddComponent<SkillTooltipTrigger>();
-            trigger.SetEffect(effect);
+            if (nameText) nameText.text = targetEffects[i].effectName;
+            if (turnsText) turnsText.text = $"남은 턴: {targetEffects[i].remainingTurns}";
+
+            // 툴팁 세팅 (AddComponent는 최초 생성 시 1번만 붙도록 처리됨)
+            SkillTooltipTrigger trigger = iconObj.GetComponent<SkillTooltipTrigger>();
+            if (trigger == null) trigger = iconObj.AddComponent<SkillTooltipTrigger>();
+
+            trigger.SetEffect(targetEffects[i]);
+        }
+
+        // 남는(안 쓰는) 기존 아이콘들은 부수지 않고 숨겨만 둠
+        for (int i = targetEffects.Count; i < container.childCount; i++)
+        {
+            container.GetChild(i).gameObject.SetActive(false);
         }
     }
 
