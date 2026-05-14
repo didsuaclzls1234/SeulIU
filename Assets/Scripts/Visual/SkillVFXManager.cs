@@ -481,12 +481,12 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
     }
 
     // =========================================================
-    // 1. 칼날비 전용: 찰진 좌우 셰이크 (네다섯 번 드드드드!)
+    // 1. 칼날비 전용: 기존 좌우 셰이크 대신 상하좌우 다방향 셰이크로 교체
     // =========================================================
     public void PlayBladefallShake()
     {
-        // 0.1초씩 5번, 강도 0.4로 아주 빠르게 흔듦
-        StartCoroutine(HorizontalShakeRoutine(0.5f, 0.4f, 80f));
+        // 0.4초 동안 0.3의 강도로 강하게 사방으로 흔듦
+        StartCoroutine(MultiDirectionShakeRoutine(0.4f, 0.3f));
     }
 
     // =========================================================
@@ -604,4 +604,36 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
         Debug.Log("[SkillVFXManager] 게임 오버! 모든 스킬 이펙트 강제 클리어 완료!");
     }
 
+    // =========================================================
+    // [추가] 상하좌우 우다다다 진동 (X, Y, Z 축 모두 흔들림)
+    // =========================================================
+    public void PlayMultiDirectionShake(float duration = 0.5f, float magnitude = 0.2f)
+    {
+        StartCoroutine(MultiDirectionShakeRoutine(duration, magnitude));
+    }
+
+    private IEnumerator MultiDirectionShakeRoutine(float duration, float magnitude)
+    {
+        Camera activeCam = Camera.main;
+        if (cameraSwitcher != null)
+        {
+            activeCam = cameraSwitcher.topCamera.depth > 0 ? cameraSwitcher.topCamera :
+                        (cameraSwitcher.blackPlayerCamera.depth > 0 ? cameraSwitcher.blackPlayerCamera : cameraSwitcher.whitePlayerCamera);
+        }
+        if (activeCam == null) yield break;
+
+        Vector3 originalPos = activeCam.transform.localPosition;
+        float elapsed = 0.0f;
+
+        while (elapsed < duration)
+        {
+            // 구체 내부의 랜덤한 좌표를 생성하여 상하좌우 무작위 진동 구현
+            Vector3 randomOffset = Random.insideUnitSphere * magnitude;
+            activeCam.transform.localPosition = originalPos + randomOffset;
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        activeCam.transform.localPosition = originalPos;
+    }
 }
