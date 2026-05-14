@@ -231,6 +231,12 @@ public class BoardManager : MonoBehaviour
             }
 
             GameObject newStone = ObjectPooler.Instance.SpawnFromPool(poolTag, spawnPos, Quaternion.Euler(0, yRotation, 0));
+            MeshRenderer mr = newStone.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.enabled = true;
+                mr.material.color = Color.white;
+            }
             activeStones.Add(newStone);
 
             // 신성화 상태 처리 
