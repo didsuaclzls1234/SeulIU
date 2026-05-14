@@ -1976,7 +1976,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
       propertyPath: sfxList.Array.size
-      value: 4
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
       propertyPath: sfxList.Array.data[2].clip
@@ -1987,11 +1987,27 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 117b581452f860d448141e9f16fd159a, type: 3}
     - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
+      propertyPath: sfxList.Array.data[4].clip
+      value: 
+      objectReference: {fileID: 8300000, guid: be075cff594b0554d9b4d06a7e003e9a, type: 3}
+    - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
+      propertyPath: sfxList.Array.data[5].clip
+      value: 
+      objectReference: {fileID: 8300000, guid: be075cff594b0554d9b4d06a7e003e9a, type: 3}
+    - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
       propertyPath: sfxList.Array.data[2].soundName
       value: PlaceStone
       objectReference: {fileID: 0}
     - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
       propertyPath: sfxList.Array.data[3].soundName
+      value: Tick
+      objectReference: {fileID: 0}
+    - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
+      propertyPath: sfxList.Array.data[4].soundName
+      value: ShalalaSFX
+      objectReference: {fileID: 0}
+    - target: {fileID: 2354740069718019366, guid: c3da91ffc57daee45b793be95304e660, type: 3}
+      propertyPath: sfxList.Array.data[5].soundName
       value: Tick
       objectReference: {fileID: 0}
     - target: {fileID: 3910976551821912484, guid: c3da91ffc57daee45b793be95304e660, type: 3}
