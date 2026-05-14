@@ -181,14 +181,19 @@ public class BoardManager : MonoBehaviour
         if (sealedGrid[x, y].turns > 0)
         {
             // 칼날비(None)는 피아 식별 없이 무조건 입구컷
-            if (sealedGrid[x, y].owner == StoneColor.None)
+            // if (sealedGrid[x, y].owner == StoneColor.None)
+            // {
+            //     if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
+            //     return false;
+            // }
+            // // if (playerColor != sealedGrid[x, y].owner)
+            // {
+            //     if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+            //     return false;
+            // }
+            if (sealedGrid[x, y].turns > 0)
             {
-                if (!silent) Debug.LogWarning("칼날비가 내린 곳에는 착수할 수 없습니다!");
-                return false;
-            }
-            if (playerColor != sealedGrid[x, y].owner)
-            {
-                if (!silent) Debug.LogWarning("상대방에 의해 봉인된 칸입니다!");
+                if (!silent) Debug.LogWarning("봉인된 칸입니다!");
                 return false;
             }
         }
@@ -501,7 +506,12 @@ public class BoardManager : MonoBehaviour
         sealedGrid[x, y].turns = turns;
         sealedGrid[x, y].owner = ownerColor;
         Vector2Int posKey = new Vector2Int(x, y);
-
+        
+        if (activeSealMarkers.ContainsKey(posKey))
+        {
+            RemoveSealEffect(x, y);
+        }
+            
         if (!activeSealMarkers.ContainsKey(posKey))
         {
             Vector3 spawnPos = new Vector3(x * gridSize, sealYOffset, y * gridSize);

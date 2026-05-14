@@ -645,8 +645,8 @@ public class SkillManager : MonoBehaviour
     
     private void ReceiveSkill_AntiMagic(int[] xs, int[] ys)
     {
-        sealedTurnsRemaining = 2;
-        Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 2턴간 봉인");
+        sealedTurnsRemaining = skillDatabase.TryGetValue(4, out SkillData data) ? data.durationTurn : 2; // CSV에서 지속 턴 가져오기 (기본값 2턴)
+        Debug.Log("[Network] AntiMagic 수신 — 상대 스킬 " + sealedTurnsRemaining + "턴간 봉인");
 
         RefreshAntiMagicOverlayUI();
 
@@ -654,7 +654,7 @@ public class SkillManager : MonoBehaviour
         if (gameManager.gameHUD != null)
         {
             gameManager.gameHUD.SetOpponentSilencedUI(true);
-            gameManager.gameHUD.ShowSystemMessage("상대방이 안티매직을 사용했습니다. 2턴간 스킬 사용 불가!");
+            gameManager.gameHUD.ShowSystemMessage("상대방이 안티매직을 사용했습니다. " + sealedTurnsRemaining + "턴간 스킬 사용 불가!");
         }
     }
 
@@ -957,7 +957,7 @@ public class SkillManager : MonoBehaviour
             gameManager.gameHUD.UpdateSPUI(0, 0);
             gameManager.gameHUD.RefreshBuffIcons(activeEffects, gameManager.localPlayerColor);
             gameManager.gameHUD.SetOpponentSilencedUI(false);
-            //gameManager.gameHUD.ResetSkillLog();
+            gameManager.gameHUD.ResetSkillLog();
             gameManager.gameHUD?.RefreshDeckSlots(mySkillsID, skillDatabase);
             gameManager.gameHUD?.RefreshOppDeckSlots(new int[] { -1, -1, -1 }, skillDatabase);
         }

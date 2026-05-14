@@ -834,4 +834,11 @@ public class GameHUD : MonoBehaviour
                 gameLogScrollRect.verticalNormalizedPosition = 0f;
     }
     
+    public void ResetSkillLog()
+    {
+        _turnLogs.Clear();
+        _pendingSkillWho = null;
+        _pendingSkillName = null;
+        if (gameLogText != null) gameLogText.text = "";
+    }
 }  
