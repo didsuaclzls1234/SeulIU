@@ -275,61 +275,47 @@ public class GameHUD : MonoBehaviour
         // 스킬 버튼들의 활성화 여부 제어 로직 등
     }
 
-    public void ShowGameOver(StoneColor winner, StoneColor myColor)
+    // 🚨 파라미터에 fromCinematic 기본값 추가!
+    public void ShowGameOver(StoneColor winner, StoneColor myColor, bool fromCinematic = false, bool showPanel = true, bool playSound = true)
     {
-        StartCoroutine(ShowGameOverRoutine(winner, myColor));
-    }
-
-    // ** 게임 오버 연출(테두리, 튕겨나감, 점프)을 볼 시간을 벌어주는 대기 코루틴
-    private IEnumerator ShowGameOverRoutine(StoneColor winner, StoneColor myColor)
-    {   
-        inGameUI?.SetActive(false);
-        // 1. 빨간 테두리를 감상하는 3초 동안 대기 (이때까진 기존 브금 유지)
-        yield return new WaitForSeconds(3.0f);
-
-        // 2. 테두리가 끝나고 돌이 날아가며 카메라가 움직이기 시작할 때 브금 변경!
-        SoundManager.Instance.PlayBGM("BattleBGM");
-
-        // 3. 나머지 시네마틱 연출(카메라 워킹, 폴짝 점프 등)이 끝날 때까지 5.5초 더 대기 (총 8.5초)
-        yield return new WaitForSeconds(5.5f);
-
-        // --- 여기서부터 기존 결과창 UI 띄우기 시작 ---
-        if (resultPanel) resultPanel.SetActive(true);
-        //SetGameOverResultTexts(winner, myColor);
-        //if (resultText == null) yield break;
-
-        // 무승부 공통
+        // 1. 무승부(None)면 묻지도 따지지도 않고 바로 띄움
         if (winner == StoneColor.None)
         {
-            //resultText.text = "무승부!";
+            inGameUI?.SetActive(false);
+
+            // 🚨 [여기에 추가!] 자물쇠 마커도 같이 끄기
+            if (opponentSilencedIcon != null) opponentSilencedIcon.SetActive(false);
+
+            if (resultPanel) resultPanel.SetActive(true);
+            if (resultImage != null) resultImage.sprite = null;
+            return;
+        }
+
+        // 2. 승/패인 경우, 시네마틱 연출에서 부른 게 아니면 무조건 씹어버림! 
+        if (!fromCinematic) return;
+
+        bool isWin = (gameManager.currentMode == PlayMode.Solo) ? (winner == StoneColor.Black) : (winner == myColor);
+
+        // [효과음 재생]
+        if (playSound)
+        {
+            if (isWin) SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
+            else SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
+        }
+
+        // [판넬 띄우기]
+        if (showPanel)
+        {
+            if (resultPanel) resultPanel.SetActive(true);
+
             if (resultImage != null)
             {
-                resultImage.sprite = null; // 무승부일 경우 이미지 비우기
+                resultImage.gameObject.SetActive(true);
+                resultImage.sprite = isWin ? victorySprite : defeatSprite;
             }
-            yield break;
+            UpdateGameLog();
         }
-        bool isWin = (winner == myColor);
-        
-        // 솔로 모드는 흑 기준
-        if (gameManager.currentMode == PlayMode.Solo)
-            isWin = (winner == StoneColor.Black);
-
-        // resultText 대신 resultImage로 교체
-        if (resultImage != null)
-        {
-            resultImage.gameObject.SetActive(true);
-            resultImage.sprite = isWin ? victorySprite : defeatSprite;
-        }
-        // BattleBGM과 SFX 동시 재생 (이것도 결과창 뜰 때 똭! 소리 나게)
-        
-        if (isWin)
-            SoundManager.Instance.PlaySFXRepeat("VictorySFX", victorySFXCount);
-        else
-            SoundManager.Instance.PlaySFXRepeat("DefeatSFX", defeatSFXCount);
-        
-        UpdateGameLog();
     }
-
     public void ShowOpponentLeft()
     {
         if (resultPanel) resultPanel.SetActive(true);
@@ -822,9 +808,9 @@ public class GameHUD : MonoBehaviour
                 sb.AppendLine($"  착수 : {entry.who}({entry.color.ToKorean()}) ({entry.stoneX}, {entry.stoneY})");
         }
 
-    gameLogText.text = sb.ToString();
-        // 최신 로그가 보이도록 맨 아래로 스크롤
-    StartCoroutine(ScrollToBottom());
+        gameLogText.text = sb.ToString();
+            // 최신 로그가 보이도록 맨 아래로 스크롤
+        StartCoroutine(ScrollToBottom());
     }
     
     private IEnumerator ScrollToBottom()

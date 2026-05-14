@@ -1237,7 +1237,11 @@ public class SkillManager : MonoBehaviour
         skill.currentCooldown = skill.data.cooldown;
         gameManager.hasUsedSkillThisTurn = true;
         //gameManager.gameHUD?.AddSkillLog("나", skill.data.skillName, gameManager.CurrentMoveCount);
-         // B타입은 ExecutePendingSkill에서 로그 기록
+
+        // 🚨 [추가] 내가 스킬을 사용 확정했을 때 내 화면만 약하게 상하좌우 진동 (피드백)
+        SkillVFXManager.Instance.PlayMultiDirectionShake(0.15f, 0.05f);
+
+        // B타입은 ExecutePendingSkill에서 로그 기록
         bool isBType = (skill.data.skillId == 3 || skill.data.skillId == 6);
         if (!isBType)
             {

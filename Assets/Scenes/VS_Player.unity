@@ -6127,7 +6127,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.size
-      value: 6
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[3].tag
@@ -6140,6 +6140,14 @@ PrefabInstance:
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[5].tag
       value: BladefallKnife
+      objectReference: {fileID: 0}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[6].tag
+      value: WhiteFlare
+      objectReference: {fileID: 0}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[7].tag
+      value: BlackFlare
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[0].size
@@ -6166,6 +6174,14 @@ PrefabInstance:
       value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[6].size
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[7].size
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
       propertyPath: pools.Array.data[0].prefab
       value: 
       objectReference: {fileID: 4198048179304034673, guid: 76f052f86850d094683a83724b81d2e0, type: 3}
@@ -6185,6 +6201,14 @@ PrefabInstance:
       propertyPath: pools.Array.data[5].prefab
       value: 
       objectReference: {fileID: 8754382739753334551, guid: a1b0a55866b076040a0807bac6fe1745, type: 3}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[6].prefab
+      value: 
+      objectReference: {fileID: 1805770378969716241, guid: 6abb20905bf81574c9a951c8c38b42c0, type: 3}
+    - target: {fileID: 7027662149189162752, guid: 6ab15429e9183d847ac876cb45cbeeb1, type: 3}
+      propertyPath: pools.Array.data[7].prefab
+      value: 
+      objectReference: {fileID: 7384497841902640011, guid: f1c733dc7e7e10a4da0ee521de0ee5fc, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -8513,6 +8537,14 @@ PrefabInstance:
     - target: {fileID: 4091419256291013941, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -54.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4133106553059291817, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 703
+      objectReference: {fileID: 0}
+    - target: {fileID: 4133106553059291817, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -310
       objectReference: {fileID: 0}
     - target: {fileID: 4133441831260420249, guid: dbed48dd2ce93fc428e8997ec295d986, type: 3}
       propertyPath: m_SizeDelta.x

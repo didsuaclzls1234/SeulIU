@@ -298,8 +298,12 @@ public class GameManager : MonoBehaviour
             SkillVFXManager.Instance.ClearAllEffects();
         }
 
-        // UI는 무조건 GameHUD가 처리하도록 위임
-        if (gameHUD != null) gameHUD.ShowGameOver(winner, localPlayerColor);
+        // 🚨 [수정] 무승부(None)일 경우에만 여기서 바로 결과창을 띄우고, 
+        // 누군가 이겼다면 BoardManager의 시네마틱 연출(3번째 점프)에서 띄우도록 위임합니다!
+        if (winner == StoneColor.None)
+        {
+            if (gameHUD != null) gameHUD.ShowGameOver(winner, localPlayerColor);
+        }
 
         // ** 네트워크 전송 조건 수정
         // 5목 승리는 각자 계산하므로, 여기서는 내가 이겼을 때만 '확인 사살용'으로 한 번 보냅니다.

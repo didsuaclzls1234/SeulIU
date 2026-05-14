@@ -29,6 +29,9 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
     [Tooltip("원뿔 밑동의 반지름 (바닥 동그라미 크기에 맞춰 조절)")]
     public float beamBottomRadius = 1.6f;
 
+    // 🚨 [추가] 생성된 꽃가루를 기억할 변수
+    private ParticleSystem activeConfetti;
+
     protected override void Awake()
     {
         base.Awake();
@@ -239,9 +242,10 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
     {
         if (confettiParticlePrefab != null)
         {
-            ParticleSystem confetti = Instantiate(confettiParticlePrefab);
-            confetti.Play();
-            Destroy(confetti.gameObject, duration + 2f);
+            // 🚨 [수정] Destroy 타이머를 없애고 변수에 저장만 해둡니다!
+            if (activeConfetti != null) Destroy(activeConfetti.gameObject); // 혹시 남아있던 거 치우기
+            activeConfetti = Instantiate(confettiParticlePrefab);
+            activeConfetti.Play();
         }
 
         if (fake2DSpotlightPrefab != null)
@@ -312,6 +316,14 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
         {
             if (victoryLights[i] != null) victoryLights[i].SetActive(false);
         }
+
+        // 🚨 [추가] 다음 게임을 위해 바닥에 떨어진 꽃가루 싹 치우기!
+        if (activeConfetti != null)
+        {
+            Destroy(activeConfetti.gameObject);
+            activeConfetti = null;
+        }
+
     }
 
     // =========================================================
@@ -469,12 +481,12 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
     }
 
     // =========================================================
-    // 1. 칼날비 전용: 찰진 좌우 셰이크 (네다섯 번 드드드드!)
+    // 1. 칼날비 전용: 기존 좌우 셰이크 대신 상하좌우 다방향 셰이크로 교체
     // =========================================================
     public void PlayBladefallShake()
     {
-        // 0.1초씩 5번, 강도 0.4로 아주 빠르게 흔듦
-        StartCoroutine(HorizontalShakeRoutine(0.5f, 0.4f, 80f));
+        // 0.4초 동안 0.3의 강도로 강하게 사방으로 흔듦
+        StartCoroutine(MultiDirectionShakeRoutine(0.4f, 0.3f));
     }
 
     // =========================================================
@@ -592,4 +604,36 @@ public class SkillVFXManager : Singleton<SkillVFXManager>
         Debug.Log("[SkillVFXManager] 게임 오버! 모든 스킬 이펙트 강제 클리어 완료!");
     }
 
+    // =========================================================
+    // [추가] 상하좌우 우다다다 진동 (X, Y, Z 축 모두 흔들림)
+    // =========================================================
+    public void PlayMultiDirectionShake(float duration = 0.5f, float magnitude = 0.2f)
+    {
+        StartCoroutine(MultiDirectionShakeRoutine(duration, magnitude));
+    }
+
+    private IEnumerator MultiDirectionShakeRoutine(float duration, float magnitude)
+    {
+        Camera activeCam = Camera.main;
+        if (cameraSwitcher != null)
+        {
+            activeCam = cameraSwitcher.topCamera.depth > 0 ? cameraSwitcher.topCamera :
+                        (cameraSwitcher.blackPlayerCamera.depth > 0 ? cameraSwitcher.blackPlayerCamera : cameraSwitcher.whitePlayerCamera);
+        }
+        if (activeCam == null) yield break;
+
+        Vector3 originalPos = activeCam.transform.localPosition;
+        float elapsed = 0.0f;
+
+        while (elapsed < duration)
+        {
+            // 구체 내부의 랜덤한 좌표를 생성하여 상하좌우 무작위 진동 구현
+            Vector3 randomOffset = Random.insideUnitSphere * magnitude;
+            activeCam.transform.localPosition = originalPos + randomOffset;
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        activeCam.transform.localPosition = originalPos;
+    }
 }
