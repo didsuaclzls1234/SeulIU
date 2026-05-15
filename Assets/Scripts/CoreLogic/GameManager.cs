@@ -253,35 +253,54 @@ public class GameManager : MonoBehaviour
     {
         if (aiPlayer == null || currentState != GameState.Playing || isAITurnProcessing) return;
 
-        isAITurnProcessing = true;
-        // AI 연산을 시작할 때 누구 턴인지 정확히 기억해둡니다.
-        StoneColor turnWhenStarted = currentTurnColor;
-        int expectedMoveCount = moveHistory.Count;
-
-        await Task.Delay(300);
-
-        BoardManager.SealInfo[,] sealedClone = (BoardManager.SealInfo[,])board.sealedGrid.Clone();
-        Vector2Int aiMove = await aiPlayer.CalculateBestMoveAsync(board.grid, sealedClone);
-
-        isAITurnProcessing = false;
-
-        // 🚨 [방어 코드 추가] 게임이 종료(Destroy)되었는지 확인
-        // this(GameManager)가 null이거나, board가 이미 파괴되었다면 착수 로직을 실행하지 않고 나갑니다.
-        if (this == null || board == null || !gameObject.activeInHierarchy) return;
-
-        // 🚨 [수정된 조건문]
-        // 1. 게임 오버가 아니고
-        // 2. 연산 시작했을 때의 그 턴 색깔이 여전히 현재 턴 색깔과 같고 (턴 안 넘어갔고)
-        // 3. 그 사이에 아무도 돌을 안 뒀다면 착수!
-        if (currentState == GameState.Playing && currentTurnColor == turnWhenStarted && moveHistory.Count == expectedMoveCount)
+        try
         {
-            ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor, PlacementType.PlayerManual);
-            if (currentState == GameState.GameOver) return;
-            PassTurn(currentTurnColor);
+            isAITurnProcessing = true; // 자물쇠 잠금
+            StoneColor turnWhenStarted = currentTurnColor;
+            int expectedMoveCount = moveHistory.Count;
+
+            // AI가 생각하는 척 하는 딜레이
+            await Task.Delay(300);
+
+            // 🚨 [방어] 딜레이 도중 게임이 꺼졌는지 체크
+            if (this == null || board == null || !gameObject.activeInHierarchy) return;
+
+            BoardManager.SealInfo[,] sealedClone = (BoardManager.SealInfo[,])board.sealedGrid.Clone();
+
+            // 비동기 연산 시작
+            Vector2Int aiMove = await aiPlayer.CalculateBestMoveAsync(board.grid, sealedClone);
+
+            // 🚨 [방어] 연산 직후 게임 상태 다시 체크
+            if (this == null || board == null || !gameObject.activeInHierarchy) return;
+
+            // 현재 턴이 여전히 AI 턴이고, 그 사이 아무도 돌을 안 뒀다면 착수
+            if (currentState == GameState.Playing && currentTurnColor == turnWhenStarted && moveHistory.Count == expectedMoveCount)
+            {
+                ExecutePlaceStone(aiMove.x, aiMove.y, currentTurnColor, PlacementType.PlayerManual);
+                if (currentState == GameState.GameOver) return;
+                PassTurn(currentTurnColor);
+            }
         }
-        else
+        catch (Exception e)
         {
-            Debug.LogWarning("[AI] 연산 도중 턴이 밀렸거나 상태가 변해 착수를 취소합니다.");
+            // 🚨 빌드 로그에서 에러 확인용
+            Debug.LogError($"[AI 치명적 오류] {e.Message}\n{e.StackTrace}");
+
+            // 에러가 났을 때 먹통 방지: 빈 칸 아무 데나 랜덤으로 두고 턴 넘기기
+            if (this != null && currentState == GameState.Playing)
+            {
+                Vector2Int safeMove = board.GetRandomValidMove(currentTurnColor);
+                if (safeMove.x != -1)
+                {
+                    ExecutePlaceStone(safeMove.x, safeMove.y, currentTurnColor, PlacementType.PlayerManual);
+                    PassTurn(currentTurnColor);
+                }
+            }
+        }
+        finally
+        {
+            // 🚨 [핵심] 무슨 일이 있어도 자물쇠는 푼다!
+            isAITurnProcessing = false;
         }
     }
 

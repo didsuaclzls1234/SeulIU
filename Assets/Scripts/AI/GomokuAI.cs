@@ -63,19 +63,18 @@ public class GomokuAI
     // =========================================================
     private Vector2Int GetBestMove(int[,] grid, RuleSettings aiRules, RuleSettings playerRules, int depth, BoardManager.SealInfo[,] sealedGrid)
     {
-        // 1. 점수 초기값을 아주 낮은 값으로 설정
         float bestScore = float.NegativeInfinity;
         int size = grid.GetLength(0);
 
-        // 🚨 [수정] 후보군이 없을 때를 대비한 기본값 설정 (현재 판에 돌이 있으면 그 주변, 없으면 중앙)
+        // 🚨 [예외처리] 기본값은 무조건 정중앙으로 설정 (먹통 방지)
         Vector2Int bestMove = new Vector2Int(size / 2, size / 2);
 
         List<Vector2Int> candidateMoves = GetCandidateMoves(grid, aiColor, aiRules, sealedGrid);
 
-        // 2. 만약 후보가 하나도 없다면 (그럴 리 없겠지만 방어 코드) 바로 기본값 반환
-        if (candidateMoves.Count == 0) return bestMove;
+        // 🚨 [예외처리] 후보가 하나도 없으면 (첫 수 등) 즉시 중앙 반환
+        if (candidateMoves == null || candidateMoves.Count == 0) return bestMove;
 
-        // 🚨 첫 번째 후보를 일단 기본값으로 설정해서, 루프에서 점수가 안 나와도 뭐라도 두게 만듦
+        // 일단 첫 번째 후보를 선택해 둠 (루프 돌다 터져도 뭐라도 두게 함)
         bestMove = candidateMoves[0];
 
         foreach (Vector2Int move in candidateMoves)

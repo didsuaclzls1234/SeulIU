@@ -85,7 +85,11 @@ public class RuleManager : MonoBehaviour
         // 2. 장목 (Overline) 검사
         if (rules.banOverline && IsOverline(x, y, player, grid, size, W))
         {
+            // 🚨 [수정] 빌드 파일 스레드에서 Debug.Log 호출 시 즉사할 수 있음. 
+            // 전처리기를 써서 에디터의 메인 스레드일 때만 출력하게 보호합니다.
+#if UNITY_EDITOR
             if (!silent && depth == 0) Debug.Log($"❌ 장목({W + 1}목 이상) 금수 자리입니다!");
+#endif
             isForbidden = true;
         }
         // 3. 쌍사 (4-4) 검사
@@ -99,7 +103,9 @@ public class RuleManager : MonoBehaviour
 
             if (count4 >= 2)
             {
+#if UNITY_EDITOR
                 if (!silent && depth == 0) Debug.Log($"❌ 쌍{W - 1} 금수 자리입니다!");
+#endif
                 isForbidden = true;
             }
         }
@@ -116,7 +122,9 @@ public class RuleManager : MonoBehaviour
 
             if (count3 >= 2)
             {
+#if UNITY_EDITOR
                 if (!silent && depth == 0) Debug.Log($"❌ 쌍{W - 2} 금수 자리입니다!");
+#endif
                 isForbidden = true;
             }
         }
